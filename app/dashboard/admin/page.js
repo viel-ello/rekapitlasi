@@ -106,9 +106,18 @@ function UsersTab({ toast, setToast }) {
   };
 
   const handleDelete = async (id) => {
-    await fetch(`/api/admin/users?id=${id}`, { method: 'DELETE' });
-    setToast({ type: 'success', message: 'User dihapus' });
-    fetchUsers();
+    try {
+      const res = await fetch(`/api/admin/users?id=${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setToast({ type: 'success', message: 'User dihapus' });
+        fetchUsers();
+      } else {
+        const data = await res.json();
+        setToast({ type: 'error', message: data.error || 'Gagal menghapus user' });
+      }
+    } catch {
+      setToast({ type: 'error', message: 'Gagal menghubungi server' });
+    }
     setTimeout(() => setToast(null), 3000);
   };
 

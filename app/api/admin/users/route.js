@@ -59,6 +59,9 @@ export async function DELETE(request) {
       return NextResponse.json({ error: 'ID harus diisi' }, { status: 400 });
     }
 
+    // Hindari error foreign key dengan mengosongkan user_id di audit_logs
+    await supabase.from('audit_logs').update({ user_id: null }).eq('user_id', id);
+
     const { error } = await supabase
       .from('users')
       .delete()
