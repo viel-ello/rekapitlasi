@@ -59,18 +59,31 @@ export default function Sidebar({ user, onLogout, collapsed, onToggle }) {
     <aside className={`sidebar ${collapsed ? 'sidebar-collapsed' : ''}`}>
       {/* Brand */}
       <div className="sidebar-brand">
-        <div className="flex-shrink-0 overflow-hidden rounded-full">
-          <img src="/logo.png" alt="Logo" className="w-9 h-9 object-cover rounded-full" />
-        </div>
         {!collapsed && (
-          <div className="brand-text min-w-0">
-            <h3 className="text-sm font-bold text-gray-800 truncate">PKK Rekapitulasi</h3>
-            <span className="text-[0.65rem] text-gray-400">Kec. Baturetno</span>
-          </div>
+          <>
+            <div className="flex-shrink-0 overflow-hidden rounded-full">
+              <img src="/logo.png" alt="Logo" className="w-9 h-9 object-cover rounded-full" />
+            </div>
+            <div className="brand-text min-w-0">
+              <h3 className="text-sm font-bold text-gray-800 truncate">PKK Rekapitulasi</h3>
+              <span className="text-[0.65rem] text-gray-400">Kec. Baturetno</span>
+            </div>
+            <button className="sidebar-toggle" onClick={onToggle} aria-label="Tutup sidebar">
+              <AngleLeft className="w-4 h-4" />
+            </button>
+          </>
         )}
-        <button className="sidebar-toggle" onClick={onToggle} aria-label="Toggle sidebar">
-          {collapsed ? <AngleRight className="w-4 h-4" /> : <AngleLeft className="w-4 h-4" />}
-        </button>
+        {collapsed && (
+          <button
+            onClick={onToggle}
+            aria-label="Buka sidebar"
+            className="w-full flex flex-col items-center gap-1 py-1"
+            title="Buka Menu"
+          >
+            <img src="/logo.png" alt="Logo" className="w-8 h-8 object-cover rounded-full" />
+            <AngleRight className="w-3 h-3 text-gray-400" />
+          </button>
+        )}
       </div>
 
       {/* Navigation */}
