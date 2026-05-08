@@ -6,6 +6,7 @@ import {
   Plus, Close, Check, Pen, TrashBin, Ban,
   Refresh, Download, Upload, List
 } from 'flowbite-react-icons/outline';
+import ConfirmModal from '@/components/ConfirmModal';
 
 const TABS = [
   { id: 'users', label: 'Pengguna', icon: User },
@@ -70,6 +71,7 @@ function UsersTab({ toast, setToast }) {
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState(null);
   const [editForm, setEditForm] = useState({});
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false });
 
   useEffect(() => { fetchUsers(); }, []);
   const fetchUsers = async () => { const res = await fetch('/api/admin/users'); setUsers(await res.json()); };
@@ -93,8 +95,17 @@ function UsersTab({ toast, setToast }) {
     setTimeout(() => setToast(null), 3000);
   };
 
+  const confirmDelete = (id) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Hapus Pengguna',
+      message: 'Apakah Anda yakin ingin menghapus pengguna ini secara permanen?',
+      onConfirm: () => { setConfirmDialog({ isOpen: false }); handleDelete(id); },
+      onCancel: () => setConfirmDialog({ isOpen: false })
+    });
+  };
+
   const handleDelete = async (id) => {
-    if (!confirm('Hapus user ini?')) return;
     await fetch(`/api/admin/users?id=${id}`, { method: 'DELETE' });
     setToast({ type: 'success', message: 'User dihapus' });
     fetchUsers();
@@ -103,6 +114,7 @@ function UsersTab({ toast, setToast }) {
 
   return (
     <>
+      <ConfirmModal {...confirmDialog} />
       <div className="mb-4">
         <button onClick={() => setShowForm(!showForm)} className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-xl transition-colors">
           {showForm ? <><Close className="w-4 h-4" /> Batal</> : <><Plus className="w-4 h-4" /> Tambah Pengguna</>}
@@ -312,11 +324,21 @@ function LogsTab() {
 function BackupTab({ toast, setToast }) {
   const [restoring, setRestoring] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false });
 
-  const handleRestore = async (e) => {
+  const handleRestoreClick = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (!confirm('Data saat ini akan DITIMPA. Lanjutkan?')) { e.target.value = ''; return; }
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Timpa Database',
+      message: 'Peringatan: Data saat ini akan DITIMPA dengan data dari file backup. Tindakan ini tidak dapat dibatalkan. Lanjutkan?',
+      onConfirm: () => { setConfirmDialog({ isOpen: false }); processRestore(file, e.target); },
+      onCancel: () => { setConfirmDialog({ isOpen: false }); e.target.value = ''; }
+    });
+  };
+
+  const processRestore = async (file, inputEl) => {
     setRestoring(true);
     const formData = new FormData();
     formData.append('file', file);
@@ -326,7 +348,7 @@ function BackupTab({ toast, setToast }) {
       setToast({ type: res.ok ? 'success' : 'error', message: data.message || data.error });
     } catch { setToast({ type: 'error', message: 'Gagal memulihkan database' }); }
     setRestoring(false);
-    e.target.value = '';
+    if (inputEl) inputEl.value = '';
     setTimeout(() => setToast(null), 3000);
   };
 
@@ -347,7 +369,9 @@ function BackupTab({ toast, setToast }) {
   };
 
   return (
-    <div className="grid gap-4 md:grid-cols-3">
+    <>
+      <ConfirmModal {...confirmDialog} />
+      <div className="grid gap-4 md:grid-cols-3">
       <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2"><Download className="w-5 h-5" /> Backup Database</h3>
         <p className="text-xs text-gray-400 mb-4">Unduh seluruh database sebagai file .db untuk cadangan data.</p>
@@ -360,7 +384,7 @@ function BackupTab({ toast, setToast }) {
         <p className="text-xs text-gray-400 mb-4">Unggah file backup .db. <strong className="text-red-500">Data saat ini akan ditimpa!</strong></p>
         <label className="inline-flex items-center gap-1.5 px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-xl transition-colors cursor-pointer">
           {restoring ? '⏳ Memulihkan...' : <><Upload className="w-4 h-4" /> Pilih File .db</>}
-          <input type="file" accept=".db" onChange={handleRestore} className="hidden" disabled={restoring} />
+          <input type="file" accept=".db" onChange={handleRestoreClick} className="hidden" disabled={restoring} />
         </label>
       </div>
       <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
@@ -378,6 +402,7 @@ function BackupTab({ toast, setToast }) {
 function ColumnsTab({ toast, setToast }) {
   const [columns, setColumns] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false });
 
   const TABLES = [
     { value: 'data_umum', label: 'Data Umum' },
@@ -402,8 +427,17 @@ function ColumnsTab({ toast, setToast }) {
     setTimeout(() => setToast(null), 3000);
   };
 
+  const confirmDelete = (id) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Hapus Definisi Kolom',
+      message: 'Data yang sudah tersimpan di kolom ini tidak akan ikut terhapus dari tabel secara permanen, namun kolom tidak akan tampil lagi di antarmuka. Lanjutkan?',
+      onConfirm: () => { setConfirmDialog({ isOpen: false }); handleDelete(id); },
+      onCancel: () => setConfirmDialog({ isOpen: false })
+    });
+  };
+
   const handleDelete = async (id) => {
-    if (!confirm('Hapus definisi kolom ini? Data yang sudah tersimpan di kolom ini tidak akan ikut terhapus dari tabel secara permanen, namun tidak akan tampil lagi.')) return;
     await fetch(`/api/admin/columns?id=${id}`, { method: 'DELETE' });
     setToast({ type: 'success', message: 'Kolom dihapus' });
     fetchColumns();
@@ -412,6 +446,7 @@ function ColumnsTab({ toast, setToast }) {
 
   return (
     <>
+      <ConfirmModal {...confirmDialog} />
       <div className="mb-4">
         <button onClick={() => setShowForm(!showForm)} className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-xl transition-colors">
           {showForm ? <><Close className="w-4 h-4" /> Batal</> : <><Plus className="w-4 h-4" /> Tambah Kolom Baru</>}
@@ -472,7 +507,7 @@ function ColumnsTab({ toast, setToast }) {
                   <td className="px-6 py-3">{c.column_label}</td>
                   <td className="px-6 py-3">{c.column_type === 'number' ? 'Angka' : 'Teks'}</td>
                   <td className="px-6 py-3 text-right">
-                    <button onClick={() => handleDelete(c.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Hapus"><TrashBin className="w-4 h-4" /></button>
+                    <button onClick={() => confirmDelete(c.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Hapus"><TrashBin className="w-4 h-4" /></button>
                   </td>
                 </tr>
               ))}
