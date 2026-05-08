@@ -133,46 +133,50 @@ export default function DashboardPage() {
 
       {/* Charts Row */}
       <div className="grid md:grid-cols-2 gap-4">
-        {/* Bar Chart */}
+        {/* Horizontal Bar Chart */}
         <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-          <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-4">
-            <Chart className="w-5 h-5 text-gray-400" /> Jumlah Jiwa per Desa
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-5">
+            <Chart className="w-5 h-5 text-primary-500" /> Jumlah Jiwa per Desa
           </h3>
-          <div className="overflow-x-auto">
-            <svg viewBox="0 0 700 280" className="w-full min-w-[500px]">
-              {rekap?.perDesaJiwa?.map((d, i) => {
-                const maxVal = Math.max(...(rekap.perDesaJiwa || []).map(x => x.jiwa_l + x.jiwa_p), 1);
-                const barH = ((d.jiwa_l + d.jiwa_p) / maxVal) * 200;
-                const x = 45 + i * 50;
-                return (
-                  <g key={i}>
-                    <rect x={x} y={250 - barH} width={36} height={barH} rx={6} fill="url(#barGrad)" opacity={0.85}>
-                      <animate attributeName="height" from="0" to={barH} dur="0.6s" fill="freeze" />
-                      <animate attributeName="y" from="250" to={250 - barH} dur="0.6s" fill="freeze" />
-                    </rect>
-                    <text x={x + 18} y={265} textAnchor="middle" fill="#9ca3af" fontSize="7" transform={`rotate(-45, ${x + 18}, 265)`}>
-                      {d.nama.length > 8 ? d.nama.substring(0, 8) + '..' : d.nama}
-                    </text>
-                    <text x={x + 18} y={245 - barH} textAnchor="middle" fill="#6b7280" fontSize="7" fontWeight="600">
-                      {(d.jiwa_l + d.jiwa_p).toLocaleString()}
-                    </text>
-                  </g>
-                );
-              })}
-              <defs>
-                <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#059669" />
-                  <stop offset="100%" stopColor="#10b981" />
-                </linearGradient>
-              </defs>
-            </svg>
-          </div>
+          {(() => {
+            const items = rekap?.perDesaJiwa || [];
+            const maxVal = Math.max(...items.map(x => x.jiwa_l + x.jiwa_p), 1);
+            return (
+              <div className="space-y-2">
+                {items.map((d, i) => {
+                  const total = d.jiwa_l + d.jiwa_p;
+                  const pct = (total / maxVal) * 100;
+                  return (
+                    <div key={i} className="group flex items-center gap-3">
+                      <div className="w-24 sm:w-28 text-right text-xs font-semibold text-gray-600 truncate flex-shrink-0" title={d.nama}>
+                        {d.nama}
+                      </div>
+                      <div className="flex-1 h-7 bg-gray-100 rounded-full overflow-hidden relative">
+                        <div
+                          className="h-full rounded-full transition-all duration-700 ease-out"
+                          style={{
+                            width: `${Math.max(pct, 2)}%`,
+                            background: `linear-gradient(90deg, #059669 0%, #10b981 60%, #34d399 100%)`,
+                          }}
+                        />
+                        {total > 0 && (
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-500 group-hover:text-gray-800 transition-colors">
+                            {total.toLocaleString('id-ID')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
 
-        {/* Pie Chart */}
+        {/* Donut Chart */}
         <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-          <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-4">
-            <ChartPie className="w-5 h-5 text-gray-400" /> Komposisi Jiwa (L/P)
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-5">
+            <ChartPie className="w-5 h-5 text-primary-500" /> Komposisi Jiwa (L/P)
           </h3>
           <div className="flex items-center justify-center gap-8">
             <svg viewBox="0 0 200 200" className="w-44 h-44">
@@ -181,32 +185,59 @@ export default function DashboardPage() {
                 const p = rekap?.dataUmum?.total_jiwa_p || 1;
                 const total = l + p;
                 const lPct = l / total;
-                const lAngle = lPct * 360;
-                const lRad = (lAngle * Math.PI) / 180;
-                const largeArc = lAngle > 180 ? 1 : 0;
-                const x1 = 100 + 75 * Math.sin(lRad);
-                const y1 = 100 - 75 * Math.cos(lRad);
+                const circumference = 2 * Math.PI * 70;
                 return (
                   <>
-                    <circle cx="100" cy="100" r="75" fill="none" stroke="#f3f4f6" strokeWidth="30" />
-                    <path d={`M 100 25 A 75 75 0 ${largeArc} 1 ${x1} ${y1}`} fill="none" stroke="#3b82f6" strokeWidth="30" strokeLinecap="round">
-                      <animate attributeName="stroke-dasharray" from="0 472" to={`${lPct * 472} ${(1 - lPct) * 472}`} dur="0.8s" fill="freeze" />
-                    </path>
-                    <path d={`M ${x1} ${y1} A 75 75 0 ${1 - largeArc} 1 100 25`} fill="none" stroke="#f472b6" strokeWidth="30" strokeLinecap="round" />
-                    <text x="100" y="95" textAnchor="middle" fill="#1f2937" fontSize="18" fontWeight="800">{total.toLocaleString()}</text>
-                    <text x="100" y="112" textAnchor="middle" fill="#9ca3af" fontSize="9">Total Jiwa</text>
+                    {/* Background ring */}
+                    <circle cx="100" cy="100" r="70" fill="none" stroke="#f3f4f6" strokeWidth="24" />
+                    {/* Male arc */}
+                    <circle
+                      cx="100" cy="100" r="70" fill="none"
+                      stroke="url(#maleGrad)" strokeWidth="24" strokeLinecap="round"
+                      strokeDasharray={`${lPct * circumference} ${circumference}`}
+                      transform="rotate(-90 100 100)"
+                      style={{ transition: 'stroke-dasharray 0.8s ease' }}
+                    />
+                    {/* Female arc */}
+                    <circle
+                      cx="100" cy="100" r="70" fill="none"
+                      stroke="url(#femaleGrad)" strokeWidth="24" strokeLinecap="round"
+                      strokeDasharray={`${(1 - lPct) * circumference} ${circumference}`}
+                      strokeDashoffset={`${-lPct * circumference}`}
+                      transform="rotate(-90 100 100)"
+                      style={{ transition: 'stroke-dasharray 0.8s ease' }}
+                    />
+                    {/* Center text */}
+                    <text x="100" y="93" textAnchor="middle" fill="#1f2937" fontSize="20" fontWeight="800">{total.toLocaleString('id-ID')}</text>
+                    <text x="100" y="113" textAnchor="middle" fill="#9ca3af" fontSize="10">Total Jiwa</text>
+                    <defs>
+                      <linearGradient id="maleGrad" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stopColor="#3b82f6" />
+                        <stop offset="100%" stopColor="#60a5fa" />
+                      </linearGradient>
+                      <linearGradient id="femaleGrad" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stopColor="#ec4899" />
+                        <stop offset="100%" stopColor="#f472b6" />
+                      </linearGradient>
+                    </defs>
                   </>
                 );
               })()}
             </svg>
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded bg-blue-500" />
-                <span className="text-sm text-gray-600">Laki-laki: <strong className="text-gray-800">{(rekap?.dataUmum?.total_jiwa_l || 0).toLocaleString()}</strong></span>
+            <div className="space-y-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-3 h-3 rounded-full bg-blue-500" />
+                  <span className="text-xs text-gray-500 font-medium">Laki-laki</span>
+                </div>
+                <div className="text-lg font-bold text-gray-800">{(rekap?.dataUmum?.total_jiwa_l || 0).toLocaleString('id-ID')}</div>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded bg-pink-400" />
-                <span className="text-sm text-gray-600">Perempuan: <strong className="text-gray-800">{(rekap?.dataUmum?.total_jiwa_p || 0).toLocaleString()}</strong></span>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-3 h-3 rounded-full bg-pink-500" />
+                  <span className="text-xs text-gray-500 font-medium">Perempuan</span>
+                </div>
+                <div className="text-lg font-bold text-gray-800">{(rekap?.dataUmum?.total_jiwa_p || 0).toLocaleString('id-ID')}</div>
               </div>
             </div>
           </div>
