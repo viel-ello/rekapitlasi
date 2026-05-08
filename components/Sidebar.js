@@ -24,7 +24,7 @@ const adminItems = [
   { href: '/dashboard/admin', label: 'Panel Admin', icon: Cog },
 ];
 
-export default function Sidebar({ user, onLogout, collapsed, onToggle }) {
+export default function Sidebar({ user, onLogout, collapsed, onToggle, mobileOpen, onMobileClose }) {
   const pathname = usePathname();
   const [showPwModal, setShowPwModal] = useState(false);
   const [pwForm, setPwForm] = useState({ old: '', new: '', confirm: '' });
@@ -56,7 +56,7 @@ export default function Sidebar({ user, onLogout, collapsed, onToggle }) {
   };
 
   return (
-    <aside className={`sidebar ${collapsed ? 'sidebar-collapsed' : ''}`}>
+    <aside className={`sidebar ${collapsed ? 'sidebar-collapsed' : ''} ${mobileOpen ? 'sidebar-mobile-open' : 'sidebar-mobile-hidden'}`}>
       {/* Brand */}
       <div className="sidebar-brand">
         {!collapsed && (

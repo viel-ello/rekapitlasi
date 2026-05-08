@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { Search, Bell, ArrowRightToBracket, Lock, AngleDown } from 'flowbite-react-icons/outline';
+import { Search, Bell, ArrowRightToBracket, Lock, AngleDown, Bars } from 'flowbite-react-icons/outline';
 import { User } from 'flowbite-react-icons/solid';
 
-export default function Topbar({ user }) {
+export default function Topbar({ user, onMobileMenuToggle }) {
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -34,15 +34,26 @@ export default function Topbar({ user }) {
   };
 
   return (
-    <header className="flex items-center justify-between px-6 py-3 bg-white/80 backdrop-blur-lg border-b border-gray-100 sticky top-0 z-30">
-      {/* Search */}
-      <div className="relative w-full max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <input
-          type="text"
-          placeholder="Cari menu, data, desa..."
-          className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:bg-white outline-none transition-all"
-        />
+    <header className="flex items-center justify-between px-4 md:px-6 py-3 bg-white/80 backdrop-blur-lg border-b border-gray-100 sticky top-0 z-30">
+      <div className="flex items-center gap-3 flex-1">
+        {/* Hamburger menu — mobile only */}
+        <button
+          className="md:hidden p-2 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-500"
+          onClick={onMobileMenuToggle}
+          aria-label="Buka menu"
+        >
+          <Bars className="w-5 h-5" />
+        </button>
+
+        {/* Search */}
+        <div className="relative w-full max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Cari menu, data, desa..."
+            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:bg-white outline-none transition-all"
+          />
+        </div>
       </div>
 
       {/* Right Section */}
