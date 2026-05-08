@@ -83,9 +83,9 @@ function UsersTab({ toast, setToast }) {
   };
 
   const handleUpdate = async (id) => {
-    const body = { ...editForm };
+    const body = { id, ...editForm };
     if (!body.password) delete body.password;
-    const res = await fetch(`/api/admin/users/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const res = await fetch(`/api/admin/users`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     if (res.ok) { setToast({ type: 'success', message: 'User berhasil diperbarui' }); setEditId(null); fetchUsers(); }
     else { const err = await res.json(); setToast({ type: 'error', message: err.error }); }
     setTimeout(() => setToast(null), 3000);
@@ -93,7 +93,7 @@ function UsersTab({ toast, setToast }) {
 
   const handleDelete = async (id) => {
     if (!confirm('Hapus user ini?')) return;
-    await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+    await fetch(`/api/admin/users?id=${id}`, { method: 'DELETE' });
     setToast({ type: 'success', message: 'User dihapus' });
     fetchUsers();
     setTimeout(() => setToast(null), 3000);
