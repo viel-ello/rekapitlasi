@@ -204,7 +204,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
                           placeholder="0"
                         />
                       ) : (
-                        <span className="block text-right px-2 py-1 text-gray-500">
+                        <span className="block text-center px-2 py-1 text-gray-500">
                           {(data[d.id]?.[col.key] || 0).toLocaleString('id-ID')}
                         </span>
                       )}
@@ -223,7 +223,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
                           placeholder={col.column_type === 'number' ? "0" : "Isi teks"}
                         />
                       ) : (
-                        <span className={`block px-2 py-1 text-gray-500 ${col.column_type === 'number' ? 'text-right' : 'text-left'}`}>
+                        <span className={`block px-2 py-1 text-gray-500 text-center`}>
                           {col.column_type === 'number' 
                             ? (Number(data[d.id]?.custom_columns?.[col.column_key]) || 0).toLocaleString('id-ID')
                             : (data[d.id]?.custom_columns?.[col.column_key] || '-')}
@@ -248,12 +248,12 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
                 <td style={{ position: 'sticky', left: 0, background: '#f0fdf4', zIndex: 1 }}></td>
                 <td className="col-desa" style={{ left: 40, background: '#f0fdf4' }}>JUMLAH</td>
                 {columns.map(col => (
-                  <td key={col.key} className="text-right font-bold">
+                  <td key={col.key} className="text-center font-bold">
                     {getTotal(col.key).toLocaleString('id-ID')}
                   </td>
                 ))}
                 {dynamicColumns.map(col => (
-                  <td key={`dyn-${col.column_key}`} className="text-right font-bold text-primary-700 bg-primary-50/30">
+                  <td key={`dyn-${col.column_key}`} className="text-center font-bold text-primary-700 bg-primary-50/30">
                     {getTotal(col.column_key, true, col.column_type).toLocaleString('id-ID')}
                   </td>
                 ))}

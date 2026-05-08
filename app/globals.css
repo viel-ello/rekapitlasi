@@ -201,7 +201,7 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   padding: 0.85rem 0.65rem;
-  text-align: left;
+  text-align: center;
   border-bottom: 2px solid #f3f4f6;
   white-space: nowrap;
 }
@@ -221,7 +221,7 @@
   color: #1f2937;
   font-family: inherit;
   font-size: 0.85rem;
-  text-align: right;
+  text-align: center;
   transition: all 0.15s ease;
   outline: none;
 }
