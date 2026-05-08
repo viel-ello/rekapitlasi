@@ -6,9 +6,19 @@
 
 import { NextResponse } from 'next/server';
 import { authenticateUser } from '@/lib/auth';
+import { checkRateLimit, recordFailedAttempt, clearAttempts } from '@/lib/rate-limit';
 
 export async function POST(request) {
   try {
+    // --- Rate Limiting Check ---
+    const { limited, retryAfter } = checkRateLimit(request);
+    if (limited) {
+      return NextResponse.json(
+        { error: `Terlalu banyak percobaan login. Coba lagi dalam ${retryAfter} menit.` },
+        { status: 429 }
+      );
+    }
+
     const { username, password } = await request.json();
 
     if (!username || !password) {
@@ -21,11 +31,16 @@ export async function POST(request) {
     const result = await authenticateUser(username, password);
 
     if (!result) {
+      // Record failed attempt for rate limiting
+      recordFailedAttempt(request);
       return NextResponse.json(
         { error: 'Username atau password salah' },
         { status: 401 }
       );
     }
+
+    // Login success — clear failed attempts
+    clearAttempts(request);
 
     // Set JWT token as httpOnly cookie
     const response = NextResponse.json({
