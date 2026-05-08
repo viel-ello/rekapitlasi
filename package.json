@@ -12,6 +12,7 @@
     "test:client": "jest --selectProjects client"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.105.3",
     "bcryptjs": "^3.0.3",
     "docx": "^9.6.1",

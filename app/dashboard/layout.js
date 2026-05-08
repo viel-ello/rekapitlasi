@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
+import AiChatBubble from '@/components/AiChatBubble';
 
 export default function DashboardLayout({ children }) {
   const [user, setUser] = useState(null);
@@ -84,6 +85,8 @@ export default function DashboardLayout({ children }) {
           {children}
         </div>
       </main>
+
+      <AiChatBubble />
     </div>
   );
 }
