@@ -188,7 +188,7 @@ function UsersTab({ toast, setToast }) {
                       ) : (
                         <div className="flex justify-center gap-1">
                           <button onClick={() => { setEditId(u.id); setEditForm({}); }} className="p-1.5 bg-gray-100 text-gray-500 rounded-lg hover:bg-gray-200"><Pen className="w-4 h-4" /></button>
-                          <button onClick={() => handleDelete(u.id)} className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100"><TrashBin className="w-4 h-4" /></button>
+                          <button onClick={() => confirmDelete(u.id)} className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100"><TrashBin className="w-4 h-4" /></button>
                         </div>
                       )
                     )}
@@ -396,6 +396,7 @@ function BackupTab({ toast, setToast }) {
         </label>
       </div>
     </div>
+    </>
   );
 }
 
