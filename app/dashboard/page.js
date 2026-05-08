@@ -41,7 +41,7 @@ export default function DashboardPage() {
       a.href = url;
       a.download = type === 'excel'
         ? `Rekapitulasi_PKK_Baturetno_${tahun}.xlsx`
-        : `Program_Kerja_PKK_${tahun}.docx`;
+        : `Data_Kegiatan_PKK_${tahun}.docx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
