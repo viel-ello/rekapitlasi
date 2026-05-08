@@ -23,8 +23,12 @@ function addTitle(ws, t1, t2, tahun, n) {
 }
 
 async function buildSheet(wb, tahun, sheetName, dbTable, title, cols) {
+  // Fetch dynamic columns for this table
+  const { data: dynamicCols } = await supabase.from('table_schemas').select('*').eq('table_name', dbTable);
+  const dynCols = dynamicCols || [];
+  
   const ws = wb.addWorksheet(sheetName);
-  const hdrs = ['No','Nama Desa',...cols.map(c=>c.label)];
+  const hdrs = ['No','Nama Desa',...cols.map(c=>c.label), ...dynCols.map(c=>c.column_label)];
   const keys = cols.map(c=>c.key);
   addTitle(ws, `DATA KEGIATAN PKK — ${title}`, 'TP PKK KECAMATAN BATURETNO', tahun, hdrs.length);
   styleH(ws.addRow(hdrs));
@@ -45,12 +49,33 @@ async function buildSheet(wb, tahun, sheetName, dbTable, title, cols) {
       keys.forEach(k => {
         aggregatedRow[k] = rows.reduce((sum, r) => sum + (r[k] || 0), 0);
       });
+      // aggregate dynamic columns if numeric
+      aggregatedRow.custom_columns = {};
+      dynCols.forEach(col => {
+        if (col.column_type === 'number') {
+           aggregatedRow.custom_columns[col.column_key] = rows.reduce((sum, r) => sum + (Number(r.custom_columns?.[col.column_key]) || 0), 0);
+        } else {
+           aggregatedRow.custom_columns[col.column_key] = rows[0]?.custom_columns?.[col.column_key] || '';
+        }
+      });
     }
 
     const vals = keys.map((k,ki)=>{const v=aggregatedRow[k]||0;tots[ki]+=v;return v;});
-    styleB(ws.addRow([i+1,d.nama,...vals]));
+    const dynVals = dynCols.map((c,ci)=>{
+      const idx = keys.length + ci;
+      if (!tots[idx]) tots[idx] = 0;
+      const val = aggregatedRow.custom_columns?.[c.column_key] || (c.column_type === 'number' ? 0 : '');
+      if (c.column_type === 'number') tots[idx] += Number(val);
+      return val;
+    });
+
+    styleB(ws.addRow([i+1,d.nama,...vals,...dynVals]));
   });
-  styleT(ws.addRow(['','JUMLAH',...tots]));
+  styleT(ws.addRow(['','JUMLAH',...tots.map((t,i) => {
+    // If it's a dynamic text column, don't show total
+    if (i >= keys.length && dynCols[i - keys.length].column_type !== 'number') return '-';
+    return t;
+  })]));
 }
 
 export async function GET(request) {

@@ -58,6 +58,10 @@ export async function POST(request) {
 
       if (!dataStartRow) continue;
 
+      // Fetch dynamic columns for this table
+      const { data: dynamicCols } = await supabase.from('table_schemas').select('*').eq('table_name', config.table);
+      const dynCols = dynamicCols || [];
+
       const upserts = [];
 
       for (let ri = dataStartRow; ri <= dataStartRow + desaList.length - 1; ri++) {
@@ -70,10 +74,20 @@ export async function POST(request) {
         const desa = desaList.find(d => d.nama.toLowerCase() === desaNama.toLowerCase());
         if (!desa) continue;
 
-        const fields = {};
+        const fields = { custom_columns: {} };
         config.keys.forEach((key, ki) => {
           const val = row.getCell(ki + 3).value;
           fields[key] = typeof val === 'number' ? val : (parseInt(val) || 0);
+        });
+        
+        // Parse dynamic columns
+        dynCols.forEach((col, ci) => {
+          const val = row.getCell(config.keys.length + 3 + ci).value;
+          if (col.column_type === 'number') {
+            fields.custom_columns[col.column_key] = typeof val === 'number' ? val : (parseInt(val) || 0);
+          } else {
+            fields.custom_columns[col.column_key] = val !== null && val !== undefined ? String(val) : '';
+          }
         });
 
         const record = { desa_id: desa.id, tahun: Number(tahun), ...fields, updated_at: new Date().toISOString() };

@@ -14,10 +14,12 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
   const [toast, setToast] = useState(null);
   const [canEdit, setCanEdit] = useState(false);
   const [userRole, setUserRole] = useState('');
+  const [dynamicColumns, setDynamicColumns] = useState([]);
 
   useEffect(() => {
     fetchDesa();
     checkPermission();
+    fetchDynamicColumns();
   }, []);
 
   useEffect(() => {
@@ -43,6 +45,16 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
     setDesa(list);
   };
 
+  const fetchDynamicColumns = async () => {
+    if (!tableName) return;
+    try {
+      const res = await fetch(`/api/admin/columns?table_name=${tableName}`);
+      if (res.ok) setDynamicColumns(await res.json());
+    } catch (error) {
+      console.error('Failed to fetch dynamic columns');
+    }
+  };
+
   const fetchData = async () => {
     const res = await fetch(`${apiEndpoint}?tahun=${tahun}`);
     const rows = await res.json();
@@ -51,12 +63,31 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
     setData(map);
   };
 
-  const handleChange = (desaId, key, value) => {
+  const handleChange = (desaId, key, value, isDynamic = false, type = 'number') => {
     if (!canEdit) return;
-    setData(prev => ({
-      ...prev,
-      [desaId]: { ...(prev[desaId] || {}), desa_id: desaId, [key]: value === '' ? 0 : Number(value) },
-    }));
+    
+    let parsedValue = value;
+    if (type === 'number') {
+      parsedValue = value === '' ? 0 : Number(value);
+    }
+
+    setData(prev => {
+      const row = prev[desaId] || {};
+      if (isDynamic) {
+        return {
+          ...prev,
+          [desaId]: { 
+            ...row, 
+            desa_id: desaId, 
+            custom_columns: { ...(row.custom_columns || {}), [key]: parsedValue } 
+          }
+        };
+      }
+      return {
+        ...prev,
+        [desaId]: { ...row, desa_id: desaId, [key]: parsedValue },
+      };
+    });
   };
 
   const saveRow = useCallback(async (desaId) => {
@@ -69,8 +100,16 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
     setSaving(desaId);
     try {
       const rowData = data[desaId] || {};
-      const payload = { desa_id: desaId, tahun };
+      const payload = { desa_id: desaId, tahun, custom_columns: {} };
+      
+      // Standard columns
       columns.forEach(col => { payload[col.key] = rowData[col.key] || 0; });
+      
+      // Dynamic columns
+      dynamicColumns.forEach(col => {
+        const val = rowData.custom_columns?.[col.column_key];
+        payload.custom_columns[col.column_key] = col.column_type === 'number' ? (val || 0) : (val || '');
+      });
 
       const res = await fetch(apiEndpoint, {
         method: 'POST',
@@ -89,10 +128,14 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
     }
     setSaving(null);
     setTimeout(() => setToast(null), 3000);
-  }, [data, tahun, apiEndpoint, columns, canEdit, userRole]);
+  }, [data, tahun, apiEndpoint, columns, canEdit, userRole, dynamicColumns]);
 
-  const getTotal = (key) => {
-    return desa.reduce((sum, d) => sum + (data[d.id]?.[key] || 0), 0);
+  const getTotal = (key, isDynamic = false, type = 'number') => {
+    if (type !== 'number') return '-';
+    if (isDynamic) {
+      return desa.reduce((sum, d) => sum + (Number(data[d.id]?.custom_columns?.[key]) || 0), 0);
+    }
+    return desa.reduce((sum, d) => sum + (Number(data[d.id]?.[key]) || 0), 0);
   };
 
   return (
@@ -139,6 +182,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
                 <th style={{ position: 'sticky', left: 0, zIndex: 3, background: '#f9fafb', minWidth: 40 }}>No</th>
                 <th style={{ position: 'sticky', left: 40, zIndex: 3, background: '#f9fafb', minWidth: 130 }}>Nama Desa</th>
                 {columns.map(col => <th key={col.key} className="text-center" style={{ minWidth: 80 }}>{col.label}</th>)}
+                {dynamicColumns.map(col => <th key={`dyn-${col.column_key}`} className="text-center text-primary-700 bg-primary-50/30" style={{ minWidth: 100 }}>{col.column_label}</th>)}
                 {canEdit && <th className="text-center" style={{ minWidth: 60 }}>Aksi</th>}
               </tr>
             </thead>
@@ -153,7 +197,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
                         <input
                           type="number"
                           className="cell-input"
-                          value={data[d.id]?.[col.key] || ''}
+                          value={data[d.id]?.[col.key] ?? ''}
                           onChange={(e) => handleChange(d.id, col.key, e.target.value)}
                           onBlur={() => saveRow(d.id)}
                           min="0"
@@ -162,6 +206,27 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
                       ) : (
                         <span className="block text-right px-2 py-1 text-gray-500">
                           {(data[d.id]?.[col.key] || 0).toLocaleString('id-ID')}
+                        </span>
+                      )}
+                    </td>
+                  ))}
+                  {dynamicColumns.map(col => (
+                    <td key={`dyn-${col.column_key}`} className="bg-primary-50/10">
+                      {canEdit ? (
+                        <input
+                          type={col.column_type === 'number' ? 'number' : 'text'}
+                          className="cell-input !text-primary-800"
+                          value={data[d.id]?.custom_columns?.[col.column_key] ?? ''}
+                          onChange={(e) => handleChange(d.id, col.column_key, e.target.value, true, col.column_type)}
+                          onBlur={() => saveRow(d.id)}
+                          min={col.column_type === 'number' ? "0" : undefined}
+                          placeholder={col.column_type === 'number' ? "0" : "Isi teks"}
+                        />
+                      ) : (
+                        <span className={`block px-2 py-1 text-gray-500 ${col.column_type === 'number' ? 'text-right' : 'text-left'}`}>
+                          {col.column_type === 'number' 
+                            ? (Number(data[d.id]?.custom_columns?.[col.column_key]) || 0).toLocaleString('id-ID')
+                            : (data[d.id]?.custom_columns?.[col.column_key] || '-')}
                         </span>
                       )}
                     </td>
@@ -185,6 +250,11 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
                 {columns.map(col => (
                   <td key={col.key} className="text-right font-bold">
                     {getTotal(col.key).toLocaleString('id-ID')}
+                  </td>
+                ))}
+                {dynamicColumns.map(col => (
+                  <td key={`dyn-${col.column_key}`} className="text-right font-bold text-primary-700 bg-primary-50/30">
+                    {getTotal(col.column_key, true, col.column_type).toLocaleString('id-ID')}
                   </td>
                 ))}
                 {canEdit && <td></td>}

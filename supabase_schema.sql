@@ -261,3 +261,30 @@ ON CONFLICT DO NOTHING;
 INSERT INTO users (username, password_hash, nama_lengkap, role) VALUES 
 ('admin', '$2a$10$wT0ESt0yX1W5b4vA2v9oO.l2Jd0RkZg3c3tV.g2f1s0y.l2Jd0RkZ', 'Administrator', 'admin')
 ON CONFLICT DO NOTHING;
+- -   = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =  
+ - -   S C R I P T   U P D A T E :   F I T U R   K O L O M   D I N A M I S   ( J S O N B )  
+ - -   = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =  
+ - -   S i l a k a n   j a l a n k a n   s c r i p t   i n i   d i   m e n u   " S Q L   E d i t o r "   p a d a   d a s h b o a r d   S u p a b a s e   A n d a .  
+  
+ - -   1 .   B u a t   t a b e l   u n t u k   m e n y i m p a n   d e f i n i s i   k o l o m   d i n a m i s  
+ C R E A T E   T A B L E   I F   N O T   E X I S T S   t a b l e _ s c h e m a s   (  
+     i d   S E R I A L   P R I M A R Y   K E Y ,  
+     t a b l e _ n a m e   T E X T   N O T   N U L L ,   - -   c o n t o h :   ' d a t a _ p o k j a 1 '  
+     c o l u m n _ k e y   T E X T   N O T   N U L L ,   - -   c o n t o h :   ' k e t e r a n g a n _ t a m b a h a n '  
+     c o l u m n _ l a b e l   T E X T   N O T   N U L L ,   - -   c o n t o h :   ' K e t e r a n g a n   T a m b a h a n '  
+     c o l u m n _ t y p e   T E X T   N O T   N U L L   D E F A U L T   ' t e x t ' ,   - -   ' t e x t '   a t a u   ' n u m b e r '  
+     c r e a t e d _ a t   T I M E S T A M P   W I T H   T I M E   Z O N E   D E F A U L T   N O W ( ) ,  
+     U N I Q U E ( t a b l e _ n a m e ,   c o l u m n _ k e y )  
+ ) ;  
+  
+ - -   2 .   T a m b a h k a n   f i e l d   c u s t o m _ c o l u m n s   k e   s e m u a   t a b e l   d a t a   o p e r a s i o n a l  
+ - -   K i t a   m e n g g u n a k a n   t i p e   J S O N B   d e n g a n   n i l a i   d e f a u l t   ' { } '   ( o b j e k   k o s o n g )  
+  
+ A L T E R   T A B L E   d a t a _ u m u m   A D D   C O L U M N   I F   N O T   E X I S T S   c u s t o m _ c o l u m n s   J S O N B   D E F A U L T   ' { } ' : : j s o n b ;  
+ A L T E R   T A B L E   d a t a _ p o k j a 1   A D D   C O L U M N   I F   N O T   E X I S T S   c u s t o m _ c o l u m n s   J S O N B   D E F A U L T   ' { } ' : : j s o n b ;  
+ A L T E R   T A B L E   d a t a _ p o k j a 2   A D D   C O L U M N   I F   N O T   E X I S T S   c u s t o m _ c o l u m n s   J S O N B   D E F A U L T   ' { } ' : : j s o n b ;  
+ A L T E R   T A B L E   d a t a _ p o k j a 3   A D D   C O L U M N   I F   N O T   E X I S T S   c u s t o m _ c o l u m n s   J S O N B   D E F A U L T   ' { } ' : : j s o n b ;  
+ A L T E R   T A B L E   d a t a _ p o k j a 4   A D D   C O L U M N   I F   N O T   E X I S T S   c u s t o m _ c o l u m n s   J S O N B   D E F A U L T   ' { } ' : : j s o n b ;  
+ A L T E R   T A B L E   d a t a _ k e g i a t a n _ w a r g a   A D D   C O L U M N   I F   N O T   E X I S T S   c u s t o m _ c o l u m n s   J S O N B   D E F A U L T   ' { } ' : : j s o n b ;  
+ A L T E R   T A B L E   d a t a _ b u m i l   A D D   C O L U M N   I F   N O T   E X I S T S   c u s t o m _ c o l u m n s   J S O N B   D E F A U L T   ' { } ' : : j s o n b ;  
+ 

@@ -4,12 +4,13 @@ import { useEffect, useState } from 'react';
 import {
   User, MapPin, ClipboardList, Database, Cog,
   Plus, Close, Check, Pen, TrashBin, Ban,
-  Refresh, Download, Upload
+  Refresh, Download, Upload, List
 } from 'flowbite-react-icons/outline';
 
 const TABS = [
   { id: 'users', label: 'Pengguna', icon: User },
   { id: 'desa', label: 'Desa', icon: MapPin },
+  { id: 'columns', label: 'Kolom Dinamis', icon: List },
   { id: 'logs', label: 'Log Aktivitas', icon: ClipboardList },
   { id: 'backup', label: 'Database', icon: Database },
 ];
@@ -57,6 +58,7 @@ export default function AdminPage() {
 
       {tab === 'users' && <UsersTab toast={toast} setToast={setToast} />}
       {tab === 'desa' && <DesaTab toast={toast} setToast={setToast} />}
+      {tab === 'columns' && <ColumnsTab toast={toast} setToast={setToast} />}
       {tab === 'logs' && <LogsTab />}
       {tab === 'backup' && <BackupTab toast={toast} setToast={setToast} />}
     </div>
@@ -370,5 +372,114 @@ function BackupTab({ toast, setToast }) {
         </label>
       </div>
     </div>
+  );
+}
+
+function ColumnsTab({ toast, setToast }) {
+  const [columns, setColumns] = useState([]);
+  const [showForm, setShowForm] = useState(false);
+
+  const TABLES = [
+    { value: 'data_umum', label: 'Data Umum' },
+    { value: 'data_pokja1', label: 'Pokja I' },
+    { value: 'data_pokja2', label: 'Pokja II' },
+    { value: 'data_pokja3', label: 'Pokja III' },
+    { value: 'data_pokja4', label: 'Pokja IV' },
+    { value: 'data_kegiatan_warga', label: 'Kegiatan Warga' },
+    { value: 'data_bumil', label: 'Data Ibu Hamil' },
+  ];
+
+  useEffect(() => { fetchColumns(); }, []);
+  const fetchColumns = async () => { const res = await fetch('/api/admin/columns'); setColumns(await res.json()); };
+
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const body = { table_name: fd.get('table_name'), column_key: fd.get('column_key'), column_label: fd.get('column_label'), column_type: fd.get('column_type') };
+    const res = await fetch('/api/admin/columns', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (res.ok) { setToast({ type: 'success', message: 'Kolom berhasil ditambahkan' }); setShowForm(false); fetchColumns(); }
+    else { const err = await res.json(); setToast({ type: 'error', message: err.error }); }
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm('Hapus definisi kolom ini? Data yang sudah tersimpan di kolom ini tidak akan ikut terhapus dari tabel secara permanen, namun tidak akan tampil lagi.')) return;
+    await fetch(`/api/admin/columns?id=${id}`, { method: 'DELETE' });
+    setToast({ type: 'success', message: 'Kolom dihapus' });
+    fetchColumns();
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  return (
+    <>
+      <div className="mb-4">
+        <button onClick={() => setShowForm(!showForm)} className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-xl transition-colors">
+          {showForm ? <><Close className="w-4 h-4" /> Batal</> : <><Plus className="w-4 h-4" /> Tambah Kolom Baru</>}
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6 animate-in slide-in-from-top-4 fade-in">
+          <h2 className="text-lg font-bold text-gray-800 mb-4">Tambah Kolom Dinamis</h2>
+          <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tabel Tujuan</label>
+              <select name="table_name" required className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500">
+                {TABLES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Key Kolom (tanpa spasi)</label>
+              <input type="text" name="column_key" required placeholder="misal: ket_tambahan" pattern="^[a-zA-Z0-9_]+$" title="Hanya huruf, angka, dan underscore" className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Label Kolom (Tampilan)</label>
+              <input type="text" name="column_label" required placeholder="misal: Keterangan Tambahan" className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tipe Data</label>
+              <select name="column_type" required className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500">
+                <option value="text">Teks (String)</option>
+                <option value="number">Angka (Number)</option>
+              </select>
+            </div>
+            <div className="lg:col-span-4">
+              <button type="submit" className="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium rounded-xl transition-colors">Simpan Kolom</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm text-gray-600">
+            <thead className="bg-gray-50 text-gray-700 text-xs uppercase font-semibold">
+              <tr>
+                <th className="px-6 py-4">Tabel</th>
+                <th className="px-6 py-4">Key Kolom</th>
+                <th className="px-6 py-4">Label Tampilan</th>
+                <th className="px-6 py-4">Tipe Data</th>
+                <th className="px-6 py-4 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {columns.length === 0 ? (
+                <tr><td colSpan="5" className="px-6 py-8 text-center text-gray-400">Belum ada kolom tambahan.</td></tr>
+              ) : columns.map(c => (
+                <tr key={c.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-3 font-medium text-gray-800">{TABLES.find(t => t.value === c.table_name)?.label || c.table_name}</td>
+                  <td className="px-6 py-3"><code className="px-1.5 py-0.5 bg-gray-100 text-pink-600 rounded text-xs font-mono">{c.column_key}</code></td>
+                  <td className="px-6 py-3">{c.column_label}</td>
+                  <td className="px-6 py-3">{c.column_type === 'number' ? 'Angka' : 'Teks'}</td>
+                  <td className="px-6 py-3 text-right">
+                    <button onClick={() => handleDelete(c.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Hapus"><TrashBin className="w-4 h-4" /></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
   );
 }
