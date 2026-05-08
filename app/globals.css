@@ -1,0 +1,271 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   Sistem Rekapitulasi Data PKK — Flowbite + Tailwind
+   ============================================================ */
+
+@layer base {
+  body {
+    @apply font-sans bg-gray-50 text-gray-700 antialiased;
+  }
+}
+
+/* ---- Sidebar Layout ---- */
+:root {
+  --sidebar-width: 280px;
+  --sidebar-collapsed: 72px;
+}
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: var(--sidebar-width);
+  background: #fff;
+  border-right: 1px solid #e5e7eb;
+  z-index: 40;
+  transition: width 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.sidebar-collapsed {
+  width: var(--sidebar-collapsed);
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #f3f4f6;
+  min-height: 64px;
+}
+.sidebar-collapsed .sidebar-brand .brand-text {
+  display: none;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nav-section-title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #9ca3af;
+  padding: 0.5rem 0.75rem 0.25rem;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 12px;
+  color: #6b7280;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+.nav-item:hover {
+  background: #f0fdf4;
+  color: #059669;
+}
+.nav-item-active {
+  background: #f0fdf4;
+  color: #059669;
+  font-weight: 600;
+}
+.nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+.sidebar-collapsed .nav-item span:not(.nav-icon) {
+  display: none;
+}
+.sidebar-collapsed .nav-item .nav-sub {
+  display: none;
+}
+.nav-sub {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+.sidebar-toggle {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: auto;
+  flex-shrink: 0;
+  color: #6b7280;
+}
+.sidebar-toggle:hover {
+  background: #f0fdf4;
+  border-color: #059669;
+  color: #059669;
+}
+
+.sidebar-footer {
+  border-top: 1px solid #f3f4f6;
+  padding: 0.75rem;
+}
+.sidebar-user-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 12px;
+  background: #f9fafb;
+}
+.sidebar-collapsed .sidebar-user-card span {
+  display: none;
+}
+
+/* ---- Data Table (custom for editable cells) ---- */
+.data-table-wrapper {
+  overflow-x: auto;
+  border-radius: 12px;
+}
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.data-table th {
+  background: #f9fafb;
+  color: #6b7280;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.85rem 0.65rem;
+  text-align: left;
+  border-bottom: 2px solid #f3f4f6;
+  white-space: nowrap;
+}
+.data-table td {
+  padding: 0.5rem 0.65rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+.data-table tbody tr:hover td {
+  background: #f0fdf4;
+}
+.data-table .cell-input {
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #1f2937;
+  font-family: inherit;
+  font-size: 0.85rem;
+  text-align: right;
+  transition: all 0.15s ease;
+  outline: none;
+}
+.data-table .cell-input:hover {
+  border-color: #e5e7eb;
+  background: #fff;
+}
+.data-table .cell-input:focus {
+  border-color: #059669;
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.15);
+}
+.data-table .row-total {
+  background: #f0fdf4 !important;
+  font-weight: 700;
+}
+.data-table .row-total td {
+  border-top: 2px solid #059669;
+  color: #059669;
+}
+.data-table .col-desa {
+  font-weight: 600;
+  color: #1f2937;
+  white-space: nowrap;
+  position: sticky;
+  left: 0;
+  background: #fff;
+  z-index: 1;
+}
+.data-table tbody tr:hover .col-desa {
+  background: #f0fdf4;
+}
+
+/* ---- Animations ---- */
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 12px;
+}
+
+/* ---- Scrollbar ---- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* ---- Chart SVG animations ---- */
+.trend-line-anim {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: dashDraw 1.5s ease forwards;
+}
+@keyframes dashDraw {
+  to { stroke-dashoffset: 0; }
+}
+
+/* ---- Mobile responsive ---- */
+@media (max-width: 768px) {
+  .sidebar {
+    transform: translateX(-100%);
+    z-index: 50;
+  }
+  .sidebar.sidebar-mobile-open {
+    transform: translateX(0);
+  }
+}
