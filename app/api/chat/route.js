@@ -138,7 +138,7 @@ ${Object.entries(ctx.summaries).map(([table, rows]) => {
     const systemPrompt = buildSystemPrompt(userRole, userName, allowedTables);
 
     const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash-latest',
+      model: 'gemini-3-flash-preview',
       systemInstruction: systemPrompt + '\n\n' + contextMessage,
     });
 
