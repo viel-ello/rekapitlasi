@@ -131,15 +131,39 @@ ${Object.entries(ctx.summaries).map(([table, rows]) => {
     const desaObj = ctx.desa.find(d => d.id === r.desa_id);
     const { id, desa_id, tahun: t, updated_at, custom_columns, ...fields } = r;
     return { desa: desaObj?.nama || r.desa_id, ...fields };
-  }).slice(0, 5))}${rows.length > 5 ? '... dan seterusnya' : ''}`;
+  }))}`;
 }).join('\n\n')}
 `;
 
     const systemPrompt = buildSystemPrompt(userRole, userName, allowedTables);
 
+    const updateDataDeclaration = {
+      name: "update_desa_data",
+      description: "Update data for a specific desa in a specific table for the current year. You must only use this if the user has explicitly asked to update/input data and has the right access.",
+      parameters: {
+        type: "OBJECT",
+        properties: {
+          table_name: {
+            type: "STRING",
+            description: "The name of the table to update (must be one of: data_umum, data_pokja1, data_pokja2, data_pokja3, data_pokja4, data_bumil)"
+          },
+          desa_id: {
+            type: "INTEGER",
+            description: "The ID of the desa to update"
+          },
+          updates: {
+            type: "OBJECT",
+            description: "Key-value pairs of the columns to update and their new numeric values. Example: { jiwa_l: 100, jiwa_p: 150 }"
+          }
+        },
+        required: ["table_name", "desa_id", "updates"]
+      }
+    };
+
     const model = genAI.getGenerativeModel({
       model: 'gemini-3-flash-preview',
       systemInstruction: systemPrompt + '\n\n' + contextMessage,
+      tools: [{ functionDeclarations: [updateDataDeclaration] }],
     });
 
     // Build chat history
@@ -149,7 +173,47 @@ ${Object.entries(ctx.summaries).map(([table, rows]) => {
     }));
 
     const chat = model.startChat({ history: chatHistory });
-    const result = await chat.sendMessage(message);
+    let result = await chat.sendMessage(message);
+
+    // Handle function calls if Gemini decides to use the tool
+    const functionCalls = result.response.functionCalls();
+    if (functionCalls && functionCalls.length > 0) {
+      const call = functionCalls[0];
+      
+      if (call.name === 'update_desa_data') {
+        const { table_name, desa_id, updates } = call.args;
+        
+        let apiResponse;
+        
+        // 1. Verify access
+        if (!allowedTables.includes(table_name)) {
+          apiResponse = { error: `Akses ditolak: Role '${userRole}' tidak diizinkan mengubah tabel '${table_name}'.` };
+        } else {
+          // 2. Perform database update
+          // Note: In a real app we'd validate the column names. Here we trust the AI, but it could fail if column doesn't exist.
+          const { error } = await supabase
+            .from(table_name)
+            .update(updates)
+            .eq('desa_id', desa_id)
+            .eq('tahun', currentYear);
+            
+          if (error) {
+            apiResponse = { error: `Gagal menyimpan ke database: ${error.message}` };
+          } else {
+            apiResponse = { success: true, message: `Data desa ${desa_id} di tabel ${table_name} berhasil diperbarui.` };
+          }
+        }
+        
+        // 3. Send the result back to Gemini so it can answer the user
+        result = await chat.sendMessage([{
+          functionResponse: {
+            name: 'update_desa_data',
+            response: apiResponse
+          }
+        }]);
+      }
+    }
+
     const reply = result.response.text();
 
     return NextResponse.json({ reply });
