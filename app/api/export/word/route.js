@@ -12,19 +12,15 @@ const BORDERS = {
   right: { style: BorderStyle.SINGLE, size: 1, color: '000000' },
 };
 
-const GREEN_FILL = { type: 'solid', color: '0D7377' };
-const TOTAL_FILL = { type: 'solid', color: 'E8F5E9' };
-
 function headerCell(text, opts = {}) {
   return new TableCell({
     children: [new Paragraph({
-      children: [new TextRun({ text: String(text), size: 16, font: 'Arial', bold: true, color: 'FFFFFF' })],
+      children: [new TextRun({ text: String(text), size: 20, font: 'Times New Roman', bold: true, color: '000000' })],
       alignment: AlignmentType.CENTER,
-      spacing: { before: 20, after: 20 },
+      spacing: { before: 40, after: 40 },
     })],
     width: opts.width ? { size: opts.width, type: WidthType.DXA } : undefined,
     verticalAlign: VerticalAlign.CENTER,
-    shading: GREEN_FILL,
     borders: BORDERS,
     columnSpan: opts.colSpan || 1,
     rowSpan: opts.rowSpan || 1,
@@ -34,13 +30,12 @@ function headerCell(text, opts = {}) {
 function dataCell(text, opts = {}) {
   return new TableCell({
     children: [new Paragraph({
-      children: [new TextRun({ text: String(text), size: 16, font: 'Arial', bold: opts.bold || false, color: opts.fontColor || '000000' })],
+      children: [new TextRun({ text: String(text), size: 20, font: 'Times New Roman', bold: opts.bold || false, color: '000000' })],
       alignment: opts.align || AlignmentType.CENTER,
-      spacing: { before: 10, after: 10 },
+      spacing: { before: 40, after: 40 },
     })],
     width: opts.width ? { size: opts.width, type: WidthType.DXA } : undefined,
     verticalAlign: VerticalAlign.CENTER,
-    shading: opts.fill || undefined,
     borders: BORDERS,
     columnSpan: opts.colSpan || 1,
     rowSpan: opts.rowSpan || 1,
@@ -50,12 +45,11 @@ function dataCell(text, opts = {}) {
 function numCell(text, opts = {}) {
   return new TableCell({
     children: [new Paragraph({
-      children: [new TextRun({ text: String(text), size: 16, font: 'Arial', bold: opts.bold || false })],
+      children: [new TextRun({ text: String(text), size: 20, font: 'Times New Roman', bold: false, color: '000000' })],
       alignment: AlignmentType.CENTER,
-      spacing: { before: 20, after: 20 },
+      spacing: { before: 40, after: 40 },
     })],
     verticalAlign: VerticalAlign.CENTER,
-    shading: GREEN_FILL,
     borders: BORDERS,
   });
 }
@@ -76,43 +70,42 @@ const POKJA_DEFS = [
     headerRow1: [
       { label: 'No', rowSpan: 3 },
       { label: 'NAMA DESA', rowSpan: 3 },
-      { label: 'JUMLAH KADER', colSpan: 3, rowSpan: 2 },
-      { label: 'PENGHAYATAN DAN PENGAMALAN PANCASILA', colSpan: 10 },
-      { label: 'GOTONG ROYONG', colSpan: 3 },
+      { label: 'JUMLAH KADER', colSpan: 3 },
+      { label: 'PENGHAYATAN DAN PENGAMALAN PANCASILA', colSpan: 8 },
+      { label: 'GOTONG ROYONG', colSpan: 5 },
       { label: 'KET', rowSpan: 3 },
     ],
     // Row 2 sub-groups
     headerRow2: [
-      // under JUMLAH KADER - already spanned from row 1
+      // under JUMLAH KADER:
+      { label: 'PKBN', rowSpan: 2 },
+      { label: 'PKDRT', rowSpan: 2 },
+      { label: 'POLA ASUH', rowSpan: 2 },
       // under PENGHAYATAN DAN PENGAMALAN PANCASILA:
       { label: 'PKBN', colSpan: 2 },
       { label: 'PKDRT', colSpan: 2 },
       { label: 'POLA ASUH', colSpan: 2 },
-      { label: 'LANSIAO', colSpan: 2 },
-      { label: 'KERJA BAKTI', rowSpan: 2 },
-      { label: 'RUKUN KEMATIAN', rowSpan: 2 },
+      { label: 'LANSIA', colSpan: 2 },
       // under GOTONG ROYONG:
-      { label: 'JUMLAH KELOMPOK', colSpan: 3 },
+      { label: 'JUMLAH KELOMPOK', colSpan: 5 },
     ],
     // Row 3 bottom-level cols
     headerRow3: [
-      // JUMLAH KADER subheaders
-      { label: 'PKBN' },
-      { label: 'PKDRT' },
-      { label: 'POLA ASUH' },
       // PKBN sub
-      { label: 'JML KLP SIMULASI' },
+      { label: 'JML.KLP SIMULASI' },
       { label: 'JML ANG' },
       // PKDRT sub
-      { label: 'JML KLP SIMULASI' },
+      { label: 'JML.KLP SIMULASI' },
       { label: 'JML ANG' },
       // POLA ASUH sub
       { label: 'JML KLP SIMULASI' },
       { label: 'JML ANG' },
-      // LANSIAO sub
+      // LANSIA sub
       { label: 'JML KLP SIMULASI' },
-      { label: 'JLML ANG' },
-      // KEAGAMAAN, JIMPITAN, ARISAN
+      { label: 'JML ANG' },
+      // GOTONG ROYONG -> JUMLAH KELOMPOK sub
+      { label: 'KERJA BAKTI' },
+      { label: 'RUKUN KEMATIAN' },
       { label: 'KEAGAMAAN' },
       { label: 'JIMPITAN' },
       { label: 'ARISAN' },
@@ -281,10 +274,10 @@ async function buildPokjaSection(pokja, tahun) {
 
   // Title
   children.push(
-    new Paragraph({ children: [new TextRun({ text: 'DATA KEGIATAN PKK', bold: true, size: 22, font: 'Arial', italics: true })], alignment: AlignmentType.CENTER, spacing: { after: 60 } }),
-    new Paragraph({ children: [new TextRun({ text: 'DESA    : BELIKURIP', size: 20, font: 'Arial' })], alignment: AlignmentType.CENTER, spacing: { after: 40 } }),
-    new Paragraph({ children: [new TextRun({ text: pokja.name, size: 20, font: 'Arial' })], alignment: AlignmentType.CENTER, spacing: { after: 120 } }),
-    new Paragraph({ children: [new TextRun({ text: `TAHUN : ${tahun}`, size: 20, font: 'Arial', underline: {} })], spacing: { after: 120 } }),
+    new Paragraph({ children: [new TextRun({ text: 'DATA KEGIATAN PKK', bold: true, size: 24, font: 'Times New Roman' })], alignment: AlignmentType.CENTER, spacing: { after: 100 } }),
+    new Paragraph({ children: [new TextRun({ text: 'TP PKK : KECAMATAN BATURETNO', bold: true, size: 24, font: 'Times New Roman' })], alignment: AlignmentType.CENTER, spacing: { after: 100 } }),
+    new Paragraph({ children: [new TextRun({ text: `TAHUN : ${tahun}`, bold: true, size: 24, font: 'Times New Roman' })], alignment: AlignmentType.CENTER, spacing: { after: 100 } }),
+    new Paragraph({ children: [new TextRun({ text: pokja.name, bold: true, size: 24, font: 'Times New Roman' })], alignment: AlignmentType.CENTER, spacing: { after: 200 } }),
   );
 
   // Build header rows
@@ -311,7 +304,7 @@ async function buildPokjaSection(pokja, tahun) {
 
     const cells = [
       dataCell(String(idx + 1), { width: 500 }),
-      dataCell(d.nama, { align: AlignmentType.LEFT, width: 1800 }),
+      dataCell(d.nama, { align: AlignmentType.LEFT, width: 2500 }),
     ];
 
     pokja.flatKeys.forEach((k, ki) => {
@@ -326,13 +319,13 @@ async function buildPokjaSection(pokja, tahun) {
 
   // JUMLAH row
   const totalCells = [
-    dataCell('', { fill: TOTAL_FILL }),
-    dataCell('JUMLAH', { bold: true, fill: TOTAL_FILL, fontColor: '1B5E20' }),
+    dataCell(''),
+    dataCell('JUMLAH', { bold: true }),
   ];
   totals.forEach(t => {
-    totalCells.push(dataCell(String(t), { bold: true, fill: TOTAL_FILL, fontColor: '1B5E20' }));
+    totalCells.push(dataCell(String(t), { bold: true }));
   });
-  totalCells.push(dataCell('', { fill: TOTAL_FILL }));
+  totalCells.push(dataCell(''));
 
   const table = new Table({
     rows: [
