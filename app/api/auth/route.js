@@ -11,7 +11,7 @@ import { checkRateLimit, recordFailedAttempt, clearAttempts } from '@/lib/rate-l
 export async function POST(request) {
   try {
     // --- Rate Limiting Check ---
-    const { limited, retryAfter } = checkRateLimit(request);
+    const { limited, retryAfter } = await checkRateLimit(request);
     if (limited) {
       return NextResponse.json(
         { error: `Terlalu banyak percobaan login. Coba lagi dalam ${retryAfter} menit.` },
@@ -32,7 +32,7 @@ export async function POST(request) {
 
     if (!result) {
       // Record failed attempt for rate limiting
-      recordFailedAttempt(request);
+      await recordFailedAttempt(request);
       return NextResponse.json(
         { error: 'Username atau password salah' },
         { status: 401 }
@@ -40,7 +40,7 @@ export async function POST(request) {
     }
 
     // Login success — clear failed attempts
-    clearAttempts(request);
+    await clearAttempts(request);
 
     // Set JWT token as httpOnly cookie
     const response = NextResponse.json({

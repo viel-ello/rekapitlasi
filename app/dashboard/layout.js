@@ -30,14 +30,25 @@ export default function DashboardLayout({ children }) {
   }, []);
 
   useEffect(() => {
-    const stored = localStorage.getItem('user');
-    if (!stored) { router.push('/'); return; }
-    try {
-      setUser(JSON.parse(stored));
-    } catch {
-      router.push('/'); return;
-    }
-    setLoading(false);
+    const validateSession = async () => {
+      const stored = localStorage.getItem('user');
+      if (!stored) {
+        router.push('/');
+        return;
+      }
+      try {
+        const res = await fetch('/api/auth/me');
+        if (!res.ok) {
+          throw new Error('Sesi tidak valid');
+        }
+        setUser(JSON.parse(stored));
+        setLoading(false);
+      } catch (err) {
+        localStorage.removeItem('user');
+        router.push('/');
+      }
+    };
+    validateSession();
   }, [router]);
 
   const handleLogout = async () => {

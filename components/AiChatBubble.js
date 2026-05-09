@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function AiChatBubble() {
   const [open, setOpen] = useState(false);
@@ -12,7 +13,11 @@ export default function AiChatBubble() {
   const [tahun] = useState(new Date().getFullYear());
   const [user, setUser] = useState(null);
   const [pendingFile, setPendingFile] = useState(null);
+  
+  // Modal Preview State
+  const [importPreviewData, setImportPreviewData] = useState(null);
   const [importTahun, setImportTahun] = useState(new Date().getFullYear());
+
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const fileRef = useRef(null);
@@ -58,12 +63,11 @@ export default function AiChatBubble() {
     setPendingFile(file);
   };
 
-  // Upload file for parsing (NO database write)
+  // Upload file for parsing
   const uploadFile = async (messageText = '') => {
     if (!pendingFile || loading) return;
 
     const fileName = pendingFile.name;
-    // Show file + message together
     const userContent = messageText 
       ? `📄 ${fileName}\n\n${messageText}` 
       : `📄 ${fileName}`;
@@ -81,21 +85,19 @@ export default function AiChatBubble() {
 
       const res = await fetch('/api/chat', {
         method: 'POST',
-        body: formData, // multipart/form-data — no Content-Type header needed
+        body: formData,
       });
       const data = await res.json();
 
       if (data.error) {
         setMessages(prev => [...prev, { role: 'assistant', content: `❌ ${data.error}` }]);
       } else if (data.type === 'import_preview') {
-        // Show preview with confirm/cancel buttons
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          type: 'import_preview',
+        // Trigger Modal instead of inline bubble
+        setImportPreviewData({
           content: data.preview,
           parsedData: data.parsedData,
           fileName: data.fileName,
-        }]);
+        });
       }
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: '❌ Gagal mengunggah file. Coba lagi.' }]);
@@ -104,9 +106,15 @@ export default function AiChatBubble() {
     if (fileRef.current) fileRef.current.value = '';
   };
 
-  // Confirm import (deterministic — UI button, not AI)
-  const confirmImport = async (parsedData) => {
+  // Confirm import
+  const confirmImport = async () => {
+    if (!importPreviewData) return;
     setLoading(true);
+    setOpen(true);
+    
+    const parsedData = importPreviewData.parsedData;
+    setImportPreviewData(null); // Close modal
+
     setMessages(prev => [...prev, {
       role: 'user',
       content: `✅ Konfirmasi import data tahun **${importTahun}**`,
@@ -136,17 +144,17 @@ export default function AiChatBubble() {
     setLoading(false);
   };
 
-  // Cancel import
   const cancelImport = () => {
+    setImportPreviewData(null);
     setMessages(prev => [...prev, {
       role: 'assistant',
       content: '🚫 Import dibatalkan. Data tidak diubah.',
     }]);
+    setOpen(true);
   };
 
   // Send text message (existing Gemini chat)
   const sendMessage = async () => {
-    // If there's a pending file, upload it with the message text
     if (pendingFile) {
       uploadFile(input.trim());
       return;
@@ -186,7 +194,6 @@ export default function AiChatBubble() {
     }
   };
 
-  // Simple markdown-like rendering for bold and newlines
   const renderContent = (text) => {
     if (!text) return null;
     return text.split('\n').map((line, i) => (
@@ -202,52 +209,125 @@ export default function AiChatBubble() {
     ));
   };
 
-  // Render import preview with confirm/cancel buttons
-  const renderImportPreview = (msg) => (
-    <div className="space-y-2.5">
-      <div className="flex items-center gap-2 text-xs font-semibold text-primary-700">
-        <span>📊</span> Preview Import
-      </div>
-      <div className="text-[13px] leading-relaxed">{renderContent(msg.content)}</div>
-
-      {/* Tahun selector — explicit dropdown, not AI interpretation */}
-      <div className="flex items-center gap-2 mt-2">
-        <label className="text-xs text-gray-500 font-medium">Tahun:</label>
-        <select
-          value={importTahun}
-          onChange={e => setImportTahun(Number(e.target.value))}
-          className="px-2 py-1 text-xs border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:ring-1 focus:ring-primary-500"
-        >
-          {[2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => (
-            <option key={y} value={y}>{y}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* Deterministic confirm/cancel buttons */}
-      <div className="flex gap-2 mt-2">
-        <button
-          onClick={() => confirmImport(msg.parsedData)}
-          disabled={loading}
-          className="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
-        >
-          ✅ Konfirmasi Import
-        </button>
-        <button
-          onClick={cancelImport}
-          disabled={loading}
-          className="flex-1 px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
-        >
-          ❌ Batal
-        </button>
-      </div>
-    </div>
-  );
+  // Generate Table Columns from preview data
+  const getTableHeaders = (rows) => {
+    if (!rows || rows.length === 0) return [];
+    return Object.keys(rows[0]);
+  };
 
   return (
     <>
+      {/* Fullscreen Modal Preview */}
+      <AnimatePresence>
+        {importPreviewData && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden"
+            >
+              {/* Modal Header */}
+              <div className="bg-primary-600 px-6 py-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-white">Preview Import Data</h3>
+                  <p className="text-primary-100 text-sm">Validasi data Anda sebelum disimpan ke database</p>
+                </div>
+                <button
+                  onClick={cancelImport}
+                  className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 flex-1 overflow-auto bg-gray-50">
+                <div className="mb-6 p-4 bg-white rounded-xl shadow-sm border border-gray-100">
+                  <h4 className="font-semibold text-gray-800 mb-2">Ringkasan AI:</h4>
+                  <div className="text-sm text-gray-600 leading-relaxed">
+                    {renderContent(importPreviewData.content)}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="overflow-x-auto max-h-[40vh]">
+                    <table className="w-full text-left border-collapse min-w-max">
+                      <thead className="bg-gray-100 sticky top-0 z-10">
+                        <tr>
+                          <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase border-b border-gray-200 whitespace-nowrap">Row</th>
+                          {getTableHeaders(importPreviewData.parsedData?.rows).map(header => (
+                            <th key={header} className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase border-b border-gray-200 whitespace-nowrap">{header}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {importPreviewData.parsedData?.rows?.map((row, i) => (
+                          <tr key={i} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-4 py-2.5 text-xs text-gray-500">{i + 1}</td>
+                            {getTableHeaders(importPreviewData.parsedData?.rows).map(header => {
+                              const value = row[header];
+                              // Basic validation: empty string, null, or undefined is considered invalid/empty
+                              const isInvalid = value === null || value === undefined || value === '';
+                              return (
+                                <td 
+                                  key={header} 
+                                  className={`px-4 py-2.5 text-sm ${isInvalid ? 'bg-red-50 text-red-600 font-medium' : 'text-gray-700'}`}
+                                  title={isInvalid ? 'Data Kosong / Tidak Valid' : ''}
+                                >
+                                  {isInvalid ? '⚠️ Kosong' : value}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="bg-white px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <label className="text-sm font-medium text-gray-700">Tahun Data:</label>
+                  <select
+                    value={importTahun}
+                    onChange={e => setImportTahun(Number(e.target.value))}
+                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-gray-50"
+                  >
+                    {[2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex gap-3 w-full sm:w-auto">
+                  <button
+                    onClick={cancelImport}
+                    className="flex-1 sm:flex-none px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-xl transition-colors"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={confirmImport}
+                    className="flex-1 sm:flex-none px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl shadow-lg shadow-green-500/30 transition-all active:scale-95"
+                  >
+                    Konfirmasi & Simpan
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Chat Panel */}
-      <div className={`fixed bottom-20 right-4 sm:right-6 z-50 transition-all duration-300 ${open ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
+      <div className={`fixed bottom-20 right-4 sm:right-6 z-40 transition-all duration-300 ${open ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
         <div className="w-[340px] sm:w-[380px] max-h-[520px] bg-white rounded-2xl shadow-2xl shadow-black/15 border border-gray-200 flex flex-col overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-4 py-3 flex items-center gap-3">
@@ -271,7 +351,7 @@ export default function AiChatBubble() {
                     ? 'bg-primary-600 text-white rounded-br-md'
                     : 'bg-white text-gray-700 border border-gray-100 shadow-sm rounded-bl-md'
                 }`}>
-                  {msg.type === 'import_preview' ? renderImportPreview(msg) : renderContent(msg.content)}
+                  {renderContent(msg.content)}
                 </div>
               </div>
             ))}
@@ -307,7 +387,6 @@ export default function AiChatBubble() {
           {/* Input */}
           <div className="p-3 border-t border-gray-100 bg-white">
             <div className="flex gap-2">
-              {/* Attach file button */}
               <button
                 onClick={() => fileRef.current?.click()}
                 disabled={loading}
@@ -353,7 +432,7 @@ export default function AiChatBubble() {
       {/* Floating Action Button */}
       <button
         onClick={() => setOpen(!open)}
-        className={`fixed bottom-4 right-4 sm:right-6 z-50 w-14 h-14 rounded-full shadow-lg shadow-primary-500/30 flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 ${
+        className={`fixed bottom-4 right-4 sm:right-6 z-40 w-14 h-14 rounded-full shadow-lg shadow-primary-500/30 flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 ${
           open
             ? 'bg-gray-700 hover:bg-gray-800 rotate-0'
             : 'bg-gradient-to-br from-primary-500 to-primary-700 hover:from-primary-600 hover:to-primary-800'
@@ -367,7 +446,6 @@ export default function AiChatBubble() {
         ) : (
           <span className="text-2xl">🤖</span>
         )}
-        {/* Notification dot */}
         {!open && messages.length <= 1 && (
           <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-white animate-pulse" />
         )}
