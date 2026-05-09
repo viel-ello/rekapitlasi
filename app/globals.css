@@ -1,16 +1,16 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* ============================================================
-   Sistem Rekapitulasi Data PKK — Flowbite + Tailwind
+   Sistem Rekapitulasi Data PKK — UI/UX Pro Max Edition
    ============================================================ */
 
 @layer base {
   body {
-    @apply font-sans bg-gray-50 text-gray-700 antialiased;
+    @apply font-sans bg-dashboard text-dashboard antialiased;
   }
 }
 
@@ -106,11 +106,11 @@
   text-align: left;
 }
 .nav-item:hover {
-  background: #f0fdf4;
+  background: #ecfdf5;
   color: #059669;
 }
 .nav-item-active {
-  background: #f0fdf4;
+  background: #ecfdf5;
   color: #059669;
   font-weight: 600;
 }
@@ -162,7 +162,7 @@
   box-shadow: 0 2px 8px rgba(0,0,0,0.12);
 }
 .sidebar-toggle:hover {
-  background: #f0fdf4;
+  background: #ecfdf5;
   border-color: #059669;
   color: #059669;
 }
@@ -210,7 +210,7 @@
   border-bottom: 1px solid #f3f4f6;
 }
 .data-table tbody tr:hover td {
-  background: #f0fdf4;
+  background: #ecfdf5;
 }
 .data-table .cell-input {
   width: 100%;
@@ -235,7 +235,7 @@
   box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.15);
 }
 .data-table .row-total {
-  background: #f0fdf4 !important;
+  background: #ecfdf5 !important;
   font-weight: 700;
 }
 .data-table .row-total td {
@@ -252,7 +252,7 @@
   z-index: 1;
 }
 .data-table tbody tr:hover .col-desa {
-  background: #f0fdf4;
+  background: #ecfdf5;
 }
 
 /* ---- Animations ---- */

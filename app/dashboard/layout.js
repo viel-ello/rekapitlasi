@@ -58,7 +58,7 @@ export default function DashboardLayout({ children }) {
   const mainMargin = isMobile ? 0 : (sidebarCollapsed ? 'var(--sidebar-collapsed)' : 'var(--sidebar-width)');
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-dashboard">
       {/* Mobile overlay backdrop */}
       {mobileOpen && (
         <div

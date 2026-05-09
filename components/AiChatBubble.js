@@ -5,14 +5,17 @@ import { useState, useRef, useEffect } from 'react';
 export default function AiChatBubble() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'Halo! 👋 Saya **PKK Assistant**. Saya bisa membantu Anda menganalisis data PKK, menjawab pertanyaan, atau memberi rekomendasi.\n\nCoba tanya sesuatu seperti:\n- "Desa mana yang jumlah jiwanya paling banyak?"\n- "Berapa total posyandu se-kecamatan?"\n- "Bandingkan data Pokja 1 antar desa"' }
+    { role: 'assistant', content: 'Halo! 👋 Saya **PKK Assistant**. Saya bisa membantu Anda menganalisis data PKK, menjawab pertanyaan, atau memberi rekomendasi.\n\n📎 Anda juga bisa **kirim file Excel** untuk import data!\n\nCoba tanya sesuatu seperti:\n- "Desa mana yang jumlah jiwanya paling banyak?"\n- "Berapa total posyandu se-kecamatan?"\n- "Bandingkan data Pokja 1 antar desa"' }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [tahun] = useState(new Date().getFullYear());
   const [user, setUser] = useState(null);
+  const [pendingFile, setPendingFile] = useState(null);
+  const [importTahun, setImportTahun] = useState(new Date().getFullYear());
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const fileRef = useRef(null);
 
   useEffect(() => {
     try {
@@ -29,7 +32,119 @@ export default function AiChatBubble() {
     if (open && inputRef.current) inputRef.current.focus();
   }, [open]);
 
+  // Handle file selection
+  const handleFileSelect = (file) => {
+    if (!file) return;
+
+    // Validate extension
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!['xlsx', 'xls'].includes(ext)) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: '❌ Format file tidak didukung. Hanya file **.xlsx** atau **.xls** yang bisa diimport.',
+      }]);
+      return;
+    }
+
+    // Validate size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: '❌ File terlalu besar (maksimal **5MB**).',
+      }]);
+      return;
+    }
+
+    setPendingFile(file);
+  };
+
+  // Upload file for parsing (NO database write)
+  const uploadFile = async () => {
+    if (!pendingFile || loading) return;
+
+    const fileName = pendingFile.name;
+    setMessages(prev => [...prev, { role: 'user', content: `📄 ${fileName}`, type: 'file' }]);
+    setLoading(true);
+    setPendingFile(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', pendingFile);
+      formData.append('user', JSON.stringify(user));
+
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        body: formData, // multipart/form-data — no Content-Type header needed
+      });
+      const data = await res.json();
+
+      if (data.error) {
+        setMessages(prev => [...prev, { role: 'assistant', content: `❌ ${data.error}` }]);
+      } else if (data.type === 'import_preview') {
+        // Show preview with confirm/cancel buttons
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          type: 'import_preview',
+          content: data.preview,
+          parsedData: data.parsedData,
+          fileName: data.fileName,
+        }]);
+      }
+    } catch {
+      setMessages(prev => [...prev, { role: 'assistant', content: '❌ Gagal mengunggah file. Coba lagi.' }]);
+    }
+    setLoading(false);
+    if (fileRef.current) fileRef.current.value = '';
+  };
+
+  // Confirm import (deterministic — UI button, not AI)
+  const confirmImport = async (parsedData) => {
+    setLoading(true);
+    setMessages(prev => [...prev, {
+      role: 'user',
+      content: `✅ Konfirmasi import data tahun **${importTahun}**`,
+    }]);
+
+    try {
+      const res = await fetch('/api/chat/import-confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parsedData, tahun: importTahun, user }),
+      });
+      const data = await res.json();
+
+      if (data.error) {
+        setMessages(prev => [...prev, { role: 'assistant', content: `❌ ${data.error}` }]);
+      } else {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          type: 'import_result',
+          content: data.summary,
+          results: data.results,
+        }]);
+      }
+    } catch {
+      setMessages(prev => [...prev, { role: 'assistant', content: '❌ Gagal melakukan import. Coba lagi.' }]);
+    }
+    setLoading(false);
+  };
+
+  // Cancel import
+  const cancelImport = () => {
+    setMessages(prev => [...prev, {
+      role: 'assistant',
+      content: '🚫 Import dibatalkan. Data tidak diubah.',
+    }]);
+  };
+
+  // Send text message (existing Gemini chat)
   const sendMessage = async () => {
+    // If there's a pending file, upload it instead
+    if (pendingFile) {
+      uploadFile();
+      return;
+    }
+
     const text = input.trim();
     if (!text || loading) return;
 
@@ -39,9 +154,7 @@ export default function AiChatBubble() {
     setLoading(true);
 
     try {
-      // Exclude the first initial greeting message from history
-      // as Gemini requires the history to start with a 'user' role
-      const history = messages.slice(1).map(m => ({
+      const history = messages.slice(1).filter(m => !m.type || m.type === 'text').map(m => ({
         role: m.role === 'assistant' ? 'model' : 'user',
         content: m.content,
       }));
@@ -68,6 +181,7 @@ export default function AiChatBubble() {
 
   // Simple markdown-like rendering for bold and newlines
   const renderContent = (text) => {
+    if (!text) return null;
     return text.split('\n').map((line, i) => (
       <span key={i}>
         {line.split(/(\*\*.*?\*\*)/).map((part, j) => {
@@ -80,6 +194,48 @@ export default function AiChatBubble() {
       </span>
     ));
   };
+
+  // Render import preview with confirm/cancel buttons
+  const renderImportPreview = (msg) => (
+    <div className="space-y-2.5">
+      <div className="flex items-center gap-2 text-xs font-semibold text-primary-700">
+        <span>📊</span> Preview Import
+      </div>
+      <div className="text-[13px] leading-relaxed">{renderContent(msg.content)}</div>
+
+      {/* Tahun selector — explicit dropdown, not AI interpretation */}
+      <div className="flex items-center gap-2 mt-2">
+        <label className="text-xs text-gray-500 font-medium">Tahun:</label>
+        <select
+          value={importTahun}
+          onChange={e => setImportTahun(Number(e.target.value))}
+          className="px-2 py-1 text-xs border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:ring-1 focus:ring-primary-500"
+        >
+          {[2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Deterministic confirm/cancel buttons */}
+      <div className="flex gap-2 mt-2">
+        <button
+          onClick={() => confirmImport(msg.parsedData)}
+          disabled={loading}
+          className="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+        >
+          ✅ Konfirmasi Import
+        </button>
+        <button
+          onClick={cancelImport}
+          disabled={loading}
+          className="flex-1 px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+        >
+          ❌ Batal
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -108,7 +264,7 @@ export default function AiChatBubble() {
                     ? 'bg-primary-600 text-white rounded-br-md'
                     : 'bg-white text-gray-700 border border-gray-100 shadow-sm rounded-bl-md'
                 }`}>
-                  {renderContent(msg.content)}
+                  {msg.type === 'import_preview' ? renderImportPreview(msg) : renderContent(msg.content)}
                 </div>
               </div>
             ))}
@@ -126,22 +282,56 @@ export default function AiChatBubble() {
             <div ref={messagesEndRef} />
           </div>
 
+          {/* File Preview Bar */}
+          {pendingFile && (
+            <div className="px-3 pt-2 pb-0">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-lg">
+                <span className="text-green-600 text-sm">📄</span>
+                <span className="text-xs text-green-800 font-medium truncate flex-1">{pendingFile.name}</span>
+                <span className="text-[10px] text-green-600">{(pendingFile.size / 1024).toFixed(0)} KB</span>
+                <button
+                  onClick={() => { setPendingFile(null); if (fileRef.current) fileRef.current.value = ''; }}
+                  className="text-green-500 hover:text-red-500 text-sm transition-colors"
+                >✕</button>
+              </div>
+            </div>
+          )}
+
           {/* Input */}
           <div className="p-3 border-t border-gray-100 bg-white">
             <div className="flex gap-2">
+              {/* Attach file button */}
+              <button
+                onClick={() => fileRef.current?.click()}
+                disabled={loading}
+                className="px-2.5 py-2.5 text-gray-400 hover:text-primary-600 hover:bg-gray-50 rounded-xl transition-colors disabled:opacity-40 flex-shrink-0"
+                title="Lampirkan file Excel"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                </svg>
+              </button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={e => handleFileSelect(e.target.files?.[0])}
+              />
+
               <input
                 ref={inputRef}
                 type="text"
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ketik pertanyaan..."
+                placeholder={pendingFile ? "Tekan kirim untuk upload..." : "Ketik pertanyaan..."}
                 className="flex-1 px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 placeholder:text-gray-400"
                 disabled={loading}
               />
               <button
                 onClick={sendMessage}
-                disabled={loading || !input.trim()}
+                disabled={loading || (!input.trim() && !pendingFile)}
                 className="px-3.5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

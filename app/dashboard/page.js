@@ -1,8 +1,29 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { motion, useInView, useMotionValue, useTransform, animate } from 'framer-motion';
 import { MapPin, Users, Home, Chart, ChartPie, ChartLineUp, Download, FileLines, ClipboardList } from 'flowbite-react-icons/outline';
 import { Heart } from 'flowbite-react-icons/solid';
+
+// Komponen angka yang menghitung naik dari 0 ke target
+function AnimatedCounter({ value, duration = 1.5, delay = 0 }) {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true });
+  const [display, setDisplay] = useState(0);
+
+  useEffect(() => {
+    if (!isInView) return;
+    const controls = animate(0, value, {
+      duration,
+      delay,
+      ease: 'easeOut',
+      onUpdate: (v) => setDisplay(Math.round(v)),
+    });
+    return () => controls.stop();
+  }, [isInView, value, duration, delay]);
+
+  return <span ref={ref}>{display.toLocaleString('id-ID')}</span>;
+}
 
 export default function DashboardPage() {
   const [rekap, setRekap] = useState(null);
@@ -74,19 +95,24 @@ export default function DashboardPage() {
   const totalJiwa = (rekap?.dataUmum?.total_jiwa_l || 0) + (rekap?.dataUmum?.total_jiwa_p || 0);
 
   const statCards = [
-    { label: 'Total Desa', value: rekap?.totalDesa || 0, icon: MapPin, color: 'from-emerald-500 to-emerald-600', bg: 'bg-emerald-50' },
-    { label: 'Total Jiwa', value: totalJiwa, icon: Users, color: 'from-blue-500 to-blue-600', bg: 'bg-blue-50' },
-    { label: 'Total KK', value: rekap?.dataUmum?.total_kk || 0, icon: Home, color: 'from-amber-500 to-amber-600', bg: 'bg-amber-50' },
-    { label: 'Posyandu', value: rekap?.posyanduTotal || 0, icon: Heart, color: 'from-rose-500 to-rose-600', bg: 'bg-rose-50' },
+    { label: 'Total Desa', value: rekap?.totalDesa || 0, icon: MapPin, color: 'from-primary-500 to-primary-600', bg: 'bg-primary-50' },
+    { label: 'Total Jiwa', value: totalJiwa, icon: Users, color: 'from-teal-500 to-teal-600', bg: 'bg-teal-50' },
+    { label: 'Total KK', value: rekap?.dataUmum?.total_kk || 0, icon: Home, color: 'from-lime-500 to-lime-600', bg: 'bg-lime-50' },
+    { label: 'Posyandu', value: rekap?.posyanduTotal || 0, icon: Heart, color: 'from-accent-500 to-accent-600', bg: 'bg-accent-50' },
   ];
 
   return (
-    <div className="space-y-6">
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="space-y-6"
+    >
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Dashboard Rekapitulasi</h1>
-          <p className="text-sm text-gray-500 mt-0.5">TP PKK Kecamatan Baturetno — Tahun {tahun}</p>
+          <h1 className="text-2xl font-bold text-dashboard font-mono">Dashboard Rekapitulasi</h1>
+          <p className="text-sm text-primary-600 mt-0.5">TP PKK Kecamatan Baturetno — Tahun {tahun}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <select
@@ -99,7 +125,7 @@ export default function DashboardPage() {
           <button
             onClick={() => handleDownload('excel')}
             disabled={downloading === 'excel'}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-xl shadow-sm shadow-primary-500/20 transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-accent-500 hover:bg-accent-600 text-white text-sm font-semibold rounded-xl shadow-card transition-all duration-200 hover:-translate-y-[1px] disabled:opacity-50"
           >
             <Download className="w-4 h-4" />
             {downloading === 'excel' ? 'Sedang...' : 'Export Excel'}
@@ -107,7 +133,7 @@ export default function DashboardPage() {
           <button
             onClick={() => handleDownload('word')}
             disabled={downloading === 'word'}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border-2 border-primary-600 hover:bg-primary-50 text-primary-600 text-sm font-semibold rounded-xl transition-all duration-200 hover:-translate-y-[1px] disabled:opacity-50"
           >
             <FileLines className="w-4 h-4" />
             {downloading === 'word' ? 'Sedang...' : 'Export Word'}
@@ -116,27 +142,39 @@ export default function DashboardPage() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <motion.div 
+        variants={{
+          hidden: { opacity: 0 },
+          show: { opacity: 1, transition: { staggerChildren: 0.1 } }
+        }}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+      >
         {statCards.map((card, i) => {
           const Icon = card.icon;
           return (
-            <div key={i} className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
-              <div className={`w-11 h-11 rounded-xl ${card.bg} flex items-center justify-center mb-3`}>
+            <motion.div 
+              key={i} 
+              variants={{ hidden: { opacity: 0, y: 15 }, show: { opacity: 1, y: 0 } }}
+              className="bg-white rounded-xl border border-primary-100 p-5 shadow-card hover:shadow-card-hover transition-all duration-300 cursor-pointer hover:-translate-y-[2px] group"
+            >
+              <div className={`w-11 h-11 rounded-xl ${card.bg} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300`}>
                 <Icon className={`w-6 h-6 text-${card.color.split('-')[1]}-600`} />
               </div>
-              <div className="text-2xl font-bold text-gray-800">{card.value.toLocaleString('id-ID')}</div>
-              <div className="text-sm text-gray-500 mt-0.5">{card.label}</div>
-            </div>
+              <div className="text-3xl font-mono font-bold text-dashboard tracking-tight"><AnimatedCounter value={card.value} delay={0.2 + i * 0.1} /></div>
+              <div className="text-sm font-medium text-primary-700 mt-1">{card.label}</div>
+            </motion.div>
           );
         })}
-      </div>
+      </motion.div>
 
       {/* Charts Row */}
       <div className="grid md:grid-cols-2 gap-4">
         {/* Horizontal Bar Chart */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-          <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-5">
-            <Chart className="w-5 h-5 text-primary-500" /> Jumlah Jiwa per Desa
+        <div className="bg-white rounded-xl border border-primary-100 p-6 shadow-card transition-all duration-200 hover:shadow-card-hover">
+          <h3 className="flex items-center gap-2 text-sm font-bold font-mono text-dashboard mb-5 uppercase tracking-wide">
+            <Chart className="w-5 h-5 text-accent-500" /> Jumlah Jiwa per Desa
           </h3>
           {(() => {
             const items = rekap?.perDesaJiwa || [];
@@ -148,22 +186,22 @@ export default function DashboardPage() {
                   const pct = (total / maxVal) * 100;
                   return (
                     <div key={i} className="group flex items-center gap-3">
-                      <div className="w-24 sm:w-28 text-right text-xs font-semibold text-gray-600 truncate flex-shrink-0" title={d.nama}>
+                      <div className="w-24 sm:w-28 text-right text-xs font-semibold text-primary-800 truncate flex-shrink-0 cursor-pointer" title={d.nama}>
                         {d.nama}
                       </div>
-                      <div className="flex-1 h-7 bg-gray-100 rounded-full overflow-hidden relative">
-                        <div
-                          className="h-full rounded-full transition-all duration-700 ease-out"
+                      <div className="flex-1 h-7 bg-primary-50 rounded-full overflow-hidden cursor-pointer">
+                        <motion.div
+                          className="h-full rounded-full group-hover:brightness-110"
+                          initial={{ width: '0%' }}
+                          animate={{ width: `${Math.max(pct, 2)}%` }}
+                          transition={{ duration: 1, ease: "easeOut", delay: 0.1 * i }}
                           style={{
-                            width: `${Math.max(pct, 2)}%`,
-                            background: `linear-gradient(90deg, #059669 0%, #10b981 60%, #34d399 100%)`,
+                            background: `linear-gradient(90deg, #059669 0%, #10B981 100%)`,
                           }}
                         />
-                        {total > 0 && (
-                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-500 group-hover:text-gray-800 transition-colors">
-                            {total.toLocaleString('id-ID')}
-                          </span>
-                        )}
+                      </div>
+                      <div className="w-14 text-right text-xs font-mono font-bold text-primary-800 flex-shrink-0">
+                        <AnimatedCounter value={total} delay={0.1 * i} duration={1} />
                       </div>
                     </div>
                   );
@@ -174,9 +212,9 @@ export default function DashboardPage() {
         </div>
 
         {/* Donut Chart */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-          <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-5">
-            <ChartPie className="w-5 h-5 text-primary-500" /> Komposisi Jiwa (L/P)
+        <div className="bg-white rounded-xl border border-primary-100 p-6 shadow-card transition-all duration-200 hover:shadow-card-hover">
+          <h3 className="flex items-center gap-2 text-sm font-bold font-mono text-dashboard mb-5 uppercase tracking-wide">
+            <ChartPie className="w-5 h-5 text-accent-500" /> Komposisi Jiwa (L/P)
           </h3>
           <div className="flex items-center justify-center gap-8">
             <svg viewBox="0 0 200 200" className="w-44 h-44">
@@ -191,33 +229,37 @@ export default function DashboardPage() {
                     {/* Background ring */}
                     <circle cx="100" cy="100" r="70" fill="none" stroke="#f3f4f6" strokeWidth="24" />
                     {/* Male arc */}
-                    <circle
+                    <motion.circle
                       cx="100" cy="100" r="70" fill="none"
                       stroke="url(#maleGrad)" strokeWidth="24" strokeLinecap="round"
-                      strokeDasharray={`${lPct * circumference} ${circumference}`}
                       transform="rotate(-90 100 100)"
-                      style={{ transition: 'stroke-dasharray 0.8s ease' }}
+                      initial={{ strokeDasharray: `0 ${circumference}` }}
+                      animate={{ strokeDasharray: `${lPct * circumference} ${circumference}` }}
+                      transition={{ duration: 1.2, ease: "easeOut", delay: 0.2 }}
                     />
                     {/* Female arc */}
-                    <circle
+                    <motion.circle
                       cx="100" cy="100" r="70" fill="none"
                       stroke="url(#femaleGrad)" strokeWidth="24" strokeLinecap="round"
-                      strokeDasharray={`${(1 - lPct) * circumference} ${circumference}`}
-                      strokeDashoffset={`${-lPct * circumference}`}
                       transform="rotate(-90 100 100)"
-                      style={{ transition: 'stroke-dasharray 0.8s ease' }}
+                      initial={{ strokeDasharray: `0 ${circumference}`, strokeDashoffset: 0 }}
+                      animate={{ 
+                        strokeDasharray: `${(1 - lPct) * circumference} ${circumference}`,
+                        strokeDashoffset: `${-lPct * circumference}`
+                      }}
+                      transition={{ duration: 1.2, ease: "easeOut", delay: 0.2 }}
                     />
                     {/* Center text */}
-                    <text x="100" y="93" textAnchor="middle" fill="#1f2937" fontSize="20" fontWeight="800">{total.toLocaleString('id-ID')}</text>
-                    <text x="100" y="113" textAnchor="middle" fill="#9ca3af" fontSize="10">Total Jiwa</text>
+                    <text x="100" y="93" textAnchor="middle" fill="#064E3B" fontSize="20" fontWeight="800" fontFamily="Fira Code">{total.toLocaleString('id-ID')}</text>
+                    <text x="100" y="113" textAnchor="middle" fill="#64748b" fontSize="10" fontFamily="Fira Sans">Total Jiwa</text>
                     <defs>
                       <linearGradient id="maleGrad" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stopColor="#3b82f6" />
-                        <stop offset="100%" stopColor="#60a5fa" />
+                        <stop offset="0%" stopColor="#2563EB" />
+                        <stop offset="100%" stopColor="#3B82F6" />
                       </linearGradient>
                       <linearGradient id="femaleGrad" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stopColor="#ec4899" />
-                        <stop offset="100%" stopColor="#f472b6" />
+                        <stop offset="0%" stopColor="#F472B6" />
+                        <stop offset="100%" stopColor="#F9A8D4" />
                       </linearGradient>
                     </defs>
                   </>
@@ -227,17 +269,17 @@ export default function DashboardPage() {
             <div className="space-y-4">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <div className="w-3 h-3 rounded-full bg-blue-500" />
-                  <span className="text-xs text-gray-500 font-medium">Laki-laki</span>
+                  <div className="w-3 h-3 rounded-full bg-blue-600" />
+                  <span className="text-xs text-blue-700 font-semibold uppercase tracking-wider">Laki-laki</span>
                 </div>
-                <div className="text-lg font-bold text-gray-800">{(rekap?.dataUmum?.total_jiwa_l || 0).toLocaleString('id-ID')}</div>
+                <div className="text-xl font-mono font-bold text-dashboard"><AnimatedCounter value={rekap?.dataUmum?.total_jiwa_l || 0} delay={0.5} /></div>
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <div className="w-3 h-3 rounded-full bg-pink-500" />
-                  <span className="text-xs text-gray-500 font-medium">Perempuan</span>
+                  <div className="w-3 h-3 rounded-full bg-pink-400" />
+                  <span className="text-xs text-pink-500 font-semibold uppercase tracking-wider">Perempuan</span>
                 </div>
-                <div className="text-lg font-bold text-gray-800">{(rekap?.dataUmum?.total_jiwa_p || 0).toLocaleString('id-ID')}</div>
+                <div className="text-xl font-mono font-bold text-dashboard"><AnimatedCounter value={rekap?.dataUmum?.total_jiwa_p || 0} delay={0.7} /></div>
               </div>
             </div>
           </div>
@@ -245,29 +287,39 @@ export default function DashboardPage() {
       </div>
 
       {/* Trend Chart */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-        <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-4">
-          <ChartLineUp className="w-5 h-5 text-gray-400" /> Tren Multi-Tahun (Kecamatan)
+      <div className="bg-white rounded-xl border border-primary-100 p-6 shadow-card hover:shadow-card-hover transition-all duration-200">
+        <h3 className="flex items-center gap-2 text-sm font-bold font-mono text-dashboard mb-4 uppercase tracking-wide">
+          <ChartLineUp className="w-5 h-5 text-accent-500" /> Tren Multi-Tahun (Kecamatan)
         </h3>
         <div className="flex gap-8 flex-wrap">
           <div className="flex-1 min-w-[280px]">
-            <h4 className="text-xs text-gray-400 mb-2 text-center">Total Jiwa</h4>
+            <h4 className="text-xs text-primary-600 mb-2 text-center font-semibold uppercase tracking-wider">Total Jiwa</h4>
             <svg viewBox="0 0 300 120" className="w-full overflow-visible">
               {(() => {
                 const max = Math.max(...trend.map(t => t.total_jiwa), 1);
                 const pts = trend.map((t, i) => `${30 + i * 120},${100 - (t.total_jiwa / max) * 80}`).join(' L ');
                 return (
                   <>
-                    <path d={`M ${pts}`} fill="none" stroke="#059669" strokeWidth="3" />
+                    <motion.path 
+                      d={`M ${pts}`} fill="none" stroke="#059669" strokeWidth="3" 
+                      initial={{ pathLength: 0 }}
+                      animate={{ pathLength: 1 }}
+                      transition={{ duration: 1.5, ease: "easeInOut" }}
+                    />
                     {trend.map((t, i) => {
                       const x = 30 + i * 120;
                       const y = 100 - (t.total_jiwa / max) * 80;
                       return (
-                        <g key={i}>
+                        <motion.g 
+                          key={i}
+                          initial={{ opacity: 0, scale: 0 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 1 + (i * 0.1), duration: 0.3 }}
+                        >
                           <circle cx={x} cy={y} r="5" fill="#fff" stroke="#059669" strokeWidth="2" />
-                          <text x={x} y={y - 12} textAnchor="middle" fill="#6b7280" fontSize="10">{t.total_jiwa.toLocaleString()}</text>
-                          <text x={x} y="115" textAnchor="middle" fill="#9ca3af" fontSize="10">{t.tahun}</text>
-                        </g>
+                          <text x={x} y={y - 12} textAnchor="middle" fill="#064E3B" fontSize="10" fontWeight="bold" fontFamily="Fira Code">{t.total_jiwa.toLocaleString()}</text>
+                          <text x={x} y="115" textAnchor="middle" fill="#64748b" fontSize="10" fontFamily="Fira Sans">{t.tahun}</text>
+                        </motion.g>
                       );
                     })}
                   </>
@@ -276,23 +328,33 @@ export default function DashboardPage() {
             </svg>
           </div>
           <div className="flex-1 min-w-[280px]">
-            <h4 className="text-xs text-gray-400 mb-2 text-center">Total Kepala Keluarga</h4>
+            <h4 className="text-xs text-primary-600 mb-2 text-center font-semibold uppercase tracking-wider">Total Kepala Keluarga</h4>
             <svg viewBox="0 0 300 120" className="w-full overflow-visible">
               {(() => {
                 const max = Math.max(...trend.map(t => t.total_kk), 1);
                 const pts = trend.map((t, i) => `${30 + i * 120},${100 - (t.total_kk / max) * 80}`).join(' L ');
                 return (
                   <>
-                    <path d={`M ${pts}`} fill="none" stroke="#f59e0b" strokeWidth="3" />
+                    <motion.path 
+                      d={`M ${pts}`} fill="none" stroke="#F59E0B" strokeWidth="3" 
+                      initial={{ pathLength: 0 }}
+                      animate={{ pathLength: 1 }}
+                      transition={{ duration: 1.5, ease: "easeInOut" }}
+                    />
                     {trend.map((t, i) => {
                       const x = 30 + i * 120;
                       const y = 100 - (t.total_kk / max) * 80;
                       return (
-                        <g key={i}>
-                          <circle cx={x} cy={y} r="5" fill="#fff" stroke="#f59e0b" strokeWidth="2" />
-                          <text x={x} y={y - 12} textAnchor="middle" fill="#6b7280" fontSize="10">{t.total_kk.toLocaleString()}</text>
-                          <text x={x} y="115" textAnchor="middle" fill="#9ca3af" fontSize="10">{t.tahun}</text>
-                        </g>
+                        <motion.g 
+                          key={i}
+                          initial={{ opacity: 0, scale: 0 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 1 + (i * 0.1), duration: 0.3 }}
+                        >
+                          <circle cx={x} cy={y} r="5" fill="#fff" stroke="#F59E0B" strokeWidth="2" />
+                          <text x={x} y={y - 12} textAnchor="middle" fill="#064E3B" fontSize="10" fontWeight="bold" fontFamily="Fira Code">{t.total_kk.toLocaleString()}</text>
+                          <text x={x} y="115" textAnchor="middle" fill="#64748b" fontSize="10" fontFamily="Fira Sans">{t.tahun}</text>
+                        </motion.g>
                       );
                     })}
                   </>
@@ -345,6 +407,6 @@ export default function DashboardPage() {
           </table>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

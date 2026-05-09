@@ -1,21 +1,14 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { supabase } from '@/lib/supabase';
+import { ROLE_TABLE_MAP } from '@/lib/excel/sheetMap';
+import { parseExcel } from '@/lib/excel/parseExcel';
 
 export const dynamic = 'force-dynamic';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
-// Role → allowed tables mapping
-const ROLE_TABLE_MAP = {
-  admin: ['data_umum', 'data_pokja1', 'data_pokja2', 'data_pokja3', 'data_pokja4', 'data_bumil'],
-  pokja1: ['data_pokja1'],
-  pokja2: ['data_pokja2'],
-  pokja3: ['data_pokja3'],
-  pokja4: ['data_pokja4'],
-  sekretaris: ['data_umum', 'data_bumil'],
-  user: [],
-};
+
 
 const ROLE_LABELS = {
   admin: 'Administrator (akses penuh semua data)',
@@ -103,8 +96,196 @@ KONTEKS DATABASE:
 `;
 }
 
+// Database schema description for AI interpretation
+const DB_SCHEMA = `
+Tabel yang tersedia dan kolomnya (semua kolom bertipe INTEGER):
+
+1. data_umum: jml_dusun, jml_pkk_rw, jml_pkk_rt, jml_dasa_wisma, jml_krt, jml_kk, jml_jiwa_l, jml_jiwa_p, jml_kader_tp_pkk_l, jml_kader_tp_pkk_p, jml_kader_umum_l, jml_kader_umum_p, jml_kader_khusus_l, jml_kader_khusus_p
+
+2. data_pokja1: kader_pkbn, kader_pkdrt, kader_pola_asuh, pkbn_jml_klp_simulasi, pkbn_jml_anggota, pkdrt_jml_klp_simulasi, pkdrt_jml_anggota, pola_asuh_jml_klp, pola_asuh_jml_anggota, lansia_jml_klp, lansia_jml_anggota, gr_kerja_bakti, gr_rukun_kematian, gr_keagamaan, gr_jimpitan, gr_arisan
+
+3. data_pokja2: paket_a_klp, paket_a_wrg, paket_b_klp, paket_b_wrg, paket_c_klp, paket_c_wrg, taman_bacaan, usaha_mikro, up2k_pemula_klp, up2k_pemula_psrt, toko_pkk, koperasi_belum_bh_kop, koperasi_berbadan_hukum_kop, koperasi_berbadan_hukum_angg
+
+4. data_pokja3: kader_pangan, kader_sandang, kader_tata_laksana_rt, pangan_beras, pemanfaatan_peternakan, pemanfaatan_perikanan, pemanfaatan_warung_hidup, pemanfaatan_lumbung_hidup, pemanfaatan_toga, industri_pangan, industri_sandang, industri_jasa, rumah_sehat, rumah_kurang_sehat
+
+5. data_pokja4: kader_posyandu, kader_gizi, kader_kesling, kader_kb, posyandu_jumlah, posyandu_terintegrasi, lansia_jml_klp, lansia_jml_anggota, rumah_jamban, rumah_spal, air_pdam, air_sumur, jml_pus, jml_wus, akseptor_kb_l, akseptor_kb_p, kk_tabungan
+
+6. data_bumil: ibu_hamil, ibu_melahirkan, ibu_nifas, ibu_meninggal, bayi_lahir_l, bayi_lahir_p, akte_ada, akte_tidak, bayi_meninggal_l, bayi_meninggal_p
+
+Daftar desa yang valid (gunakan nama persis ini): Setorejo, Kedungombo, Boto, Sendangrejo, Talunombo, Baturetno, Saradan, Temon, Belikurip, Watuagung, Balepanjang, Gambirnom, Glesung Rejo
+`;
+
+// === FILE UPLOAD HANDLER (AI-powered interpretation) ===
+async function handleFileUpload(request) {
+  const formData = await request.formData();
+  const file = formData.get('file');
+
+  // 1. Validate file exists
+  if (!file || file.size === 0) {
+    return NextResponse.json({ error: 'File tidak ditemukan' }, { status: 400 });
+  }
+
+  // 2. Validate file size (max 5MB)
+  if (file.size > 5 * 1024 * 1024) {
+    return NextResponse.json({ error: 'File terlalu besar (maksimal 5MB)' }, { status: 400 });
+  }
+
+  // 3. Validate magic bytes (.xlsx = PK zip format)
+  const buffer = Buffer.from(await file.arrayBuffer());
+  if (buffer.length < 4 || buffer[0] !== 0x50 || buffer[1] !== 0x4B) {
+    return NextResponse.json({
+      error: 'File bukan format Excel yang valid (.xlsx). Pastikan file tidak rusak.',
+    }, { status: 400 });
+  }
+
+  // 4. Extract raw data from Excel (all sheets, all rows)
+  const ExcelJS = (await import('exceljs')).default;
+  const wb = new ExcelJS.Workbook();
+  try {
+    await wb.xlsx.load(buffer);
+  } catch {
+    return NextResponse.json({ error: 'File Excel rusak atau tidak bisa dibaca.' }, { status: 400 });
+  }
+
+  // Convert all sheets to text for AI interpretation
+  const sheetsData = [];
+  wb.eachSheet((ws, sheetId) => {
+    const rows = [];
+    let rowCount = 0;
+    ws.eachRow((row, rowNumber) => {
+      if (rowCount >= 100) return; // limit per sheet for token efficiency
+      const cells = [];
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        cells.push(cell.value !== null && cell.value !== undefined ? String(cell.value) : '');
+      });
+      rows.push(cells.join(' | '));
+      rowCount++;
+    });
+    if (rows.length > 0) {
+      sheetsData.push({ name: ws.name, data: rows.join('\n') });
+    }
+  });
+
+  if (sheetsData.length === 0) {
+    return NextResponse.json({ error: 'File Excel kosong, tidak ada data.' }, { status: 400 });
+  }
+
+  // 5. Ask Gemini to interpret the data
+  if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'PASTE_API_KEY_ANDA_DISINI') {
+    return NextResponse.json({ error: 'API Key Gemini belum dikonfigurasi.' }, { status: 400 });
+  }
+
+  const excelContent = sheetsData.map(s => `=== Sheet: "${s.name}" ===\n${s.data}`).join('\n\n');
+
+  const aiPrompt = `Kamu adalah parser data Excel. Tugasmu adalah memetakan data dari file Excel ke database schema yang diberikan.
+
+${DB_SCHEMA}
+
+INSTRUKSI:
+1. Baca data Excel di bawah ini
+2. Identifikasi header/kolom dan data per desa
+3. Petakan setiap kolom ke kolom database yang paling cocok
+4. Untuk setiap desa, keluarkan data yang bisa dipetakan
+
+ATURAN KETAT:
+- Hanya output JSON valid, tidak ada teks lain
+- Nama desa HARUS cocok persis dengan daftar desa yang valid
+- Jika nama desa tidak cocok, skip desa tersebut dan masukkan ke "unmatched"
+- Nilai harus berupa angka (integer). Jika bukan angka, gunakan 0
+- Jangan mengarang data. Jika kolom tidak bisa dipetakan, abaikan saja
+- Jika tidak ada data yang bisa dipetakan sama sekali, kembalikan sheets: []
+
+FORMAT OUTPUT (JSON):
+{
+  "sheets": [
+    {
+      "sheetName": "nama sheet asal",
+      "table": "nama_tabel_database",
+      "rows": [
+        { "desaName": "Nama Desa", "fields": { "kolom_db": nilai_integer } }
+      ],
+      "unmatched": ["nama desa yang tidak cocok"],
+      "columnMapping": { "Header Excel": "kolom_db" }
+    }
+  ],
+  "summary": "Ringkasan singkat: X sheet, Y desa, Z kolom berhasil dipetakan",
+  "warnings": ["peringatan jika ada"]
+}
+
+DATA EXCEL:
+${excelContent}`;
+
+  try {
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-3-flash-preview',
+      generationConfig: {
+        responseMimeType: 'application/json',
+      },
+    });
+
+    const result = await model.generateContent(aiPrompt);
+    const responseText = result.response.text();
+
+    let parsed;
+    try {
+      parsed = JSON.parse(responseText);
+    } catch {
+      return NextResponse.json({
+        error: 'AI gagal menginterpretasi file Excel. Coba lagi atau gunakan format template standar.',
+      }, { status: 400 });
+    }
+
+    // Build preview text from AI result
+    let preview = '';
+    if (parsed.summary) {
+      preview = `🤖 **AI Interpretation:** ${parsed.summary}\n\n`;
+    }
+
+    if (parsed.sheets && parsed.sheets.length > 0) {
+      for (const s of parsed.sheets) {
+        preview += `📋 **${s.sheetName}** → \`${s.table}\`: ${s.rows?.length || 0} desa`;
+        if (s.columnMapping) {
+          const mappedCols = Object.entries(s.columnMapping);
+          preview += ` (${mappedCols.length} kolom dipetakan)`;
+        }
+        if (s.unmatched?.length > 0) {
+          preview += `\n   ⚠️ Tidak cocok: ${s.unmatched.join(', ')}`;
+        }
+        preview += '\n';
+      }
+    } else {
+      preview = '❌ AI tidak menemukan data yang bisa dipetakan ke database. Pastikan file berisi data PKK.';
+    }
+
+    if (parsed.warnings?.length > 0) {
+      preview += `\n⚠️ **Peringatan:**\n${parsed.warnings.map(w => `  • ${w}`).join('\n')}`;
+    }
+
+    return NextResponse.json({
+      type: 'import_preview',
+      preview,
+      parsedData: parsed.sheets || [],
+      fileName: file.name,
+    });
+  } catch (error) {
+    console.error('AI Excel parse error:', error);
+    return NextResponse.json({
+      error: 'Gagal menginterpretasi file Excel: ' + error.message,
+    }, { status: 500 });
+  }
+}
+
+
 export async function POST(request) {
   try {
+    const contentType = request.headers.get('content-type') || '';
+
+    // === FILE UPLOAD PATH (deterministic, no AI) ===
+    if (contentType.includes('multipart/form-data')) {
+      return handleFileUpload(request);
+    }
+
+    // === NORMAL CHAT PATH ===
     const { message, history, tahun, user } = await request.json();
 
     if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'PASTE_API_KEY_ANDA_DISINI') {
