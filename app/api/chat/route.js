@@ -217,7 +217,7 @@ ${excelContent}`;
 
   try {
     const model = genAI.getGenerativeModel({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3-flash',
       generationConfig: {
         responseMimeType: 'application/json',
       },
@@ -354,7 +354,7 @@ Tahun yang sedang dipilih user di dashboard: ${currentYear}
     };
 
     const model = genAI.getGenerativeModel({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3-flash',
       systemInstruction: systemPrompt + '\n\n' + contextMessage,
       tools: [{ functionDeclarations: [updateDataDeclaration] }],
     });

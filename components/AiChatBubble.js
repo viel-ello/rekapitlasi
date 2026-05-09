@@ -59,18 +59,25 @@ export default function AiChatBubble() {
   };
 
   // Upload file for parsing (NO database write)
-  const uploadFile = async () => {
+  const uploadFile = async (messageText = '') => {
     if (!pendingFile || loading) return;
 
     const fileName = pendingFile.name;
-    setMessages(prev => [...prev, { role: 'user', content: `📄 ${fileName}`, type: 'file' }]);
+    // Show file + message together
+    const userContent = messageText 
+      ? `📄 ${fileName}\n\n${messageText}` 
+      : `📄 ${fileName}`;
+    setMessages(prev => [...prev, { role: 'user', content: userContent, type: 'file' }]);
     setLoading(true);
+    const fileToUpload = pendingFile;
     setPendingFile(null);
+    setInput('');
 
     try {
       const formData = new FormData();
-      formData.append('file', pendingFile);
+      formData.append('file', fileToUpload);
       formData.append('user', JSON.stringify(user));
+      if (messageText) formData.append('message', messageText);
 
       const res = await fetch('/api/chat', {
         method: 'POST',
@@ -139,9 +146,9 @@ export default function AiChatBubble() {
 
   // Send text message (existing Gemini chat)
   const sendMessage = async () => {
-    // If there's a pending file, upload it instead
+    // If there's a pending file, upload it with the message text
     if (pendingFile) {
-      uploadFile();
+      uploadFile(input.trim());
       return;
     }
 
@@ -325,7 +332,7 @@ export default function AiChatBubble() {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={pendingFile ? "Tekan kirim untuk upload..." : "Ketik pertanyaan..."}
+                placeholder={pendingFile ? "Tambahkan pesan (opsional)..." : "Ketik pertanyaan..."}
                 className="flex-1 px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 placeholder:text-gray-400"
                 disabled={loading}
               />
