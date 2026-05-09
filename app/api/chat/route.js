@@ -27,20 +27,21 @@ const ROLE_LABELS = {
   user: 'User Biasa (hanya bisa melihat data)',
 };
 
-// Fetch context data from database for the AI
-async function getDbContext(tahun, role) {
+// Fetch context data from database for the AI (ALL years)
+async function getDbContext(role) {
   const { data: desa } = await supabase.from('desa').select('id, nama, nomor_urut').eq('is_active', 1).order('nomor_urut');
 
-  const allowedTables = ROLE_TABLE_MAP[role] || [];
   const allTables = ['data_umum', 'data_pokja1', 'data_pokja2', 'data_pokja3', 'data_pokja4'];
   const summaries = {};
+  const availableYears = new Set();
 
   for (const t of allTables) {
-    const { data } = await supabase.from(t).select('*').eq('tahun', tahun);
+    const { data } = await supabase.from(t).select('*').order('tahun', { ascending: false });
     summaries[t] = data || [];
+    (data || []).forEach(r => availableYears.add(r.tahun));
   }
 
-  return { desa: desa || [], summaries, tahun, allowedTables };
+  return { desa: desa || [], summaries, availableYears: [...availableYears].sort((a, b) => b - a) };
 }
 
 function buildSystemPrompt(userRole, userName, allowedTables) {
@@ -117,22 +118,33 @@ export async function POST(request) {
     const userName = user?.nama_lengkap || user?.username || 'Pengguna';
     const allowedTables = ROLE_TABLE_MAP[userRole] || [];
 
-    // Get database context
+    // Get database context (all years)
     const currentYear = tahun || new Date().getFullYear();
-    const ctx = await getDbContext(currentYear, userRole);
+    const ctx = await getDbContext(userRole);
 
     const contextMessage = `
-DATA SAAT INI (Tahun ${ctx.tahun}):
+DATA SELURUH TAHUN:
+Tahun yang tersedia: ${ctx.availableYears.join(', ')}
 Daftar Desa: ${ctx.desa.map(d => `${d.nama} (ID:${d.id})`).join(', ')}
 
 ${Object.entries(ctx.summaries).map(([table, rows]) => {
   if (rows.length === 0) return `${table}: Belum ada data`;
-  return `${table} (${rows.length} baris): ${JSON.stringify(rows.map(r => {
-    const desaObj = ctx.desa.find(d => d.id === r.desa_id);
-    const { id, desa_id, tahun: t, updated_at, custom_columns, ...fields } = r;
-    return { desa: desaObj?.nama || r.desa_id, ...fields };
-  }))}`;
+  // Group by year
+  const byYear = {};
+  rows.forEach(r => {
+    if (!byYear[r.tahun]) byYear[r.tahun] = [];
+    byYear[r.tahun].push(r);
+  });
+  return Object.entries(byYear).map(([yr, yRows]) => {
+    return `${table} (Tahun ${yr}, ${yRows.length} desa): ${JSON.stringify(yRows.map(r => {
+      const desaObj = ctx.desa.find(d => d.id === r.desa_id);
+      const { id, desa_id, tahun: t, updated_at, custom_columns, ...fields } = r;
+      return { desa: desaObj?.nama || r.desa_id, ...fields };
+    }))}`;
+  }).join('\n');
 }).join('\n\n')}
+
+Tahun yang sedang dipilih user di dashboard: ${currentYear}
 `;
 
     const systemPrompt = buildSystemPrompt(userRole, userName, allowedTables);
