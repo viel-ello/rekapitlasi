@@ -74,7 +74,13 @@ function UsersTab({ toast, setToast }) {
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false });
 
   useEffect(() => { fetchUsers(); }, []);
-  const fetchUsers = async () => { const res = await fetch('/api/admin/users'); setUsers(await res.json()); };
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch('/api/admin/users');
+      if (!res.ok) { setToast({ type: 'error', message: 'Gagal memuat data pengguna' }); setTimeout(() => setToast(null), 3000); return; }
+      setUsers(await res.json());
+    } catch { setToast({ type: 'error', message: 'Gagal menghubungi server' }); setTimeout(() => setToast(null), 3000); }
+  };
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -218,17 +224,29 @@ function DesaTab({ toast, setToast }) {
   const [editNama, setEditNama] = useState('');
 
   useEffect(() => { fetchDesa(); }, []);
-  const fetchDesa = async () => { const res = await fetch('/api/admin/desa'); setDesa(await res.json()); };
+  const fetchDesa = async () => {
+    try {
+      const res = await fetch('/api/admin/desa');
+      if (!res.ok) { setToast({ type: 'error', message: 'Gagal memuat data desa' }); setTimeout(() => setToast(null), 3000); return; }
+      setDesa(await res.json());
+    } catch { setToast({ type: 'error', message: 'Gagal menghubungi server' }); setTimeout(() => setToast(null), 3000); }
+  };
 
   const saveNama = async (id) => {
-    const res = await fetch(`/api/admin/desa/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nama: editNama }) });
-    if (res.ok) { setToast({ type: 'success', message: 'Nama desa diperbarui' }); setEditId(null); fetchDesa(); }
+    try {
+      const res = await fetch('/api/admin/desa', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, nama: editNama }) });
+      if (res.ok) { setToast({ type: 'success', message: 'Nama desa diperbarui' }); setEditId(null); fetchDesa(); }
+      else { const err = await res.json(); setToast({ type: 'error', message: err.error || 'Gagal memperbarui' }); }
+    } catch { setToast({ type: 'error', message: 'Gagal menghubungi server' }); }
     setTimeout(() => setToast(null), 3000);
   };
 
   const toggleActive = async (id, current) => {
-    await fetch(`/api/admin/desa/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_active: current ? 0 : 1 }) });
-    setToast({ type: 'success', message: current ? 'Desa dinonaktifkan' : 'Desa diaktifkan' });
+    try {
+      const res = await fetch('/api/admin/desa', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, is_active: current ? 0 : 1 }) });
+      if (res.ok) { setToast({ type: 'success', message: current ? 'Desa dinonaktifkan' : 'Desa diaktifkan' }); }
+      else { const err = await res.json(); setToast({ type: 'error', message: err.error || 'Gagal memperbarui' }); }
+    } catch { setToast({ type: 'error', message: 'Gagal menghubungi server' }); }
     fetchDesa();
     setTimeout(() => setToast(null), 3000);
   };
@@ -286,7 +304,13 @@ function DesaTab({ toast, setToast }) {
 function LogsTab() {
   const [logs, setLogs] = useState([]);
   useEffect(() => { fetchLogs(); }, []);
-  const fetchLogs = async () => { const res = await fetch('/api/admin/logs'); setLogs(await res.json()); };
+  const fetchLogs = async () => {
+    try {
+      const res = await fetch('/api/admin/logs');
+      if (!res.ok) return;
+      setLogs(await res.json());
+    } catch {}
+  };
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
@@ -333,6 +357,9 @@ function LogsTab() {
 function BackupTab({ toast, setToast }) {
   const [restoring, setRestoring] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [confirmingImport, setConfirmingImport] = useState(false);
+  const [importPreview, setImportPreview] = useState(null);
+  const [importTahun, setImportTahun] = useState(new Date().getFullYear());
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false });
 
   const handleRestoreClick = (e) => {
@@ -352,7 +379,7 @@ function BackupTab({ toast, setToast }) {
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const res = await fetch('/api/admin/restore', { method: 'POST', body: formData });
+      const res = await fetch('/api/admin/backup', { method: 'POST', body: formData });
       const data = await res.json();
       setToast({ type: res.ok ? 'success' : 'error', message: data.message || data.error });
     } catch { setToast({ type: 'error', message: 'Gagal memulihkan database' }); }
@@ -367,19 +394,54 @@ function BackupTab({ toast, setToast }) {
     setImporting(true);
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('tahun', importTahun);
     try {
       const res = await fetch('/api/import/excel', { method: 'POST', body: formData });
       const data = await res.json();
-      setToast({ type: res.ok ? 'success' : 'error', message: data.message || data.error });
+      if (res.ok && data.type === 'import_preview') {
+        setImportPreview(data);
+        setToast({ type: 'success', message: 'Preview import siap direview' });
+      } else {
+        setToast({ type: 'error', message: data.error || 'Gagal membuat preview import' });
+      }
     } catch { setToast({ type: 'error', message: 'Gagal mengimpor file' }); }
     setImporting(false);
     e.target.value = '';
     setTimeout(() => setToast(null), 3000);
   };
 
+  const confirmImport = async () => {
+    if (!importPreview) return;
+    setConfirmingImport(true);
+    try {
+      const res = await fetch('/api/import/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parsedData: importPreview.parsedData, tahun: importTahun }),
+      });
+      const data = await res.json();
+      setToast({ type: res.ok ? 'success' : 'error', message: data.message || data.error || 'Import selesai' });
+      if (res.ok) setImportPreview(null);
+    } catch {
+      setToast({ type: 'error', message: 'Gagal menyimpan hasil import' });
+    }
+    setConfirmingImport(false);
+    setTimeout(() => setToast(null), 4000);
+  };
+
   return (
     <>
       <ConfirmModal {...confirmDialog} />
+      {importPreview && (
+        <ImportPreviewModal
+          preview={importPreview}
+          tahun={importTahun}
+          setTahun={setImportTahun}
+          confirming={confirmingImport}
+          onCancel={() => setImportPreview(null)}
+          onConfirm={confirmImport}
+        />
+      )}
       <div className="grid gap-4 md:grid-cols-3">
       <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2"><Download className="w-5 h-5" /> Backup Database</h3>
@@ -398,7 +460,16 @@ function BackupTab({ toast, setToast }) {
       </div>
       <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2"><Upload className="w-5 h-5" /> Import Excel</h3>
-        <p className="text-xs text-gray-400 mb-4">Unggah file Excel hasil export untuk mengisi data otomatis.</p>
+        <p className="text-xs text-gray-400 mb-4">Unggah file Excel, review preview, lalu konfirmasi sebelum data disimpan.</p>
+        <label className="block text-xs font-medium text-gray-500 mb-1" htmlFor="import-year">Tahun import</label>
+        <select
+          id="import-year"
+          value={importTahun}
+          onChange={(e) => setImportTahun(Number(e.target.value))}
+          className="w-full mb-3 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+        >
+          {Array.from({ length: 11 }, (_, i) => 2020 + i).map(y => <option key={y} value={y}>{y}</option>)}
+        </select>
         <label className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-xl transition-colors cursor-pointer">
           {importing ? '⏳ Mengimpor...' : <><Upload className="w-4 h-4" /> Pilih File Excel</>}
           <input type="file" accept=".xlsx" onChange={handleImport} className="hidden" disabled={importing} />
@@ -406,6 +477,115 @@ function BackupTab({ toast, setToast }) {
       </div>
     </div>
     </>
+  );
+}
+
+function ImportPreviewModal({ preview, tahun, setTahun, confirming, onCancel, onConfirm }) {
+  const totals = (preview.diff || []).reduce((acc, sheet) => {
+    acc.insert += sheet.counts?.insert || 0;
+    acc.update += sheet.counts?.update || 0;
+    acc.skip += sheet.counts?.skip || 0;
+    acc.error += sheet.counts?.error || 0;
+    return acc;
+  }, { insert: 0, update: 0, skip: 0, error: 0 });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-gray-900/40" onClick={onCancel} />
+      <div className="relative z-10 w-full max-w-5xl max-h-[90vh] overflow-hidden bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col">
+        <div className="px-5 py-4 bg-gray-50 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-bold text-gray-800">Preview Import Excel</h3>
+            <p className="text-sm text-gray-500">{preview.fileName} - data belum disimpan</p>
+          </div>
+          <button onClick={onCancel} className="self-start sm:self-auto px-3 py-1.5 text-sm bg-white border border-gray-200 rounded-lg hover:bg-gray-50" aria-label="Tutup preview import">
+            Tutup
+          </button>
+        </div>
+
+        <div className="p-5 overflow-y-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+            <div className="rounded-xl border border-green-100 bg-green-50 p-3"><div className="text-xl font-bold text-green-700">{totals.insert}</div><div className="text-xs text-green-700">Baru</div></div>
+            <div className="rounded-xl border border-blue-100 bg-blue-50 p-3"><div className="text-xl font-bold text-blue-700">{totals.update}</div><div className="text-xs text-blue-700">Diubah</div></div>
+            <div className="rounded-xl border border-gray-100 bg-gray-50 p-3"><div className="text-xl font-bold text-gray-700">{totals.skip}</div><div className="text-xs text-gray-600">Dilewati</div></div>
+            <div className="rounded-xl border border-red-100 bg-red-50 p-3"><div className="text-xl font-bold text-red-700">{totals.error}</div><div className="text-xs text-red-700">Gagal</div></div>
+          </div>
+
+          {preview.parseErrors?.length > 0 && (
+            <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              {preview.parseErrors.map((error, index) => <div key={index}>{error}</div>)}
+            </div>
+          )}
+
+          {(preview.diff || []).map((sheet, index) => (
+            <div key={`${sheet.tableName}-${index}`} className="mb-6 rounded-xl border border-gray-200 overflow-hidden">
+              <div className="px-4 py-3 bg-white border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                  <div className="font-semibold text-gray-800">{sheet.sheetName}</div>
+                  <div className="text-xs text-gray-500">{sheet.tableName}</div>
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <span className="px-2 py-1 rounded bg-green-50 text-green-700">{sheet.counts?.insert || 0} baru</span>
+                  <span className="px-2 py-1 rounded bg-blue-50 text-blue-700">{sheet.counts?.update || 0} ubah</span>
+                  <span className="px-2 py-1 rounded bg-gray-100 text-gray-600">{sheet.counts?.skip || 0} skip</span>
+                  <span className="px-2 py-1 rounded bg-red-50 text-red-700">{sheet.counts?.error || 0} gagal</span>
+                </div>
+              </div>
+              <div className="overflow-x-auto max-h-80">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-gray-50 text-xs text-gray-500 uppercase">
+                    <tr>
+                      <th className="px-3 py-2 text-left">Aksi</th>
+                      <th className="px-3 py-2 text-left">Desa</th>
+                      <th className="px-3 py-2 text-left">Detail</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {(sheet.rows || []).map((row, rowIndex) => (
+                      <tr key={rowIndex} className={row.action === 'error' ? 'bg-red-50/40' : row.action === 'update' ? 'bg-blue-50/30' : row.action === 'insert' ? 'bg-green-50/30' : ''}>
+                        <td className="px-3 py-2">
+                          <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${
+                            row.action === 'error' ? 'bg-red-100 text-red-700' :
+                            row.action === 'update' ? 'bg-blue-100 text-blue-700' :
+                            row.action === 'insert' ? 'bg-green-100 text-green-700' :
+                            'bg-gray-100 text-gray-600'
+                          }`}>{row.action}</span>
+                        </td>
+                        <td className="px-3 py-2 font-medium text-gray-800">{row.desaName}</td>
+                        <td className="px-3 py-2 font-mono text-xs text-gray-600">
+                          {row.reason || `${Object.keys(row.incoming || {}).length} kolom terbaca`}
+                          {row.issueCount > 0 && row.action !== 'error' && (
+                            <span className="ml-2 text-amber-600">Ada {row.issueCount} peringatan</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {(sheet.rows || []).length === 0 && (
+                      <tr><td colSpan="3" className="px-3 py-6 text-center text-gray-400">Tidak ada baris terbaca.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="p-4 border-t border-gray-100 bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <label htmlFor="confirm-import-year" className="text-sm font-medium text-gray-700">Tahun</label>
+            <select id="confirm-import-year" value={tahun} onChange={(e) => setTahun(Number(e.target.value))} className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none">
+              {Array.from({ length: 11 }, (_, i) => 2020 + i).map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={onCancel} className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium">Batal</button>
+            <button onClick={onConfirm} disabled={confirming || totals.error > 0 || (totals.insert + totals.update) === 0} className="px-4 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+              {confirming ? 'Menyimpan...' : 'Konfirmasi & Simpan'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -425,7 +605,13 @@ function ColumnsTab({ toast, setToast }) {
   ];
 
   useEffect(() => { fetchColumns(); }, []);
-  const fetchColumns = async () => { const res = await fetch('/api/admin/columns'); setColumns(await res.json()); };
+  const fetchColumns = async () => {
+    try {
+      const res = await fetch('/api/admin/columns');
+      if (!res.ok) { setToast({ type: 'error', message: 'Gagal memuat kolom' }); setTimeout(() => setToast(null), 3000); return; }
+      setColumns(await res.json());
+    } catch { setToast({ type: 'error', message: 'Gagal menghubungi server' }); setTimeout(() => setToast(null), 3000); }
+  };
 
   const handleCreate = async (e) => {
     e.preventDefault();

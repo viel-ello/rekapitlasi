@@ -4,11 +4,15 @@
  */
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { requireAuth } from '@/lib/auth';
 
-export async function GET() {
+export async function GET(request) {
   try {
+    const user = await requireAuth(request);
+    if (!user) return requireAuth.deny();
+
     const currentYear = new Date().getFullYear();
-    const years = [currentYear - 2, currentYear - 1, currentYear];
+    const years = Array.from({ length: 5 }, (_, index) => currentYear - 4 + index);
 
     // Fetch all data for the 3 years at once to avoid loop queries
     const { data: duAll } = await supabase.from('data_umum').select('tahun, jml_kk, jml_jiwa_l, jml_jiwa_p, jml_dasa_wisma').in('tahun', years);

@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { getAuthUser } from '@/lib/auth';
+import { getAuthUser, requireAuth, requireAdmin } from '@/lib/auth';
 
 export async function GET(request) {
   try {
+    const user = await requireAuth(request);
+    if (!user) return requireAuth.deny();
+
     const { searchParams } = new URL(request.url);
     const tableName = searchParams.get('table_name');
 

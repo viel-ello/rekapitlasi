@@ -6,11 +6,14 @@
 
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { getAuthUser, canWrite } from '@/lib/auth';
+import { getAuthUser, canWrite, requireAuth } from '@/lib/auth';
 import { writeLog } from '@/lib/audit';
 
 export async function GET(request) {
   try {
+    const user = await requireAuth(request);
+    if (!user) return requireAuth.deny();
+
     const { searchParams } = new URL(request.url);
     const tahun = searchParams.get('tahun') || new Date().getFullYear();
     const bulan = searchParams.get('bulan');

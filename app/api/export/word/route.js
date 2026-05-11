@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, WidthType, AlignmentType, BorderStyle, VerticalAlign, PageOrientation } from 'docx';
+import { requireAuth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -346,6 +347,9 @@ async function buildPokjaSection(pokja, tahun) {
 /* ─── Main Export ─── */
 export async function GET(request) {
   try {
+    const user = await requireAuth(request);
+    if (!user) return requireAuth.deny();
+
     const { searchParams } = new URL(request.url);
     const tahun = searchParams.get('tahun') || new Date().getFullYear();
 

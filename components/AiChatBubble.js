@@ -2,75 +2,72 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
 
-export default function AiChatBubble() {
+/**
+ * AiChatBubble Component
+ * Provides Gemini AI chat and Excel file import preview
+ */
+export default function AiChatBubble({ tahun, user }) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'Halo! 👋 Saya **PKK Assistant**. Saya bisa membantu Anda menganalisis data PKK, menjawab pertanyaan, atau memberi rekomendasi.\n\n📎 Anda juga bisa **kirim file Excel** untuk import data!\n\nCoba tanya sesuatu seperti:\n- "Desa mana yang jumlah jiwanya paling banyak?"\n- "Berapa total posyandu se-kecamatan?"\n- "Bandingkan data Pokja 1 antar desa"' }
+    { role: 'assistant', content: 'Halo! Saya PKK Assistant. Ada yang bisa saya bantu terkait data atau rekapitulasi PKK?' }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [tahun] = useState(new Date().getFullYear());
-  const [user, setUser] = useState(null);
-  const [pendingFile, setPendingFile] = useState(null);
-  
-  // Modal Preview State
-  const [importPreviewData, setImportPreviewData] = useState(null);
-  const [importTahun, setImportTahun] = useState(new Date().getFullYear());
-
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const fileRef = useRef(null);
 
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('user');
-      if (stored) setUser(JSON.parse(stored));
-    } catch {}
-  }, []);
+  const [pendingFile, setPendingFile] = useState(null);
+  const [importPreviewData, setImportPreviewData] = useState(null);
+  const [importTahun, setImportTahun] = useState(tahun || new Date().getFullYear());
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, loading, pendingFile]);
 
   useEffect(() => {
-    if (open && inputRef.current) inputRef.current.focus();
+    if (open) {
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
   }, [open]);
 
-  // Handle file selection
+  useEffect(() => {
+    setImportTahun(tahun || new Date().getFullYear());
+  }, [tahun]);
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
   const handleFileSelect = (file) => {
     if (!file) return;
 
-    // Validate extension
-    const ext = file.name.split('.').pop()?.toLowerCase();
-    if (!['xlsx', 'xls'].includes(ext)) {
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: '❌ Format file tidak didukung. Hanya file **.xlsx** atau **.xls** yang bisa diimport.',
-      }]);
+    if (file.size > 5 * 1024 * 1024) {
+      setMessages(prev => [...prev, { role: 'assistant', content: '❌ File terlalu besar. Maksimal 5MB.' }]);
+      if (fileRef.current) fileRef.current.value = '';
       return;
     }
 
-    // Validate size (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: '❌ File terlalu besar (maksimal **5MB**).',
-      }]);
+    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+      setMessages(prev => [...prev, { role: 'assistant', content: '❌ Format file tidak didukung. Harap unggah file Excel (.xlsx / .xls).' }]);
+      if (fileRef.current) fileRef.current.value = '';
       return;
     }
 
     setPendingFile(file);
   };
 
-  // Upload file for parsing
+  // Upload file to parse and generate preview
   const uploadFile = async (messageText = '') => {
     if (!pendingFile || loading) return;
 
     const fileName = pendingFile.name;
-    const userContent = messageText 
-      ? `📄 ${fileName}\n\n${messageText}` 
-      : `📄 ${fileName}`;
+    const userContent = messageText ? `📄 ${fileName}\n\n${messageText}` : `📄 ${fileName}`;
     setMessages(prev => [...prev, { role: 'user', content: userContent, type: 'file' }]);
     setLoading(true);
     const fileToUpload = pendingFile;
@@ -80,24 +77,36 @@ export default function AiChatBubble() {
     try {
       const formData = new FormData();
       formData.append('file', fileToUpload);
-      formData.append('user', JSON.stringify(user));
       if (messageText) formData.append('message', messageText);
 
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        body: formData,
-      });
+      // Parse with AI
+      const res = await fetch('/api/chat', { method: 'POST', body: formData });
       const data = await res.json();
 
       if (data.error) {
         setMessages(prev => [...prev, { role: 'assistant', content: `❌ ${data.error}` }]);
       } else if (data.type === 'import_preview') {
-        // Trigger Modal instead of inline bubble
-        setImportPreviewData({
-          content: data.preview,
-          parsedData: data.parsedData,
-          fileName: data.fileName,
+        
+        // After parsing, fetch diff preview from new API
+        setMessages(prev => [...prev, { role: 'assistant', content: `Membandingkan data Excel dengan database...` }]);
+        
+        const diffRes = await fetch('/api/import/preview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ parsedData: data.parsedData, tahun: importTahun })
         });
+        const diffData = await diffRes.json();
+        
+        if (diffData.error) {
+           setMessages(prev => [...prev, { role: 'assistant', content: `❌ ${diffData.error}` }]);
+        } else {
+           setImportPreviewData({
+             parsedData: data.parsedData,
+             diff: diffData.diff,
+             fileName: data.fileName,
+           });
+           setOpen(false); // Close chat bubble to show modal clearly
+        }
       }
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: '❌ Gagal mengunggah file. Coba lagi.' }]);
@@ -106,14 +115,13 @@ export default function AiChatBubble() {
     if (fileRef.current) fileRef.current.value = '';
   };
 
-  // Confirm import
   const confirmImport = async () => {
     if (!importPreviewData) return;
     setLoading(true);
     setOpen(true);
     
     const parsedData = importPreviewData.parsedData;
-    setImportPreviewData(null); // Close modal
+    setImportPreviewData(null); 
 
     setMessages(prev => [...prev, {
       role: 'user',
@@ -121,10 +129,10 @@ export default function AiChatBubble() {
     }]);
 
     try {
-      const res = await fetch('/api/chat/import-confirm', {
+      const res = await fetch('/api/import/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ parsedData, tahun: importTahun, user }),
+        body: JSON.stringify({ parsedData, tahun: importTahun }),
       });
       const data = await res.json();
 
@@ -133,9 +141,7 @@ export default function AiChatBubble() {
       } else {
         setMessages(prev => [...prev, {
           role: 'assistant',
-          type: 'import_result',
-          content: data.summary,
-          results: data.results,
+          content: `${data.summary}${data.results.length ? '\n\nError detail:\n' + data.results.join('\n') : ''}`,
         }]);
       }
     } catch {
@@ -153,7 +159,6 @@ export default function AiChatBubble() {
     setOpen(true);
   };
 
-  // Send text message (existing Gemini chat)
   const sendMessage = async () => {
     if (pendingFile) {
       uploadFile(input.trim());
@@ -177,125 +182,133 @@ export default function AiChatBubble() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, history, tahun, user }),
+        body: JSON.stringify({ message: text, history, tahun }),
       });
+
       const data = await res.json();
-      setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
+
+      if (data.error) {
+        setMessages(prev => [...prev, { role: 'assistant', content: `❌ ${data.error}` }]);
+      } else {
+        setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
+      }
     } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: '❌ Gagal menghubungi server. Coba lagi.' }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: '❌ Terjadi kesalahan jaringan. Coba lagi.' }]);
     }
     setLoading(false);
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
-
-  const renderContent = (text) => {
-    if (!text) return null;
-    return text.split('\n').map((line, i) => (
-      <span key={i}>
-        {line.split(/(\*\*.*?\*\*)/).map((part, j) => {
-          if (part.startsWith('**') && part.endsWith('**')) {
-            return <strong key={j} className="font-semibold">{part.slice(2, -2)}</strong>;
-          }
-          return part;
-        })}
-        {i < text.split('\n').length - 1 && <br />}
-      </span>
-    ));
-  };
-
-  // Generate Table Columns from preview data
-  const getTableHeaders = (rows) => {
-    if (!rows || rows.length === 0) return [];
-    return Object.keys(rows[0]);
+  const renderContent = (content) => {
+    return (
+      <div className="prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-li:my-0">
+        <ReactMarkdown>{content}</ReactMarkdown>
+      </div>
+    );
   };
 
   return (
     <>
-      {/* Fullscreen Modal Preview */}
+      {/* Import Preview Modal (Diff View) */}
       <AnimatePresence>
         {importPreviewData && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
           >
+            <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" onClick={cancelImport}></div>
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden"
+              initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col relative z-10"
             >
-              {/* Modal Header */}
-              <div className="bg-primary-600 px-6 py-4 flex items-center justify-between">
+              <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-4 flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-bold text-white">Preview Import Data</h3>
-                  <p className="text-primary-100 text-sm">Validasi data Anda sebelum disimpan ke database</p>
+                  <h3 className="text-white font-bold text-lg flex items-center gap-2">
+                    <span className="bg-white/20 p-1.5 rounded-lg">📊</span> Konfirmasi Import Data
+                  </h3>
+                  <p className="text-primary-100 text-sm mt-1">Review perubahan sebelum menyimpan ke database</p>
                 </div>
-                <button
-                  onClick={cancelImport}
-                  className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors"
-                >
-                  ✕
+                <button onClick={cancelImport} className="text-white/70 hover:text-white transition-colors" aria-label="Tutup preview import">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
               </div>
 
-              {/* Modal Body */}
-              <div className="p-6 flex-1 overflow-auto bg-gray-50">
-                <div className="mb-6 p-4 bg-white rounded-xl shadow-sm border border-gray-100">
-                  <h4 className="font-semibold text-gray-800 mb-2">Ringkasan AI:</h4>
-                  <div className="text-sm text-gray-600 leading-relaxed">
-                    {renderContent(importPreviewData.content)}
-                  </div>
+              <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50">
+                <div className="mb-6 flex items-center gap-3 p-3 bg-blue-50 border border-blue-100 rounded-xl">
+                  <div className="text-blue-600">📄</div>
+                  <div className="flex-1 text-sm text-blue-900 font-medium">{importPreviewData.fileName}</div>
                 </div>
 
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                  <div className="overflow-x-auto max-h-[40vh]">
-                    <table className="w-full text-left border-collapse min-w-max">
-                      <thead className="bg-gray-100 sticky top-0 z-10">
-                        <tr>
-                          <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase border-b border-gray-200 whitespace-nowrap">Row</th>
-                          {getTableHeaders(importPreviewData.parsedData?.rows).map(header => (
-                            <th key={header} className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase border-b border-gray-200 whitespace-nowrap">{header}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {importPreviewData.parsedData?.rows?.map((row, i) => (
-                          <tr key={i} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-4 py-2.5 text-xs text-gray-500">{i + 1}</td>
-                            {getTableHeaders(importPreviewData.parsedData?.rows).map(header => {
-                              const value = row[header];
-                              // Basic validation: empty string, null, or undefined is considered invalid/empty
-                              const isInvalid = value === null || value === undefined || value === '';
-                              return (
-                                <td 
-                                  key={header} 
-                                  className={`px-4 py-2.5 text-sm ${isInvalid ? 'bg-red-50 text-red-600 font-medium' : 'text-gray-700'}`}
-                                  title={isInvalid ? 'Data Kosong / Tidak Valid' : ''}
-                                >
-                                  {isInvalid ? '⚠️ Kosong' : value}
+                {importPreviewData.diff.map((sheetDiff, i) => (
+                  <div key={i} className="mb-8">
+                    <h4 className="font-bold text-gray-800 flex items-center gap-2 mb-3">
+                      <span>Sheet: {sheetDiff.sheetName}</span>
+                      <span className="text-xs font-normal bg-gray-200 text-gray-700 px-2 py-0.5 rounded-md">→ {sheetDiff.tableName}</span>
+                    </h4>
+                    
+                    <div className="flex gap-4 mb-3 text-sm">
+                      <div className="flex items-center gap-1"><div className="w-3 h-3 bg-green-500 rounded-sm"></div> <span className="font-medium">{sheetDiff.counts.insert}</span> Baru</div>
+                      <div className="flex items-center gap-1"><div className="w-3 h-3 bg-blue-500 rounded-sm"></div> <span className="font-medium">{sheetDiff.counts.update}</span> Ubah</div>
+                      <div className="flex items-center gap-1"><div className="w-3 h-3 bg-gray-300 rounded-sm"></div> <span className="font-medium">{sheetDiff.counts.skip}</span> Skip</div>
+                      <div className="flex items-center gap-1"><div className="w-3 h-3 bg-red-500 rounded-sm"></div> <span className="font-medium">{sheetDiff.counts.error}</span> Gagal</div>
+                    </div>
+
+                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                          <thead className="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase">
+                            <tr>
+                              <th className="px-4 py-3 w-10">Aksi</th>
+                              <th className="px-4 py-3 w-40">Desa</th>
+                              <th className="px-4 py-3">Perubahan (Hanya yang berbeda)</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-50">
+                            {sheetDiff.rows.map((row, j) => (
+                              <tr key={j} className={
+                                row.action === 'insert' ? 'bg-green-50/30' : 
+                                row.action === 'update' ? 'bg-blue-50/30' : 
+                                row.action === 'error' ? 'bg-red-50/30' : 'opacity-50'
+                              }>
+                                <td className="px-4 py-2">
+                                  {row.action === 'insert' && <span className="px-2 py-1 bg-green-100 text-green-700 text-[10px] font-bold rounded uppercase">Baru</span>}
+                                  {row.action === 'update' && <span className="px-2 py-1 bg-blue-100 text-blue-700 text-[10px] font-bold rounded uppercase">Ubah</span>}
+                                  {row.action === 'skip' && <span className="px-2 py-1 bg-gray-100 text-gray-600 text-[10px] font-bold rounded uppercase">Skip</span>}
+                                  {row.action === 'error' && <span className="px-2 py-1 bg-red-100 text-red-700 text-[10px] font-bold rounded uppercase">Error</span>}
                                 </td>
-                              );
-                            })}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                                <td className="px-4 py-2 font-medium text-gray-800">{row.desaName}</td>
+                                <td className="px-4 py-2 font-mono text-xs">
+                                  {row.action === 'error' && <span className="text-red-500">{row.reason}</span>}
+                                  {row.action === 'skip' && <span className="text-gray-400">Tidak ada perubahan</span>}
+                                  {(row.action === 'insert' || row.action === 'update') && (
+                                    <div className="flex flex-wrap gap-2">
+                                      {Object.entries(row.incoming).map(([col, val]) => {
+                                        const prev = row.current?.[col];
+                                        return (
+                                          <div key={col} className="bg-white border border-gray-200 rounded px-2 py-1 whitespace-nowrap">
+                                            <span className="text-gray-400">{col}:</span>{' '}
+                                            {row.action === 'update' && prev !== undefined && (
+                                              <span className="line-through text-red-400 mr-1">{prev}</span>
+                                            )}
+                                            <span className="font-bold text-green-600">{val}</span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
 
-              {/* Modal Footer */}
-              <div className="bg-white px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <label className="text-sm font-medium text-gray-700">Tahun Data:</label>
+              <div className="p-4 sm:p-6 bg-white border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Simpan untuk Tahun:</label>
                   <select
                     value={importTahun}
                     onChange={e => setImportTahun(Number(e.target.value))}
@@ -392,6 +405,7 @@ export default function AiChatBubble() {
                 disabled={loading}
                 className="px-2.5 py-2.5 text-gray-400 hover:text-primary-600 hover:bg-gray-50 rounded-xl transition-colors disabled:opacity-40 flex-shrink-0"
                 title="Lampirkan file Excel"
+                aria-label="Lampirkan file Excel"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
@@ -419,6 +433,7 @@ export default function AiChatBubble() {
                 onClick={sendMessage}
                 disabled={loading || (!input.trim() && !pendingFile)}
                 className="px-3.5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
+                aria-label="Kirim pesan"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -438,6 +453,7 @@ export default function AiChatBubble() {
             : 'bg-gradient-to-br from-primary-500 to-primary-700 hover:from-primary-600 hover:to-primary-800'
         }`}
         title="PKK Assistant"
+        aria-label="Buka PKK Assistant"
       >
         {open ? (
           <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">

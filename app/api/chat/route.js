@@ -3,12 +3,24 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { supabase } from '@/lib/supabase';
 import { ROLE_TABLE_MAP } from '@/lib/excel/sheetMap';
 import { parseExcel } from '@/lib/excel/parseExcel';
+import { getAuthUser, canWrite, ROLE_PERMISSIONS } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
+// Whitelist of tables that can be mutated via AI
+const VALID_TABLES = ['data_umum', 'data_pokja1', 'data_pokja2', 'data_pokja3', 'data_pokja4', 'data_bumil'];
 
+// Whitelist of valid column names per table (for server-side validation)
+const VALID_COLUMNS = {
+  data_umum: ['jml_dusun','jml_pkk_rw','jml_pkk_rt','jml_dasa_wisma','jml_krt','jml_kk','jml_jiwa_l','jml_jiwa_p','jml_kader_tp_pkk_l','jml_kader_tp_pkk_p','jml_kader_umum_l','jml_kader_umum_p','jml_kader_khusus_l','jml_kader_khusus_p'],
+  data_pokja1: ['kader_pkbn','kader_pkdrt','kader_pola_asuh','pkbn_jml_klp_simulasi','pkbn_jml_anggota','pkdrt_jml_klp_simulasi','pkdrt_jml_anggota','pola_asuh_jml_klp','pola_asuh_jml_anggota','lansia_jml_klp','lansia_jml_anggota','gr_kerja_bakti','gr_rukun_kematian','gr_keagamaan','gr_jimpitan','gr_arisan'],
+  data_pokja2: ['paket_a_klp','paket_a_wrg','paket_b_klp','paket_b_wrg','paket_c_klp','paket_c_wrg','taman_bacaan','usaha_mikro','up2k_pemula_klp','up2k_pemula_psrt','toko_pkk','koperasi_belum_bh_kop','koperasi_berbadan_hukum_kop','koperasi_berbadan_hukum_angg'],
+  data_pokja3: ['kader_pangan','kader_sandang','kader_tata_laksana_rt','pangan_beras','pemanfaatan_peternakan','pemanfaatan_perikanan','pemanfaatan_warung_hidup','pemanfaatan_lumbung_hidup','pemanfaatan_toga','industri_pangan','industri_sandang','industri_jasa','rumah_sehat','rumah_kurang_sehat'],
+  data_pokja4: ['kader_posyandu','kader_gizi','kader_kesling','kader_kb','posyandu_jumlah','posyandu_terintegrasi','lansia_jml_klp','lansia_jml_anggota','rumah_jamban','rumah_spal','air_pdam','air_sumur','jml_pus','jml_wus','akseptor_kb_l','akseptor_kb_p','kk_tabungan'],
+  data_bumil: ['ibu_hamil','ibu_melahirkan','ibu_nifas','ibu_meninggal','bayi_lahir_l','bayi_lahir_p','akte_ada','akte_tidak','bayi_meninggal_l','bayi_meninggal_p'],
+};
 
 const ROLE_LABELS = {
   admin: 'Administrator (akses penuh semua data)',
@@ -117,6 +129,12 @@ Daftar desa yang valid (gunakan nama persis ini): Setorejo, Kedungombo, Boto, Se
 
 // === FILE UPLOAD HANDLER (AI-powered interpretation) ===
 async function handleFileUpload(request) {
+  // Auth check — MANDATORY for file uploads too
+  const authUser = await getAuthUser(request);
+  if (!authUser) {
+    return NextResponse.json({ error: 'Sesi login telah berakhir. Silakan login kembali.' }, { status: 401 });
+  }
+
   const formData = await request.formData();
   const file = formData.get('file');
 
@@ -280,13 +298,23 @@ export async function POST(request) {
   try {
     const contentType = request.headers.get('content-type') || '';
 
-    // === FILE UPLOAD PATH (deterministic, no AI) ===
+    // === FILE UPLOAD PATH ===
     if (contentType.includes('multipart/form-data')) {
       return handleFileUpload(request);
     }
 
     // === NORMAL CHAT PATH ===
-    const { message, history, tahun, user } = await request.json();
+    const body = await request.json();
+    const { message, history, tahun } = body;
+    // NOTE: We intentionally ignore body.user — role MUST come from JWT
+
+    // ---- AUTH CHECK: Role from JWT only ----
+    const authUser = await getAuthUser(request);
+    if (!authUser) {
+      return NextResponse.json({
+        error: 'Sesi login telah berakhir. Silakan login kembali.',
+      }, { status: 401 });
+    }
 
     if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'PASTE_API_KEY_ANDA_DISINI') {
       return NextResponse.json({
@@ -294,10 +322,10 @@ export async function POST(request) {
       });
     }
 
-    // Extract user info
-    const userRole = user?.role || 'user';
-    const userName = user?.nama_lengkap || user?.username || 'Pengguna';
-    const allowedTables = ROLE_TABLE_MAP[userRole] || [];
+    // Extract user info FROM JWT (server-side, not client)
+    const userRole = authUser.role || 'user';
+    const userName = authUser.username || 'Pengguna';
+    const allowedTables = ROLE_PERMISSIONS[userRole] || [];
 
     // Get database context (all years)
     const currentYear = tahun || new Date().getFullYear();
@@ -378,26 +406,45 @@ Tahun yang sedang dipilih user di dashboard: ${currentYear}
         
         let apiResponse;
         
-        // 1. Verify access
-        if (!allowedTables.includes(table_name)) {
+        // 1. Server-side whitelist validation for table_name
+        if (!VALID_TABLES.includes(table_name)) {
+          apiResponse = { error: `Tabel '${table_name}' tidak valid.` };
+        }
+        // 2. Verify access from JWT role (NOT from body)
+        else if (!allowedTables.includes(table_name)) {
           apiResponse = { error: `Akses ditolak: Role '${userRole}' tidak diizinkan mengubah tabel '${table_name}'.` };
-        } else {
-          // 2. Perform database update
-          // Note: In a real app we'd validate the column names. Here we trust the AI, but it could fail if column doesn't exist.
-          const { error } = await supabase
-            .from(table_name)
-            .update(updates)
-            .eq('desa_id', desa_id)
-            .eq('tahun', currentYear);
-            
-          if (error) {
-            apiResponse = { error: `Gagal menyimpan ke database: ${error.message}` };
+        }
+        // 3. Validate column names against whitelist
+        else {
+          const validCols = VALID_COLUMNS[table_name] || [];
+          const invalidCols = Object.keys(updates).filter(k => !validCols.includes(k));
+          
+          if (invalidCols.length > 0) {
+            apiResponse = { error: `Kolom tidak valid: ${invalidCols.join(', ')}. Kolom yang diizinkan: ${validCols.join(', ')}` };
           } else {
-            apiResponse = { success: true, message: `Data desa ${desa_id} di tabel ${table_name} berhasil diperbarui.` };
+            // 4. Sanitize values — only allow integer numbers
+            const sanitizedUpdates = {};
+            for (const [key, value] of Object.entries(updates)) {
+              const num = parseInt(value, 10);
+              sanitizedUpdates[key] = isNaN(num) ? 0 : num;
+            }
+
+            // 5. Perform database update
+            const { error } = await supabase
+              .from(table_name)
+              .update(sanitizedUpdates)
+              .eq('desa_id', desa_id)
+              .eq('tahun', currentYear);
+              
+            if (error) {
+              apiResponse = { error: `Gagal menyimpan ke database: ${error.message}` };
+            } else {
+              apiResponse = { success: true, message: `Data desa ${desa_id} di tabel ${table_name} berhasil diperbarui.` };
+            }
           }
         }
         
-        // 3. Send the result back to Gemini so it can answer the user
+        // 6. Send the result back to Gemini so it can answer the user
         result = await chat.sendMessage([{
           functionResponse: {
             name: 'update_desa_data',

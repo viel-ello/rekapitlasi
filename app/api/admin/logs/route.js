@@ -1,12 +1,17 @@
 /**
  * @file Admin Audit Logs API
  * GET /api/admin/logs?limit=50
+ * Requires admin role.
  */
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { requireAdmin } from '@/lib/auth';
 
 export async function GET(request) {
   try {
+    const admin = await requireAdmin(request);
+    if (!admin || admin.__forbidden) return requireAdmin.deny(admin);
+
     const { searchParams } = new URL(request.url);
     const limit = Math.min(parseInt(searchParams.get('limit') || '100'), 500);
     

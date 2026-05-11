@@ -5,9 +5,13 @@
 
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { requireAuth } from '@/lib/auth';
 
-export async function GET() {
+export async function GET(request) {
   try {
+    const user = await requireAuth(request);
+    if (!user) return requireAuth.deny();
+
     const { data: desa, error } = await supabase
       .from('desa')
       .select('*')

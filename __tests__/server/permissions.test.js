@@ -1,23 +1,11 @@
 /**
- * @file Permission tests (TDD)
+ * @file Permission tests — pure function tests (no database dependency)
  * Tests for role-based access control in lib/auth.js
  */
 
-const path = require('path');
-const fs = require('fs');
-
-const TEST_DB_PATH = path.join(__dirname, '..', '..', 'test_perms.db');
-
 beforeAll(() => {
-  if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH);
-  process.env.DATABASE_PATH = TEST_DB_PATH;
+  process.env.JWT_SECRET = 'test-secret-key-for-jwt-pkk-2025';
   jest.resetModules();
-});
-
-afterAll(() => {
-  const db = require('@/lib/db');
-  db.close();
-  if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH);
 });
 
 describe('Role Permissions — canWrite', () => {

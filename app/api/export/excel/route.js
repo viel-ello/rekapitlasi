@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import ExcelJS from 'exceljs';
+import { requireAuth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,6 +81,9 @@ async function buildSheet(wb, tahun, sheetName, dbTable, title, cols) {
 
 export async function GET(request) {
   try {
+    const user = await requireAuth(request);
+    if (!user) return requireAuth.deny();
+
     const { searchParams } = new URL(request.url);
     const tahun = searchParams.get('tahun') || new Date().getFullYear();
     const wb = new ExcelJS.Workbook();

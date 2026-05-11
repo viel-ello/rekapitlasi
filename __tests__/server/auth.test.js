@@ -1,24 +1,11 @@
 /**
- * @file Auth tests (TDD)
- * Tests for lib/auth.js — password hashing, JWT, login validation
+ * @file Auth tests — pure function tests (no database dependency)
+ * Tests for lib/auth.js — password hashing, JWT, permissions
  */
 
-const path = require('path');
-const fs = require('fs');
-
-const TEST_DB_PATH = path.join(__dirname, '..', '..', 'test_auth.db');
-
 beforeAll(() => {
-  if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH);
-  process.env.DATABASE_PATH = TEST_DB_PATH;
   process.env.JWT_SECRET = 'test-secret-key-for-jwt-pkk-2025';
   jest.resetModules();
-});
-
-afterAll(() => {
-  const db = require('@/lib/db');
-  db.close();
-  if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH);
 });
 
 describe('Auth — hashPassword', () => {
@@ -82,39 +69,5 @@ describe('Auth — JWT tokens', () => {
     const { verifyToken } = require('@/lib/auth');
 
     await expect(verifyToken('invalid.token.here')).rejects.toThrow();
-  });
-});
-
-describe('Auth — authenticateUser', () => {
-  beforeAll(() => {
-    // Seed admin user for authentication test
-    const { seedDesa, seedUsers } = require('@/lib/seed');
-    const db = require('@/lib/db');
-    seedDesa(db);
-    seedUsers(db);
-  });
-
-  test('should authenticate valid admin credentials', async () => {
-    const { authenticateUser } = require('@/lib/auth');
-    const result = await authenticateUser('admin', 'admin123');
-
-    expect(result).toBeDefined();
-    expect(result.user.username).toBe('admin');
-    expect(result.user.role).toBe('admin');
-    expect(result.token).toBeDefined();
-  });
-
-  test('should reject invalid password', async () => {
-    const { authenticateUser } = require('@/lib/auth');
-    const result = await authenticateUser('admin', 'wrongpassword');
-
-    expect(result).toBeNull();
-  });
-
-  test('should reject non-existent user', async () => {
-    const { authenticateUser } = require('@/lib/auth');
-    const result = await authenticateUser('nonexistent', 'password');
-
-    expect(result).toBeNull();
   });
 });

@@ -2,15 +2,20 @@
  * @file Admin Users API
  * GET — list all users
  * POST — create new user
+ * PUT — update user
  * DELETE — delete user
+ * All methods require admin role.
  */
 
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { hashPassword } from '@/lib/auth';
+import { hashPassword, requireAdmin } from '@/lib/auth';
 
-export async function GET() {
+export async function GET(request) {
   try {
+    const admin = await requireAdmin(request);
+    if (!admin || admin.__forbidden) return requireAdmin.deny(admin);
+
     const { data: users, error } = await supabase
       .from('users')
       .select('id, username, nama_lengkap, role, created_at')
@@ -25,6 +30,9 @@ export async function GET() {
 
 export async function POST(request) {
   try {
+    const admin = await requireAdmin(request);
+    if (!admin || admin.__forbidden) return requireAdmin.deny(admin);
+
     const { username, password, nama_lengkap, role } = await request.json();
 
     if (!username || !password || !nama_lengkap) {
@@ -52,6 +60,9 @@ export async function POST(request) {
 
 export async function DELETE(request) {
   try {
+    const admin = await requireAdmin(request);
+    if (!admin || admin.__forbidden) return requireAdmin.deny(admin);
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -78,6 +89,9 @@ export async function DELETE(request) {
 
 export async function PUT(request) {
   try {
+    const admin = await requireAdmin(request);
+    if (!admin || admin.__forbidden) return requireAdmin.deny(admin);
+
     const { id, role, nama_lengkap, password } = await request.json();
     if (!id) return NextResponse.json({ error: 'ID harus diisi' }, { status: 400 });
 
