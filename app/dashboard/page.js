@@ -1,13 +1,14 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
-import { motion, useInView, animate } from 'framer-motion';
+import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import { 
   MapPin, Users, Home, Chart, ChartPie, ChartLineUp, 
   Download, FileLines, ClipboardList, CheckCircle, 
   ExclamationCircle, Clock, ArrowRight, Upload
 } from 'flowbite-react-icons/outline';
 import { Heart } from 'flowbite-react-icons/solid';
+import AnimatedCounter from '@/components/AnimatedCounter';
 
 const TABLE_FILTERS = [
   { value: 'all', label: 'Semua Data', short: 'Semua' },
@@ -35,26 +36,6 @@ function getStatusLabel(status) {
   if (status === 'lengkap') return 'Lengkap';
   if (status === 'perlu_dicek') return 'Perlu dicek';
   return 'Belum lengkap';
-}
-
-// Komponen angka yang menghitung naik dari 0 ke target
-function AnimatedCounter({ value, duration = 1.5, delay = 0 }) {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true });
-  const [display, setDisplay] = useState(0);
-
-  useEffect(() => {
-    if (!isInView) return;
-    const controls = animate(0, value, {
-      duration,
-      delay,
-      ease: 'easeOut',
-      onUpdate: (v) => setDisplay(Math.round(v)),
-    });
-    return () => controls.stop();
-  }, [isInView, value, duration, delay]);
-
-  return <span ref={ref}>{display.toLocaleString('id-ID')}</span>;
 }
 
 function toneClasses(tone) {
@@ -89,10 +70,12 @@ function MiniTrendCard({ label, rows, field, tone = 'primary' }) {
       <div className="flex items-start justify-between gap-3 mb-2">
         <div>
           <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</div>
-          <div className="text-xl font-bold text-gray-800 mt-1">{last.toLocaleString('id-ID')}</div>
+          <div className="text-xl font-bold text-gray-800 mt-1">
+            <AnimatedCounter value={last} />
+          </div>
         </div>
         <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${colors.bg} ${colors.text}`}>
-          {diff >= 0 ? '+' : ''}{diff.toLocaleString('id-ID')}
+          <AnimatedCounter value={diff} prefix={diff >= 0 ? '+' : ''} duration={1.2} />
         </span>
       </div>
       <svg viewBox="0 0 300 92" className="w-full h-20 overflow-visible" aria-hidden="true">
@@ -110,7 +93,7 @@ function MiniTrendCard({ label, rows, field, tone = 'primary' }) {
   );
 }
 
-function HorizontalStatBar({ label, value, max, tone = 'primary', sub }) {
+function HorizontalStatBar({ label, value, max, tone = 'primary', sub, subTitle }) {
   const colors = toneClasses(tone);
   const percent = max > 0 ? (Number(value || 0) / max) * 100 : 0;
   return (
@@ -118,9 +101,11 @@ function HorizontalStatBar({ label, value, max, tone = 'primary', sub }) {
       <div className="flex items-center justify-between gap-3 mb-1">
         <div className="min-w-0">
           <div className="text-sm font-semibold text-gray-700 truncate">{label}</div>
-          {sub && <div className="text-[10px] text-gray-400 truncate">{sub}</div>}
+          {sub && <div className="text-[10px] text-gray-400 truncate" title={subTitle}>{sub}</div>}
         </div>
-        <span className="text-sm font-bold text-gray-900">{Number(value || 0).toLocaleString('id-ID')}</span>
+        <span className="text-sm font-bold text-gray-900">
+          <AnimatedCounter value={value} duration={1.2} />
+        </span>
       </div>
       <div className="h-2.5 rounded-full bg-gray-100 overflow-hidden">
         <motion.div
@@ -244,7 +229,16 @@ export default function DashboardPage() {
   const tableLabel = Object.fromEntries(TABLE_FILTERS.map(t => [t.value, t]));
 
   const kpiCards = [
-    { label: 'Desa Lengkap', value: completeness.complete, sub: `dari ${completeness.total} desa`, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-100' },
+    {
+      label: 'Desa Lengkap',
+      value: completeness.complete,
+      sub: <>dari <AnimatedCounter value={completeness.total} duration={1.2} /> desa</>,
+      subTitle: `dari ${completeness.total} desa`,
+      icon: CheckCircle,
+      color: 'text-green-600',
+      bg: 'bg-green-50',
+      border: 'border-green-100',
+    },
     { label: 'Belum Lengkap', value: completeness.incomplete, sub: 'belum memenuhi kolom wajib', icon: MapPin, color: 'text-red-500', bg: 'bg-red-50', border: 'border-red-100' },
     { label: 'Perlu Dicek', value: completeness.needsCheck, sub: 'ada warning/anomali', icon: ExclamationCircle, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
     { 
@@ -399,7 +393,7 @@ export default function DashboardPage() {
                   {card.isText ? card.value : <AnimatedCounter value={card.value} />}
                 </div>
                 <div className="text-sm font-medium text-gray-600 mt-0.5">{card.label}</div>
-                <div className="text-xs text-gray-400 mt-1 truncate" title={card.sub}>{card.sub}</div>
+                <div className="text-xs text-gray-400 mt-1 truncate" title={card.subTitle || (typeof card.sub === 'string' ? card.sub : undefined)}>{card.sub}</div>
               </div>
             </motion.div>
           );
@@ -413,7 +407,15 @@ export default function DashboardPage() {
           </h3>
           <div className="space-y-4">
             {statusStats.map((item) => (
-              <HorizontalStatBar key={item.label} label={item.label} value={item.value} max={maxStatus} tone={item.tone} sub={`${completeness.total} desa aktif`} />
+              <HorizontalStatBar
+                key={item.label}
+                label={item.label}
+                value={item.value}
+                max={maxStatus}
+                tone={item.tone}
+                sub={<><AnimatedCounter value={completeness.total} duration={1.1} /> desa aktif</>}
+                subTitle={`${completeness.total} desa aktif`}
+              />
             ))}
           </div>
         </div>
@@ -519,7 +521,9 @@ export default function DashboardPage() {
                         transform="rotate(-90 50 50)" strokeDasharray={`${lPct * circumference} ${circumference}`} />
                       <circle cx="50" cy="50" r="40" fill="none" stroke="#F472B6" strokeWidth="12" strokeLinecap="round"
                         transform="rotate(-90 50 50)" strokeDasharray={`${(1 - lPct) * circumference} ${circumference}`} strokeDashoffset={`${-lPct * circumference}`} />
-                      <text x="50" y="54" textAnchor="middle" fill="#1f2937" fontSize="12" fontWeight="700">{(total).toLocaleString('id-ID')}</text>
+                      <text x="50" y="54" textAnchor="middle" fill="#1f2937" fontSize="12" fontWeight="700">
+                        <AnimatedCounter as="tspan" value={total} />
+                      </text>
                     </>
                   );
                 })()}
@@ -527,11 +531,15 @@ export default function DashboardPage() {
               <div className="space-y-3 flex-1">
                 <div>
                   <div className="text-xs text-gray-500 mb-0.5">Laki-laki</div>
-                  <div className="text-lg font-bold text-blue-600">{(rekap?.dataUmum?.total_jiwa_l || 0).toLocaleString('id-ID')}</div>
+                  <div className="text-lg font-bold text-blue-600">
+                    <AnimatedCounter value={rekap?.dataUmum?.total_jiwa_l || 0} />
+                  </div>
                 </div>
                 <div>
                   <div className="text-xs text-gray-500 mb-0.5">Perempuan</div>
-                  <div className="text-lg font-bold text-pink-500">{(rekap?.dataUmum?.total_jiwa_p || 0).toLocaleString('id-ID')}</div>
+                  <div className="text-lg font-bold text-pink-500">
+                    <AnimatedCounter value={rekap?.dataUmum?.total_jiwa_p || 0} />
+                  </div>
                 </div>
               </div>
             </div>
@@ -555,7 +563,9 @@ export default function DashboardPage() {
                         return (
                           <g key={i}>
                             <circle cx={x} cy={y} r="4" fill="#fff" stroke="#059669" strokeWidth="2" />
-                            <text x={x} y={y - 12} textAnchor="middle" fill="#064E3B" fontSize="11" fontWeight="bold">{t.total_jiwa.toLocaleString()}</text>
+                            <text x={x} y={y - 12} textAnchor="middle" fill="#064E3B" fontSize="11" fontWeight="bold">
+                              <AnimatedCounter as="tspan" value={t.total_jiwa} />
+                            </text>
                             <text x={x} y="115" textAnchor="middle" fill="#64748b" fontSize="10">{t.tahun}</text>
                           </g>
                         );

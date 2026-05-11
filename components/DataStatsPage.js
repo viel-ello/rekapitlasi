@@ -14,11 +14,8 @@ import {
 import { MONTHS } from '@/lib/dataPages';
 import { buildColumnTotals, buildDesaRanking, buildStatsSummary } from '@/lib/chartStats';
 import { validateRow, countIssues } from '@/lib/validation';
+import AnimatedCounter from '@/components/AnimatedCounter';
 import { DataPageIcon } from '@/components/DataPageIcon';
-
-function formatNumber(value) {
-  return Number(value || 0).toLocaleString('id-ID');
-}
 
 function AnimatedBar({ percent, className = 'bg-primary-600' }) {
   return (
@@ -48,7 +45,9 @@ function KpiCard({ label, value, sub, icon: Icon, tone = 'primary' }) {
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-2xl font-bold text-gray-800">{value}</div>
+          <div className="text-2xl font-bold text-gray-800">
+            <AnimatedCounter value={value} />
+          </div>
           <div className="text-sm font-semibold text-gray-700 mt-0.5">{label}</div>
           <div className="text-xs text-gray-500 mt-1">{sub}</div>
         </div>
@@ -212,10 +211,16 @@ export default function DataStatsPage({ config }) {
         animate="show"
         className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4"
       >
-        <KpiCard label="Desa Aktif" value={formatNumber(summary.totalDesa)} sub={`${formatNumber(summary.filledDesa)} desa sudah punya record`} icon={CheckCircle} tone="green" />
-        <KpiCard label="Indikator" value={formatNumber(summary.indicatorCount)} sub="kolom standar divisualkan" icon={ClipboardList} tone="blue" />
-        <KpiCard label="Total Nilai" value={formatNumber(summary.totalValue)} sub="akumulasi semua indikator" icon={ChartLineUp} tone="primary" />
-        <KpiCard label="Perlu Dicek" value={formatNumber(needsCheck)} sub="desa dengan warning/anomali" icon={ExclamationCircle} tone="amber" />
+        <KpiCard
+          label="Desa Aktif"
+          value={summary.totalDesa}
+          sub={<><AnimatedCounter value={summary.filledDesa} duration={1.2} /> desa sudah punya record</>}
+          icon={CheckCircle}
+          tone="green"
+        />
+        <KpiCard label="Indikator" value={summary.indicatorCount} sub="kolom standar divisualkan" icon={ClipboardList} tone="blue" />
+        <KpiCard label="Total Nilai" value={summary.totalValue} sub="akumulasi semua indikator" icon={ChartLineUp} tone="primary" />
+        <KpiCard label="Perlu Dicek" value={needsCheck} sub="desa dengan warning/anomali" icon={ExclamationCircle} tone="amber" />
       </motion.div>
 
       <div className="grid xl:grid-cols-2 gap-6">
@@ -235,7 +240,9 @@ export default function DataStatsPage({ config }) {
               >
                 <div className="flex items-center justify-between gap-3 text-sm">
                   <span className="font-medium text-gray-700 truncate" title={item.label}>{item.label}</span>
-                  <span className="font-bold text-gray-900">{formatNumber(item.total)}</span>
+                  <span className="font-bold text-gray-900">
+                    <AnimatedCounter value={item.total} duration={1.2} />
+                  </span>
                 </div>
                 <AnimatedBar percent={(item.total / maxTotal) * 100} className={index % 3 === 0 ? 'bg-primary-600' : index % 3 === 1 ? 'bg-blue-500' : 'bg-amber-500'} />
               </motion.div>
@@ -279,7 +286,9 @@ export default function DataStatsPage({ config }) {
                     </div>
                     <AnimatedBar percent={(item.value / maxRankValue) * 100} className="bg-primary-600" />
                   </div>
-                  <span className="text-sm font-bold text-gray-900 text-right">{formatNumber(item.value)}</span>
+                  <span className="text-sm font-bold text-gray-900 text-right">
+                    <AnimatedCounter value={item.value} duration={1.2} />
+                  </span>
                 </motion.div>
               ))}
             </div>

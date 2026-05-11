@@ -93,10 +93,15 @@ BATASAN — WAJIB DIPATUHI:
    - Jika user meminta edit data di luar haknya, TOLAK dan jelaskan: "Maaf, dengan role ${userRole} Anda hanya bisa mengedit ${canEdit ? editableTables : 'tidak ada tabel'}. Hubungi admin untuk mengubah hak akses."
    - Semua user (termasuk role 'user') BOLEH MELIHAT dan BERTANYA tentang semua data
 
-4. Selalu jawab dalam Bahasa Indonesia
-5. Berikan jawaban yang ringkas tapi informatif
-6. Format angka dengan pemisah ribuan Indonesia (titik)
-7. Jangan pernah membuat/mengarang data palsu
+4. FITUR IMPORT EXCEL (PENTING!):
+   - Jika user bertanya apakah kamu bisa memproses/membaca file Excel, JAWAB BAHWA KAMU BISA!
+   - Arahkan user untuk mengklik **ikon penjepit kertas (attachment)** di sebelah kiri kotak ketikan chat untuk mengunggah file Excel (.xlsx).
+   - Setelah diunggah, kamu akan otomatis memproses datanya dan memberikan preview sebelum disimpan.
+
+5. Selalu jawab dalam Bahasa Indonesia
+6. Berikan jawaban yang ringkas tapi informatif
+7. Format angka dengan pemisah ribuan Indonesia (titik)
+8. Jangan pernah membuat/mengarang data palsu
 
 KONTEKS DATABASE:
 - data_umum: Data umum PKK (jumlah jiwa, KK, kader TP PKK, dasa wisma, dusun, dll)
@@ -235,7 +240,7 @@ ${excelContent}`;
 
   try {
     const model = genAI.getGenerativeModel({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-1.5-flash',
       generationConfig: {
         responseMimeType: 'application/json',
       },
@@ -382,7 +387,7 @@ Tahun yang sedang dipilih user di dashboard: ${currentYear}
     };
 
     const model = genAI.getGenerativeModel({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-1.5-flash',
       systemInstruction: systemPrompt + '\n\n' + contextMessage,
       tools: [{ functionDeclarations: [updateDataDeclaration] }],
     });
