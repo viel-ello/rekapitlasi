@@ -49,7 +49,7 @@ export async function POST(request) {
 
     for (const result of results) {
       if (!result.skipped && result.success > 0) {
-        writeLog({
+        await writeLog({
           userId: user.userId,
           username: user.username,
           action: 'import',

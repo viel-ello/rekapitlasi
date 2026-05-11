@@ -110,13 +110,25 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Parameter table tidak valid. Pilih: ' + Object.keys(TABLE_COLUMNS).join(', ') }, { status: 400 });
     }
 
-    const cols = TABLE_COLUMNS[tableName];
+    const rawCols = TABLE_COLUMNS[tableName];
 
     // Fetch desa list
     const { data: desaList } = await supabase.from('desa').select('nama, nomor_urut').eq('is_active', 1).order('nomor_urut');
 
     // Fetch dynamic columns
     const { data: dynCols } = await supabase.from('table_schemas').select('*').eq('table_name', tableName);
+
+    // Fetch overrides (rename/hide)
+    const { data: overrides } = await supabase.from('table_column_overrides').select('*').eq('table_name', tableName);
+    const overrideMap = {};
+    (overrides || []).forEach((o) => { overrideMap[o.column_key] = o; });
+
+    const cols = rawCols
+      .filter((c) => !overrideMap[c.key]?.is_hidden)
+      .map((c) => ({
+        key: c.key,
+        label: overrideMap[c.key]?.label_override?.trim() || c.label,
+      }));
 
     const wb = new ExcelJS.Workbook();
     wb.creator = 'Sistem Rekapitulasi PKK';

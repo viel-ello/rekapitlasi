@@ -132,9 +132,14 @@ export default function LoginPage() {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ type: 'spring', stiffness: 200, delay: 0.2 }}
-              className="mx-auto w-20 h-20 mb-4 overflow-hidden rounded-full shadow-lg shadow-primary-300/40 ring-4 ring-primary-100"
+              className="mx-auto w-20 h-20 mb-4 overflow-hidden rounded-full shadow-lg shadow-primary-300/40 ring-4 ring-primary-100 bg-white flex items-center justify-center"
             >
-              <img src="/logo.png" alt="Logo Baturetno" className="w-full h-full object-cover" />
+              <img
+                src="/logo.png"
+                alt="Logo TP PKK Kecamatan Baturetno"
+                className="w-full h-full object-cover"
+                onError={(e) => { e.currentTarget.src = '/map-baturetno.svg'; e.currentTarget.classList.replace('object-cover', 'object-contain'); }}
+              />
             </motion.div>
             <motion.h1
               initial={{ opacity: 0, y: 10 }}

@@ -27,10 +27,23 @@ async function buildSheet(wb, tahun, sheetName, dbTable, title, cols) {
   // Fetch dynamic columns for this table
   const { data: dynamicCols } = await supabase.from('table_schemas').select('*').eq('table_name', dbTable);
   const dynCols = dynamicCols || [];
-  
+
+  // Fetch column overrides (rename/hide) for this table
+  const { data: overrides } = await supabase.from('table_column_overrides').select('*').eq('table_name', dbTable);
+  const overrideMap = {};
+  (overrides || []).forEach((o) => { overrideMap[o.column_key] = o; });
+
+  // Filter hidden columns and apply rename
+  const visibleCols = cols
+    .filter((c) => !overrideMap[c.key]?.is_hidden)
+    .map((c) => ({
+      key: c.key,
+      label: overrideMap[c.key]?.label_override?.trim() || c.label,
+    }));
+
   const ws = wb.addWorksheet(sheetName);
-  const hdrs = ['No','Nama Desa',...cols.map(c=>c.label), ...dynCols.map(c=>c.column_label)];
-  const keys = cols.map(c=>c.key);
+  const hdrs = ['No','Nama Desa',...visibleCols.map(c=>c.label), ...dynCols.map(c=>c.column_label)];
+  const keys = visibleCols.map(c=>c.key);
   addTitle(ws, `DATA KEGIATAN PKK — ${title}`, 'TP PKK KECAMATAN BATURETNO', tahun, hdrs.length);
   styleH(ws.addRow(hdrs));
   ws.columns.forEach((c,i)=>{c.width=i<2?(i===0?5:18):12;});

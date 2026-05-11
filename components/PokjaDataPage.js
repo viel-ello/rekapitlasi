@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Lock, FloppyDisk, Search, ExclamationCircle, CheckCircle } from 'flowbite-react-icons/outline';
 import { validateRow, countIssues } from '@/lib/validation';
+import { applyColumnOverrides } from '@/lib/columnOverrides';
 
 /**
  * Reusable Pokja data table component with role-based access control and inline validation
@@ -20,13 +21,20 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
   const [canEdit, setCanEdit] = useState(false);
   const [userRole, setUserRole] = useState('');
   const [dynamicColumns, setDynamicColumns] = useState([]);
+  const [overrides, setOverrides] = useState([]);
   
   const [searchQuery, setSearchQuery] = useState('');
+
+  const effectiveColumns = useMemo(
+    () => applyColumnOverrides(columns, overrides).filter((c) => !c.hidden),
+    [columns, overrides]
+  );
 
   useEffect(() => {
     fetchDesa();
     checkPermission();
     fetchDynamicColumns();
+    fetchOverrides();
   }, []);
 
   useEffect(() => {
@@ -62,6 +70,16 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
       if (res.ok) setDynamicColumns(await res.json());
     } catch (error) {
       console.error('Failed to fetch dynamic columns');
+    }
+  };
+
+  const fetchOverrides = async () => {
+    if (!tableName) return;
+    try {
+      const res = await fetch(`/api/admin/column-overrides?table_name=${tableName}`);
+      if (res.ok) setOverrides(await res.json());
+    } catch (error) {
+      console.error('Failed to fetch column overrides');
     }
   };
 
@@ -109,7 +127,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
   };
 
   const getRowIssueCount = (desaId) => {
-    const validation = validateRow(data[desaId] || {}, columns, prevYearData[desaId] || null);
+    const validation = validateRow(data[desaId] || {}, effectiveColumns, prevYearData[desaId] || null);
     const issues = countIssues(validation);
     return issues.errors + issues.warnings;
   };
@@ -118,6 +136,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
     const rowData = data[desaId] || {};
     const payload = { desa_id: desaId, tahun, custom_columns: {} };
     
+    // Kirim SEMUA kolom standar (termasuk yang hidden) supaya data di DB tetap konsisten
     columns.forEach(col => { payload[col.key] = rowData[col.key] || 0; });
     
     dynamicColumns.forEach(col => {
@@ -156,7 +175,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
     setSaving(null);
     setTimeout(() => setToast(null), 3000);
     setTimeout(() => setSaveStatus(prev => ({ ...prev, [desaId]: null })), 5000); // clear checkmark after 5s
-  }, [data, prevYearData, tahun, apiEndpoint, columns, canEdit, dynamicColumns]);
+  }, [data, prevYearData, tahun, apiEndpoint, columns, effectiveColumns, canEdit, dynamicColumns]);
 
   const saveAll = async () => {
     if (!canEdit) return;
@@ -200,7 +219,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
 
   const filteredDesa = desa.filter(d => d.nama.toLowerCase().includes(searchQuery.toLowerCase()));
   const validationSummary = filteredDesa.reduce((acc, d) => {
-    const validation = validateRow(data[d.id] || {}, columns, prevYearData[d.id] || null);
+    const validation = validateRow(data[d.id] || {}, effectiveColumns, prevYearData[d.id] || null);
     const issues = countIssues(validation);
     acc.errors += issues.errors;
     acc.warnings += issues.warnings;
@@ -212,7 +231,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
   const MobileCard = ({ d, i }) => {
     const rowData = data[d.id] || {};
     const prevRowData = prevYearData[d.id] || null;
-    const validation = validateRow(rowData, columns, prevRowData);
+    const validation = validateRow(rowData, effectiveColumns, prevRowData);
     const { errors, warnings } = countIssues(validation);
     const isSaving = saving === d.id;
     const isSaved = saveStatus[d.id] === 'saved';
@@ -254,7 +273,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          {columns.map(col => {
+          {effectiveColumns.map(col => {
             const valObj = validation[col.key] || { valid: true };
             const hasError = valObj.severity === 'error';
             const hasWarning = valObj.severity === 'warning';
@@ -384,12 +403,17 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
               <tr>
                 <th rowSpan={2} style={{ position: 'sticky', left: 0, zIndex: 30, background: '#f9fafb', minWidth: 40 }}>No</th>
                 <th rowSpan={2} style={{ position: 'sticky', left: 40, zIndex: 30, background: '#f9fafb', minWidth: 130 }}>Nama Desa</th>
-                <th colSpan={columns.length} className="text-center bg-gray-50">Kolom Standar</th>
+                <th colSpan={effectiveColumns.length} className="text-center bg-gray-50">Kolom Standar</th>
                 {dynamicColumns.length > 0 && <th colSpan={dynamicColumns.length} className="text-center text-primary-700 bg-primary-50/40">Kolom Dinamis</th>}
                 {canEdit && <th rowSpan={2} className="text-center sticky right-0 z-30" style={{ minWidth: 60, background: '#f9fafb' }}>Aksi</th>}
               </tr>
               <tr>
-                {columns.map(col => <th key={col.key} className="text-center" style={{ minWidth: 80 }}>{col.label}</th>)}
+                {effectiveColumns.map(col => (
+                  <th key={col.key} className="text-center" style={{ minWidth: 80 }} title={col.renamed ? `Asli: ${col.originalLabel}` : undefined}>
+                    {col.label}
+                    {col.renamed && <span className="ml-1 text-[9px] text-amber-500" aria-hidden="true">*</span>}
+                  </th>
+                ))}
                 {dynamicColumns.map(col => <th key={`dyn-${col.column_key}`} className="text-center text-primary-700 bg-primary-50/30" style={{ minWidth: 100 }}>{col.column_label}</th>)}
               </tr>
             </thead>
@@ -397,13 +421,13 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
               {filteredDesa.map((d, i) => {
                 const rowData = data[d.id] || {};
                 const prevRowData = prevYearData[d.id] || null;
-                const validation = validateRow(rowData, columns, prevRowData);
+                const validation = validateRow(rowData, effectiveColumns, prevRowData);
 
                 return (
                   <tr key={d.id} className="group">
                     <td style={{ position: 'sticky', left: 0, background: '#fff', zIndex: 10, textAlign: 'center' }} className="group-hover:bg-primary-50/50 transition-colors">{i + 1}</td>
                     <td className="col-desa group-hover:bg-primary-50/50 transition-colors" style={{ left: 40 }}>{d.nama}</td>
-                    {columns.map(col => {
+                    {effectiveColumns.map(col => {
                       const valObj = validation[col.key] || { valid: true };
                       const hasError = valObj.severity === 'error';
                       const hasWarning = valObj.severity === 'warning';
@@ -481,7 +505,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
                 <tr className="row-total sticky bottom-0 z-20 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
                   <td style={{ position: 'sticky', left: 0, background: '#f0fdf4', zIndex: 30 }}></td>
                   <td className="col-desa" style={{ left: 40, background: '#f0fdf4', zIndex: 30 }}>JUMLAH</td>
-                  {columns.map(col => (
+                  {effectiveColumns.map(col => (
                     <td key={col.key} className="text-center font-bold">
                       {getTotal(col.key).toLocaleString('id-ID')}
                     </td>

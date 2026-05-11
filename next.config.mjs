@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverExternalPackages: ['better-sqlite3'],
+  // Database sepenuhnya di Supabase; tidak ada dependency native yang butuh externalized.
 };
 
 export default nextConfig;

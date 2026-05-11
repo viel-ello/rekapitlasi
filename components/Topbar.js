@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { Search, Bell, ArrowRightToBracket, Lock, AngleDown, Bars } from 'flowbite-react-icons/outline';
+import { useRouter } from 'next/navigation';
+import { Bell, ArrowRightToBracket, Lock, AngleDown, Bars } from 'flowbite-react-icons/outline';
 import { User } from 'flowbite-react-icons/solid';
 
-export default function Topbar({ user, onMobileMenuToggle }) {
+export default function Topbar({ user, onMobileMenuToggle, onOpenPasswordModal }) {
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
+  const router = useRouter();
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -21,6 +23,23 @@ export default function Topbar({ user, onMobileMenuToggle }) {
   const getInitials = (name) => {
     if (!name) return 'U';
     return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  };
+
+  const handleLogout = async () => {
+    await fetch('/api/auth', { method: 'DELETE' });
+    localStorage.removeItem('user');
+    router.push('/');
+  };
+
+  const handleProfile = () => {
+    setShowDropdown(false);
+    router.push('/dashboard/profile');
+  };
+
+  const handleChangePassword = () => {
+    setShowDropdown(false);
+    if (onOpenPasswordModal) onOpenPasswordModal();
+    else router.push('/dashboard/profile');
   };
 
   const roleBadgeColor = {
@@ -44,24 +63,18 @@ export default function Topbar({ user, onMobileMenuToggle }) {
         >
           <Bars className="w-5 h-5" />
         </button>
-
-        {/* Search */}
-        <div className="relative w-full max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Cari menu, data, desa..."
-            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:bg-white outline-none transition-all"
-          />
-        </div>
       </div>
 
       {/* Right Section */}
       <div className="flex items-center gap-3 ml-4">
-        {/* Notification */}
-        <button className="relative p-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors" title="Notifikasi">
+        {/* Notification (placeholder — fitur akan dihubungkan ke sistem notifikasi) */}
+        <button
+          className="relative p-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+          title="Notifikasi (segera hadir)"
+          aria-label="Notifikasi"
+          disabled
+        >
           <Bell className="w-5 h-5" />
-          <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white" />
         </button>
 
         {/* Profile */}
@@ -69,6 +82,8 @@ export default function Topbar({ user, onMobileMenuToggle }) {
           <button
             onClick={() => setShowDropdown(!showDropdown)}
             className="flex items-center gap-2.5 py-1.5 px-2 rounded-xl hover:bg-gray-50 transition-colors"
+            aria-label="Menu profil"
+            aria-expanded={showDropdown}
           >
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-600 to-primary-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
               {getInitials(user?.nama_lengkap)}
@@ -94,15 +109,24 @@ export default function Topbar({ user, onMobileMenuToggle }) {
                 </div>
               </div>
               <div className="py-1">
-                <button className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-800 transition-colors">
+                <button
+                  onClick={handleProfile}
+                  className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-800 transition-colors"
+                >
                   <User className="w-4 h-4" /> Profil Saya
                 </button>
-                <button className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-800 transition-colors">
+                <button
+                  onClick={handleChangePassword}
+                  className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-800 transition-colors"
+                >
                   <Lock className="w-4 h-4" /> Ganti Password
                 </button>
               </div>
               <div className="border-t border-gray-50 py-1">
-                <button className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors">
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+                >
                   <ArrowRightToBracket className="w-4 h-4" /> Keluar
                 </button>
               </div>

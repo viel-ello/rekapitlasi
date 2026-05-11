@@ -39,10 +39,10 @@ export default function Sidebar({ user, onLogout, collapsed, onToggle, mobileOpe
     if (pwForm.new !== pwForm.confirm) { setPwMsg({ type: 'error', text: 'Password baru tidak cocok' }); return; }
     if (pwForm.new.length < 6) { setPwMsg({ type: 'error', text: 'Password minimal 6 karakter' }); return; }
     try {
-      const res = await fetch('/api/auth/change-password', {
+      const res = await fetch('/api/auth/password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ oldPassword: pwForm.old, newPassword: pwForm.new }),
+        body: JSON.stringify({ currentPassword: pwForm.old, newPassword: pwForm.new }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -63,8 +63,13 @@ export default function Sidebar({ user, onLogout, collapsed, onToggle, mobileOpe
       <div className="sidebar-brand">
         {!collapsed && (
           <>
-            <div className="flex-shrink-0 overflow-hidden rounded-full">
-              <img src="/logo.png" alt="Logo" className="w-9 h-9 object-cover rounded-full" />
+            <div className="flex-shrink-0 overflow-hidden rounded-full bg-primary-50 flex items-center justify-center w-9 h-9">
+              <img
+                src="/logo.png"
+                alt="Logo"
+                className="w-9 h-9 object-cover rounded-full"
+                onError={(e) => { e.currentTarget.src = '/map-baturetno.svg'; e.currentTarget.classList.replace('object-cover', 'object-contain'); }}
+              />
             </div>
             <div className="brand-text min-w-0">
               <h3 className="text-sm font-bold text-gray-800 truncate">PKK Rekapitulasi</h3>
@@ -82,7 +87,12 @@ export default function Sidebar({ user, onLogout, collapsed, onToggle, mobileOpe
             className="w-full flex flex-col items-center gap-1 py-1"
             title="Buka Menu"
           >
-            <img src="/logo.png" alt="Logo" className="w-8 h-8 object-cover rounded-full" />
+            <img
+              src="/logo.png"
+              alt="Logo"
+              className="w-8 h-8 object-cover rounded-full"
+              onError={(e) => { e.currentTarget.src = '/map-baturetno.svg'; e.currentTarget.classList.replace('object-cover', 'object-contain'); }}
+            />
             <AngleRight className="w-3 h-3 text-gray-400" />
           </button>
         )}

@@ -20,6 +20,19 @@ import { toNumericValue } from '@/lib/chartStats';
 
 const ALL_TABLES = OPERATIONAL_TABLES.map((item) => item.table);
 
+async function getHiddenKeysPerTable() {
+  const { data } = await supabase
+    .from('table_column_overrides')
+    .select('table_name, column_key, is_hidden')
+    .eq('is_hidden', 1);
+  const hidden = {};
+  (data || []).forEach((r) => {
+    if (!hidden[r.table_name]) hidden[r.table_name] = new Set();
+    hidden[r.table_name].add(r.column_key);
+  });
+  return hidden;
+}
+
 export async function GET(request) {
   try {
     const user = await requireAuth(request);
@@ -118,10 +131,13 @@ export async function GET(request) {
     ];
 
     // ── Completeness check ──
-    // Fetch desa_ids that have data in each table for this year
+    const hiddenKeysPerTable = await getHiddenKeysPerTable();
+
     const tableChecks = await Promise.all(
       selectedTables.map(async (tableName) => {
-        const keys = getTableKeys(tableName);
+        const allKeys = getTableKeys(tableName);
+        const hidden = hiddenKeysPerTable[tableName] || new Set();
+        const keys = allKeys.filter((k) => !hidden.has(k));
 
         let currentQuery = supabase.from(tableName).select('*').eq('tahun', tahun);
         let previousQuery = supabase.from(tableName).select('*').eq('tahun', Number(tahun) - 1);

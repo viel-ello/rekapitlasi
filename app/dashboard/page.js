@@ -9,6 +9,7 @@ import {
 } from 'flowbite-react-icons/outline';
 import { Heart } from 'flowbite-react-icons/solid';
 import AnimatedCounter from '@/components/AnimatedCounter';
+import { timeAgo } from '@/lib/time';
 
 const TABLE_FILTERS = [
   { value: 'all', label: 'Semua Data', short: 'Semua' },
@@ -243,7 +244,7 @@ export default function DashboardPage() {
     { label: 'Perlu Dicek', value: completeness.needsCheck, sub: 'ada warning/anomali', icon: ExclamationCircle, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
     { 
       label: 'Aktivitas Terakhir', 
-      value: lastActivity ? 'Baru saja' : 'Belum ada', 
+      value: lastActivity ? timeAgo(lastActivity.created_at) : 'Belum ada', 
       sub: lastActivity ? `${lastActivity.username} (${lastActivity.action})` : '-',
       icon: Clock, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100',
       isText: true
@@ -549,24 +550,42 @@ export default function DashboardPage() {
             <h3 className="flex items-center gap-2 text-sm font-bold font-mono text-dashboard mb-4 uppercase tracking-wide">
               <ChartLineUp className="w-4 h-4 text-accent-500" /> Tren Penduduk
             </h3>
-            <div className="h-32">
-              <svg viewBox="0 0 300 120" className="w-full h-full overflow-visible">
+            <div className="h-40">
+              <svg viewBox="0 0 320 140" preserveAspectRatio="none" className="w-full h-full">
                 {(() => {
+                  if (!trend || trend.length === 0) {
+                    return <text x="160" y="70" textAnchor="middle" fill="#9ca3af" fontSize="11">Belum ada data</text>;
+                  }
                   const max = Math.max(...trend.map(t => t.total_jiwa), 1);
-                  const pts = trend.map((t, i) => `${30 + i * 120},${100 - (t.total_jiwa / max) * 80}`).join(' L ');
+                  const padX = 26;
+                  const padTop = 26;    // ruang untuk label angka di atas titik
+                  const padBottom = 22; // ruang untuk label tahun
+                  const innerW = 320 - padX * 2;
+                  const innerH = 140 - padTop - padBottom;
+                  const n = trend.length;
+                  const stepX = n > 1 ? innerW / (n - 1) : 0;
+                  const coord = (i, v) => ({
+                    x: padX + (n > 1 ? i * stepX : innerW / 2),
+                    y: padTop + innerH - (v / max) * innerH,
+                  });
+                  const pts = trend.map((t, i) => {
+                    const { x, y } = coord(i, t.total_jiwa);
+                    return `${x},${y}`;
+                  }).join(' L ');
                   return (
                     <>
-                      <path d={`M ${pts}`} fill="none" stroke="#059669" strokeWidth="3" />
+                      <path d={`M ${pts}`} fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                       {trend.map((t, i) => {
-                        const x = 30 + i * 120;
-                        const y = 100 - (t.total_jiwa / max) * 80;
+                        const { x, y } = coord(i, t.total_jiwa);
+                        // Anchor dinamis supaya label di ujung tidak keluar card
+                        const anchor = i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle';
                         return (
                           <g key={i}>
-                            <circle cx={x} cy={y} r="4" fill="#fff" stroke="#059669" strokeWidth="2" />
-                            <text x={x} y={y - 12} textAnchor="middle" fill="#064E3B" fontSize="11" fontWeight="bold">
-                              <AnimatedCounter as="tspan" value={t.total_jiwa} />
+                            <circle cx={x} cy={y} r="3.5" fill="#fff" stroke="#059669" strokeWidth="2" />
+                            <text x={x} y={y - 10} textAnchor={anchor} fill="#064E3B" fontSize="10" fontWeight="700">
+                              {Number(t.total_jiwa || 0).toLocaleString('id-ID')}
                             </text>
-                            <text x={x} y="115" textAnchor="middle" fill="#64748b" fontSize="10">{t.tahun}</text>
+                            <text x={x} y={140 - 6} textAnchor={anchor} fill="#64748b" fontSize="10">{t.tahun}</text>
                           </g>
                         );
                       })}

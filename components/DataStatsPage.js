@@ -14,6 +14,7 @@ import {
 import { MONTHS } from '@/lib/dataPages';
 import { buildColumnTotals, buildDesaRanking, buildStatsSummary } from '@/lib/chartStats';
 import { validateRow, countIssues } from '@/lib/validation';
+import { applyColumnOverrides } from '@/lib/columnOverrides';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import { DataPageIcon } from '@/components/DataPageIcon';
 
@@ -69,10 +70,33 @@ export default function DataStatsPage({ config }) {
   const [selectedMetric, setSelectedMetric] = useState(config.primaryMetric || config.columns[0]?.key);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [overrides, setOverrides] = useState([]);
 
   useEffect(() => {
     setSelectedMetric(config.primaryMetric || config.columns[0]?.key);
   }, [config]);
+
+  // Load column overrides (rename/hide) — public read for logged-in users
+  useEffect(() => {
+    let cancelled = false;
+    async function loadOverrides() {
+      try {
+        const res = await fetch(`/api/admin/column-overrides?table_name=${encodeURIComponent(config.tableName)}`);
+        if (res.ok && !cancelled) {
+          setOverrides(await res.json());
+        }
+      } catch {
+        // silent — fallback ke default labels
+      }
+    }
+    loadOverrides();
+    return () => { cancelled = true; };
+  }, [config.tableName]);
+
+  const effectiveColumns = useMemo(
+    () => applyColumnOverrides(config.columns, overrides).filter((c) => !c.hidden),
+    [config.columns, overrides]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -126,20 +150,20 @@ export default function DataStatsPage({ config }) {
     return map;
   }, [prevRows]);
 
-  const summary = useMemo(() => buildStatsSummary(rows, config.columns, desa), [rows, config.columns, desa]);
+  const summary = useMemo(() => buildStatsSummary(rows, effectiveColumns, desa), [rows, effectiveColumns, desa]);
   const totals = summary.totals;
   const maxTotal = Math.max(...totals.map(item => item.total), 1);
   const ranking = useMemo(() => buildDesaRanking(rows, desa, selectedMetric), [rows, desa, selectedMetric]);
   const maxRankValue = Math.max(...ranking.map(item => item.value), 1);
-  const selectedColumn = config.columns.find((column) => column.key === selectedMetric) || config.columns[0];
+  const selectedColumn = effectiveColumns.find((column) => column.key === selectedMetric) || effectiveColumns[0];
 
   const needsCheck = useMemo(() => {
     return rows.reduce((sum, row) => {
-      const validation = validateRow(row, config.columns, prevMap[row.desa_id]);
+      const validation = validateRow(row, effectiveColumns, prevMap[row.desa_id]);
       const issues = countIssues(validation);
       return sum + (issues.errors > 0 || issues.warnings > 0 ? 1 : 0);
     }, 0);
-  }, [rows, config.columns, prevMap]);
+  }, [rows, effectiveColumns, prevMap]);
 
   if (loading) {
     return (
@@ -262,7 +286,7 @@ export default function DataStatsPage({ config }) {
               className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 focus:ring-2 focus:ring-primary-500 outline-none"
               aria-label="Pilih indikator ranking desa"
             >
-              {config.columns.map((column) => <option key={column.key} value={column.key}>{column.label}</option>)}
+              {effectiveColumns.map((column) => <option key={column.key} value={column.key}>{column.label}</option>)}
             </select>
           </div>
           <div className="p-4">

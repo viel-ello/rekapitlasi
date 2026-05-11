@@ -1,16 +1,14 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { supabase } from '@/lib/supabase';
-import { ROLE_TABLE_MAP } from '@/lib/excel/sheetMap';
-import { parseExcel } from '@/lib/excel/parseExcel';
-import { getAuthUser, canWrite, ROLE_PERMISSIONS } from '@/lib/auth';
+import { getAuthUser, ROLE_PERMISSIONS } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 // Whitelist of tables that can be mutated via AI
-const VALID_TABLES = ['data_umum', 'data_pokja1', 'data_pokja2', 'data_pokja3', 'data_pokja4', 'data_bumil'];
+const VALID_TABLES = ['data_umum', 'data_pokja1', 'data_pokja2', 'data_pokja3', 'data_pokja4', 'data_kegiatan_warga', 'data_bumil'];
 
 // Whitelist of valid column names per table (for server-side validation)
 const VALID_COLUMNS = {
@@ -19,6 +17,7 @@ const VALID_COLUMNS = {
   data_pokja2: ['paket_a_klp','paket_a_wrg','paket_b_klp','paket_b_wrg','paket_c_klp','paket_c_wrg','taman_bacaan','usaha_mikro','up2k_pemula_klp','up2k_pemula_psrt','toko_pkk','koperasi_belum_bh_kop','koperasi_berbadan_hukum_kop','koperasi_berbadan_hukum_angg'],
   data_pokja3: ['kader_pangan','kader_sandang','kader_tata_laksana_rt','pangan_beras','pemanfaatan_peternakan','pemanfaatan_perikanan','pemanfaatan_warung_hidup','pemanfaatan_lumbung_hidup','pemanfaatan_toga','industri_pangan','industri_sandang','industri_jasa','rumah_sehat','rumah_kurang_sehat'],
   data_pokja4: ['kader_posyandu','kader_gizi','kader_kesling','kader_kb','posyandu_jumlah','posyandu_terintegrasi','lansia_jml_klp','lansia_jml_anggota','rumah_jamban','rumah_spal','air_pdam','air_sumur','jml_pus','jml_wus','akseptor_kb_l','akseptor_kb_p','kk_tabungan'],
+  data_kegiatan_warga: ['jml_dusun','jml_rw','jml_rt','jml_dawis','jml_krt','jml_kk','jml_anggota_l','jml_anggota_p','balita_l','balita_p','pus','wus','ibu_hamil','ibu_menyusui','lansia','rumah_sehat','rumah_kurang_sehat','punya_tempat_sampah','punya_spal','stiker_p4k','air_pdam','air_sumur','air_sungai','air_dll','jamban','makan_beras','makan_non_beras','ikut_up2k','ikut_pekarangan','ikut_industri','ikut_kesling','jkn_bpjs'],
   data_bumil: ['ibu_hamil','ibu_melahirkan','ibu_nifas','ibu_meninggal','bayi_lahir_l','bayi_lahir_p','akte_ada','akte_tidak','bayi_meninggal_l','bayi_meninggal_p'],
 };
 
@@ -32,8 +31,13 @@ const ROLE_LABELS = {
   user: 'User Biasa (hanya bisa melihat data)',
 };
 
-// Fetch context data from database for the AI (ALL years)
-async function getDbContext(role) {
+// Fetch context data from database for the AI.
+// Default: hanya tahun aktif ±1 untuk menghemat token dan membatasi data
+// yang dikirim ke pihak ketiga (Gemini).
+async function getDbContext(role, tahun) {
+  const currentYear = Number(tahun) || new Date().getFullYear();
+  const contextYears = [currentYear - 1, currentYear, currentYear + 1];
+
   const { data: desa } = await supabase.from('desa').select('id, nama, nomor_urut').eq('is_active', 1).order('nomor_urut');
 
   const allTables = ['data_umum', 'data_pokja1', 'data_pokja2', 'data_pokja3', 'data_pokja4'];
@@ -41,7 +45,11 @@ async function getDbContext(role) {
   const availableYears = new Set();
 
   for (const t of allTables) {
-    const { data } = await supabase.from(t).select('*').order('tahun', { ascending: false });
+    const { data } = await supabase
+      .from(t)
+      .select('*')
+      .in('tahun', contextYears)
+      .order('tahun', { ascending: false });
     summaries[t] = data || [];
     (data || []).forEach(r => availableYears.add(r.tahun));
   }
@@ -153,7 +161,15 @@ async function handleFileUpload(request) {
     return NextResponse.json({ error: 'File terlalu besar (maksimal 5MB)' }, { status: 400 });
   }
 
-  // 3. Validate magic bytes (.xlsx = PK zip format)
+  // 3. Validate file name extension
+  const name = typeof file.name === 'string' ? file.name.toLowerCase() : '';
+  if (!name.endsWith('.xlsx')) {
+    return NextResponse.json({
+      error: 'Hanya file Excel .xlsx yang didukung. File .xls lama dan .docx tidak bisa diproses.',
+    }, { status: 400 });
+  }
+
+  // 4. Validate magic bytes (.xlsx = PK zip format)
   const buffer = Buffer.from(await file.arrayBuffer());
   if (buffer.length < 4 || buffer[0] !== 0x50 || buffer[1] !== 0x4B) {
     return NextResponse.json({
@@ -240,7 +256,7 @@ ${excelContent}`;
 
   try {
     const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
+      model: process.env.GEMINI_MODEL || 'gemini-flash-latest',
       generationConfig: {
         responseMimeType: 'application/json',
       },
@@ -332,9 +348,9 @@ export async function POST(request) {
     const userName = authUser.username || 'Pengguna';
     const allowedTables = ROLE_PERMISSIONS[userRole] || [];
 
-    // Get database context (all years)
+    // Get database context — hanya tahun aktif ±1
     const currentYear = tahun || new Date().getFullYear();
-    const ctx = await getDbContext(userRole);
+    const ctx = await getDbContext(userRole, currentYear);
 
     const contextMessage = `
 DATA SELURUH TAHUN:
@@ -387,13 +403,13 @@ Tahun yang sedang dipilih user di dashboard: ${currentYear}
     };
 
     const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
+      model: process.env.GEMINI_MODEL || 'gemini-flash-latest',
       systemInstruction: systemPrompt + '\n\n' + contextMessage,
       tools: [{ functionDeclarations: [updateDataDeclaration] }],
     });
 
-    // Build chat history
-    const chatHistory = (history || []).map(h => ({
+    // Build chat history — batasi hanya 12 pesan terakhir untuk kontrol token
+    const chatHistory = (history || []).slice(-12).map(h => ({
       role: h.role === 'user' ? 'user' : 'model',
       parts: [{ text: h.content }],
     }));

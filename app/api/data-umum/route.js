@@ -75,7 +75,7 @@ export async function POST(request) {
     if (upsertError) throw upsertError;
 
     const { data: desa } = await supabase.from('desa').select('nama').eq('id', desa_id).single();
-    writeLog({ userId: user.userId, username: user.username, action: 'update', tableName: 'data_umum', desaNama: desa?.nama, detail: `Tahun ${tahun}` });
+    await writeLog({ userId: user.userId, username: user.username, action: 'update', tableName: 'data_umum', desaNama: desa?.nama, detail: `Tahun ${tahun}` });
 
     return NextResponse.json({ success: true });
   } catch (error) {
