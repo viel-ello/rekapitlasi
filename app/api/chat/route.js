@@ -2,10 +2,15 @@ import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { supabase } from '@/lib/supabase';
 import { getAuthUser, ROLE_PERMISSIONS } from '@/lib/auth';
+import { parseYear, toBoundedInteger } from '@/lib/requestValidation';
+import { writeLog } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const MAX_CHAT_MESSAGE_LENGTH = 2000;
+const MAX_CHAT_HISTORY_ITEMS = 12;
+const MAX_EXCEL_SHEETS_FOR_AI = 10;
 
 // Whitelist of tables that can be mutated via AI
 const VALID_TABLES = ['data_umum', 'data_pokja1', 'data_pokja2', 'data_pokja3', 'data_pokja4', 'data_kegiatan_warga', 'data_bumil'];
@@ -110,6 +115,7 @@ BATASAN — WAJIB DIPATUHI:
 6. Berikan jawaban yang ringkas tapi informatif
 7. Format angka dengan pemisah ribuan Indonesia (titik)
 8. Jangan pernah membuat/mengarang data palsu
+9. Saat menjawab pertanyaan statistik atau analisis data, SELALU sertakan di akhir jawaban: "📊 Sumber: [nama_tabel] tahun [tahun]" agar user bisa memverifikasi. Contoh: "📊 Sumber: data_pokja4 tahun 2025"
 
 KONTEKS DATABASE:
 - data_umum: Data umum PKK (jumlah jiwa, KK, kader TP PKK, dasa wisma, dusun, dll)
@@ -189,6 +195,7 @@ async function handleFileUpload(request) {
   // Convert all sheets to text for AI interpretation
   const sheetsData = [];
   wb.eachSheet((ws, sheetId) => {
+    if (sheetsData.length >= MAX_EXCEL_SHEETS_FOR_AI) return;
     const rows = [];
     let rowCount = 0;
     ws.eachRow((row, rowNumber) => {
@@ -337,6 +344,16 @@ export async function POST(request) {
       }, { status: 401 });
     }
 
+    if (typeof message !== 'string' || !message.trim()) {
+      return NextResponse.json({ error: 'Pesan wajib diisi' }, { status: 400 });
+    }
+    if (message.length > MAX_CHAT_MESSAGE_LENGTH) {
+      return NextResponse.json(
+        { error: `Pesan terlalu panjang. Maksimal ${MAX_CHAT_MESSAGE_LENGTH} karakter.` },
+        { status: 400 }
+      );
+    }
+
     if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'PASTE_API_KEY_ANDA_DISINI') {
       return NextResponse.json({
         reply: '⚠️ API Key Gemini belum dikonfigurasi. Silakan isi GEMINI_API_KEY di file .env.local lalu restart server.'
@@ -349,7 +366,11 @@ export async function POST(request) {
     const allowedTables = ROLE_PERMISSIONS[userRole] || [];
 
     // Get database context — hanya tahun aktif ±1
-    const currentYear = tahun || new Date().getFullYear();
+    const year = parseYear(tahun || new Date().getFullYear());
+    if (year.error) {
+      return NextResponse.json({ error: year.error }, { status: 400 });
+    }
+    const currentYear = year.value;
     const ctx = await getDbContext(userRole, currentYear);
 
     const contextMessage = `
@@ -409,13 +430,13 @@ Tahun yang sedang dipilih user di dashboard: ${currentYear}
     });
 
     // Build chat history — batasi hanya 12 pesan terakhir untuk kontrol token
-    const chatHistory = (history || []).slice(-12).map(h => ({
+    const chatHistory = (Array.isArray(history) ? history : []).slice(-MAX_CHAT_HISTORY_ITEMS).map(h => ({
       role: h.role === 'user' ? 'user' : 'model',
-      parts: [{ text: h.content }],
+      parts: [{ text: String(h.content || '').slice(0, MAX_CHAT_MESSAGE_LENGTH) }],
     }));
 
     const chat = model.startChat({ history: chatHistory });
-    let result = await chat.sendMessage(message);
+    let result = await chat.sendMessage(message.trim());
 
     // Handle function calls if Gemini decides to use the tool
     const functionCalls = result.response.functionCalls();
@@ -438,30 +459,57 @@ Tahun yang sedang dipilih user di dashboard: ${currentYear}
         // 3. Validate column names against whitelist
         else {
           const validCols = VALID_COLUMNS[table_name] || [];
+          if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+            apiResponse = { error: 'Payload update tidak valid.' };
+          } else if (Object.keys(updates).length === 0) {
+            apiResponse = { error: 'Minimal satu kolom harus diupdate.' };
+          } else {
           const invalidCols = Object.keys(updates).filter(k => !validCols.includes(k));
           
           if (invalidCols.length > 0) {
             apiResponse = { error: `Kolom tidak valid: ${invalidCols.join(', ')}. Kolom yang diizinkan: ${validCols.join(', ')}` };
           } else {
             // 4. Sanitize values — only allow integer numbers
+            const validDesaId = toBoundedInteger(desa_id, 'desa_id', { min: 1, max: 2147483647 });
+            if (validDesaId.error) {
+              apiResponse = { error: validDesaId.error };
+            } else {
             const sanitizedUpdates = {};
             for (const [key, value] of Object.entries(updates)) {
-              const num = parseInt(value, 10);
-              sanitizedUpdates[key] = isNaN(num) ? 0 : num;
+              const parsed = toBoundedInteger(value, key);
+              if (parsed.error) {
+                apiResponse = { error: parsed.error };
+                break;
+              }
+              sanitizedUpdates[key] = parsed.value;
             }
 
             // 5. Perform database update
-            const { error } = await supabase
-              .from(table_name)
-              .update(sanitizedUpdates)
-              .eq('desa_id', desa_id)
-              .eq('tahun', currentYear);
-              
-            if (error) {
-              apiResponse = { error: `Gagal menyimpan ke database: ${error.message}` };
-            } else {
-              apiResponse = { success: true, message: `Data desa ${desa_id} di tabel ${table_name} berhasil diperbarui.` };
+            if (!apiResponse) {
+              const { data: updatedRows, error } = await supabase
+                .from(table_name)
+                .update(sanitizedUpdates)
+                .eq('desa_id', validDesaId.value)
+                .eq('tahun', currentYear)
+                .select('id');
+                
+              if (error) {
+                apiResponse = { error: `Gagal menyimpan ke database: ${error.message}` };
+              } else if (!updatedRows || updatedRows.length === 0) {
+                apiResponse = { error: `Data desa ${validDesaId.value} tahun ${currentYear} belum ada. Isi lewat halaman data atau import terlebih dahulu.` };
+              } else {
+                await writeLog({
+                  userId: authUser.userId,
+                  username: userName,
+                  action: 'ai_update',
+                  tableName: table_name,
+                  detail: `AI update desa_id ${validDesaId.value} tahun ${currentYear}: ${Object.keys(sanitizedUpdates).join(', ')}`,
+                });
+                apiResponse = { success: true, message: `Data desa ${validDesaId.value} di tabel ${table_name} berhasil diperbarui.` };
+              }
             }
+            }
+          }
           }
         }
         

@@ -1,0 +1,75 @@
+/**
+ * @file Audit log CSV export.
+ * GET /api/admin/logs/export?user_id=&table_name=&action=&desa=&from=&to=
+ * Default cap 5000 rows per request untuk mencegah OOM.
+ */
+import { NextResponse } from 'next/server';
+import { supabase } from '@/lib/supabase';
+import { requireAdmin } from '@/lib/auth';
+
+const CSV_MAX_ROWS = 5000;
+
+function csvEscape(value) {
+  if (value === null || value === undefined) return '';
+  const str = typeof value === 'object' ? JSON.stringify(value) : String(value);
+  if (/[",\n\r]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
+  return str;
+}
+
+export async function GET(request) {
+  try {
+    const admin = await requireAdmin(request);
+    if (!admin || admin.__forbidden) return requireAdmin.deny(admin);
+
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('user_id');
+    const tableName = searchParams.get('table_name');
+    const action = searchParams.get('action');
+    const desa = searchParams.get('desa');
+    const from = searchParams.get('from');
+    const to = searchParams.get('to');
+
+    let query = supabase
+      .from('audit_logs')
+      .select('created_at, username, action, table_name, desa_nama, detail, ip')
+      .order('created_at', { ascending: false })
+      .limit(CSV_MAX_ROWS);
+
+    if (userId) query = query.eq('user_id', Number(userId));
+    if (tableName) query = query.eq('table_name', tableName);
+    if (action) query = query.eq('action', action);
+    if (desa) query = query.eq('desa_nama', desa);
+    if (from) query = query.gte('created_at', from);
+    if (to) query = query.lte('created_at', to);
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const header = ['Waktu', 'User', 'Action', 'Tabel', 'Desa', 'Detail', 'IP'];
+    const lines = [header.join(',')];
+    for (const r of data || []) {
+      lines.push([
+        csvEscape(r.created_at),
+        csvEscape(r.username),
+        csvEscape(r.action),
+        csvEscape(r.table_name),
+        csvEscape(r.desa_nama),
+        csvEscape(r.detail),
+        csvEscape(r.ip),
+      ].join(','));
+    }
+    const csv = '\uFEFF' + lines.join('\n'); // BOM untuk Excel
+
+    const timestamp = new Date().toISOString().slice(0, 10);
+    return new NextResponse(csv, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="audit_logs_${timestamp}.csv"`,
+      },
+    });
+  } catch (error) {
+    console.error('Logs export error:', error);
+    return NextResponse.json({ error: 'Gagal export log' }, { status: 500 });
+  }
+}

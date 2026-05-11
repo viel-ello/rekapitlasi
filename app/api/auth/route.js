@@ -42,6 +42,12 @@ export async function POST(request) {
     // Login success — clear failed attempts
     await clearAttempts(request);
 
+    // Update last_login_at (best-effort, tidak blokir login kalau gagal)
+    try {
+      const { supabase } = await import('@/lib/supabase');
+      await supabase.from('users').update({ last_login_at: new Date().toISOString() }).eq('id', result.user.id);
+    } catch { /* silent — kolom mungkin belum dimigrate */ }
+
     // Set JWT token as httpOnly cookie
     const response = NextResponse.json({
       success: true,

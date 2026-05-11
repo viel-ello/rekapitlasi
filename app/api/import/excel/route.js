@@ -8,6 +8,9 @@ import { supabase } from '@/lib/supabase';
 import { requireAuth } from '@/lib/auth';
 import { parseExcel } from '@/lib/excel/parseExcel';
 import { buildImportDiff } from '@/lib/excel/previewDiff';
+import { parseYear } from '@/lib/requestValidation';
+
+const MAX_UPLOAD_SIZE = 5 * 1024 * 1024;
 
 export async function POST(request) {
   try {
@@ -16,15 +19,25 @@ export async function POST(request) {
 
     const formData = await request.formData();
     const file = formData.get('file');
-    const tahun = Number(formData.get('tahun') || new Date().getFullYear());
+    const tahunResult = parseYear(formData.get('tahun') || new Date().getFullYear());
 
     if (!file) {
       return NextResponse.json({ error: 'File Excel harus diunggah' }, { status: 400 });
     }
 
-    if (!Number.isInteger(tahun) || tahun < 2000 || tahun > 2100) {
-      return NextResponse.json({ error: 'Tahun tidak valid (2000-2100)' }, { status: 400 });
+    if (tahunResult.error) {
+      return NextResponse.json({ error: tahunResult.error }, { status: 400 });
     }
+
+    if (file.size > MAX_UPLOAD_SIZE) {
+      return NextResponse.json({ error: 'File terlalu besar (maksimal 5MB)' }, { status: 400 });
+    }
+
+    const fileName = typeof file.name === 'string' ? file.name.toLowerCase() : '';
+    if (!fileName.endsWith('.xlsx')) {
+      return NextResponse.json({ error: 'Hanya file Excel .xlsx yang didukung' }, { status: 400 });
+    }
+    const tahun = tahunResult.value;
 
     const buffer = Buffer.from(await file.arrayBuffer());
 

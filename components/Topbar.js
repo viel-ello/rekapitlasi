@@ -1,20 +1,42 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Bell, ArrowRightToBracket, Lock, AngleDown, Bars } from 'flowbite-react-icons/outline';
 import { User } from 'flowbite-react-icons/solid';
+import { timeAgo } from '@/lib/time';
 
 export default function Topbar({ user, onMobileMenuToggle, onOpenPasswordModal }) {
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showNotif, setShowNotif] = useState(false);
+  const [notifItems, setNotifItems] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef(null);
+  const notifRef = useRef(null);
   const router = useRouter();
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await fetch('/api/notifications?limit=10');
+      if (res.ok) {
+        const data = await res.json();
+        setNotifItems(data.items || []);
+        setUnreadCount(data.unreadCount || 0);
+      }
+    } catch { /* silent */ }
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 60000); // refresh tiap 1 menit
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setShowDropdown(false);
-      }
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setShowDropdown(false);
+      if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotif(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -42,6 +64,30 @@ export default function Topbar({ user, onMobileMenuToggle, onOpenPasswordModal }
     else router.push('/dashboard/profile');
   };
 
+  const markAllRead = async () => {
+    try {
+      await fetch('/api/notifications/mark-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ all: true }),
+      });
+      setNotifItems(prev => prev.map(n => ({ ...n, is_read: 1 })));
+      setUnreadCount(0);
+    } catch { /* silent */ }
+  };
+
+  const markOneRead = async (id) => {
+    try {
+      await fetch('/api/notifications/mark-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [id] }),
+      });
+      setNotifItems(prev => prev.map(n => n.id === id ? { ...n, is_read: 1 } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch { /* silent */ }
+  };
+
   const roleBadgeColor = {
     admin: 'bg-red-100 text-red-700',
     sekretaris: 'bg-blue-100 text-blue-700',
@@ -55,7 +101,6 @@ export default function Topbar({ user, onMobileMenuToggle, onOpenPasswordModal }
   return (
     <header className="flex items-center justify-between px-4 md:px-6 py-3 bg-white/80 backdrop-blur-lg border-b border-gray-100 sticky top-0 z-30">
       <div className="flex items-center gap-3 flex-1">
-        {/* Hamburger menu — mobile only */}
         <button
           className="md:hidden p-2 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-500"
           onClick={onMobileMenuToggle}
@@ -65,17 +110,59 @@ export default function Topbar({ user, onMobileMenuToggle, onOpenPasswordModal }
         </button>
       </div>
 
-      {/* Right Section */}
       <div className="flex items-center gap-3 ml-4">
-        {/* Notification (placeholder — fitur akan dihubungkan ke sistem notifikasi) */}
-        <button
-          className="relative p-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
-          title="Notifikasi (segera hadir)"
-          aria-label="Notifikasi"
-          disabled
-        >
-          <Bell className="w-5 h-5" />
-        </button>
+        {/* Notifications */}
+        <div className="relative" ref={notifRef}>
+          <button
+            onClick={() => { setShowNotif(!showNotif); if (!showNotif) fetchNotifications(); }}
+            className="relative p-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+            title="Notifikasi"
+            aria-label={`Notifikasi${unreadCount > 0 ? ` (${unreadCount} belum dibaca)` : ''}`}
+          >
+            <Bell className="w-5 h-5" />
+            {unreadCount > 0 && (
+              <span className="absolute top-1.5 right-1.5 min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </button>
+
+          {showNotif && (
+            <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                <span className="text-sm font-semibold text-gray-800">Notifikasi</span>
+                {unreadCount > 0 && (
+                  <button onClick={markAllRead} className="text-xs font-medium text-primary-600 hover:text-primary-700">Tandai semua dibaca</button>
+                )}
+              </div>
+              <div className="max-h-80 overflow-y-auto">
+                {notifItems.length === 0 ? (
+                  <div className="p-8 text-center text-sm text-gray-400">Belum ada notifikasi</div>
+                ) : (
+                  notifItems.map((n) => (
+                    <button
+                      key={n.id}
+                      onClick={() => { markOneRead(n.id); if (n.link) router.push(n.link); setShowNotif(false); }}
+                      className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${!n.is_read ? 'bg-blue-50/30' : ''}`}
+                    >
+                      <div className="flex items-start gap-2">
+                        {!n.is_read && <div className="w-2 h-2 rounded-full bg-primary-600 mt-1.5 flex-shrink-0" />}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-gray-800 truncate">{n.title}</div>
+                          {n.body && <div className="text-xs text-gray-500 mt-0.5 line-clamp-2">{n.body}</div>}
+                          <div className="text-[10px] text-gray-400 mt-1">{timeAgo(n.created_at)}</div>
+                        </div>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+              <div className="p-2 bg-gray-50 border-t border-gray-100 text-center">
+                <Link href="/dashboard/notifications" onClick={() => setShowNotif(false)} className="text-xs font-medium text-primary-600 hover:text-primary-700">Lihat semua</Link>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Profile */}
         <div className="relative" ref={dropdownRef}>

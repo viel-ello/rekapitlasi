@@ -6,6 +6,8 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { getAuthUser, verifyPassword, hashPassword } from '@/lib/auth';
 
+const MIN_PASSWORD_LENGTH = 12;
+
 export async function POST(request) {
   try {
     const user = await getAuthUser(request);
@@ -17,8 +19,11 @@ export async function POST(request) {
     if (!currentPassword || !newPassword) {
       return NextResponse.json({ error: 'Kata sandi lama dan baru harus diisi' }, { status: 400 });
     }
-    if (newPassword.length < 6) {
-      return NextResponse.json({ error: 'Kata sandi baru minimal 6 karakter' }, { status: 400 });
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      return NextResponse.json({ error: `Kata sandi baru minimal ${MIN_PASSWORD_LENGTH} karakter` }, { status: 400 });
+    }
+    if (currentPassword === newPassword) {
+      return NextResponse.json({ error: 'Kata sandi baru tidak boleh sama dengan kata sandi lama' }, { status: 400 });
     }
 
     const { data: dbUser, error: fetchError } = await supabase
@@ -44,7 +49,13 @@ export async function POST(request) {
 
     if (updateError) throw updateError;
 
-    return NextResponse.json({ success: true, message: 'Kata sandi berhasil diubah' });
+    const response = NextResponse.json({ success: true, message: 'Kata sandi berhasil diubah. Silakan login kembali.' });
+    response.cookies.set('auth-token', '', {
+      httpOnly: true,
+      maxAge: 0,
+      path: '/',
+    });
+    return response;
   } catch (error) {
     console.error('Change password error:', error);
     return NextResponse.json({ error: 'Gagal mengubah kata sandi' }, { status: 500 });

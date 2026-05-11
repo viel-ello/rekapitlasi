@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { getAuthUser, requireAuth, requireAdmin } from '@/lib/auth';
+import { getValidTableNames, isValidTableName } from '@/lib/requestValidation';
+
+const COLUMN_KEY_PATTERN = /^[a-z][a-z0-9_]{1,63}$/;
+const VALID_COLUMN_TYPES = new Set(['text', 'number']);
 
 export async function GET(request) {
   try {
@@ -38,17 +42,32 @@ export async function POST(request) {
     if (!table_name || !column_key || !column_label) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
     }
+    if (!isValidTableName(table_name)) {
+      return NextResponse.json({ error: `Nama tabel tidak valid. Pilih: ${getValidTableNames().join(', ')}` }, { status: 400 });
+    }
 
-    // Format column key to be safe (lowercase, underscores)
-    const safeKey = column_key.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    const safeKey = String(column_key).trim().toLowerCase();
+    if (!COLUMN_KEY_PATTERN.test(safeKey)) {
+      return NextResponse.json({ error: 'Key kolom harus diawali huruf dan hanya boleh huruf kecil, angka, underscore (2-64 karakter)' }, { status: 400 });
+    }
+
+    const safeType = column_type || 'text';
+    if (!VALID_COLUMN_TYPES.has(safeType)) {
+      return NextResponse.json({ error: 'Tipe kolom tidak valid' }, { status: 400 });
+    }
+
+    const safeLabel = String(column_label).trim().slice(0, 120);
+    if (!safeLabel) {
+      return NextResponse.json({ error: 'Label kolom harus diisi' }, { status: 400 });
+    }
 
     const { error } = await supabase
       .from('table_schemas')
       .insert({
         table_name,
         column_key: safeKey,
-        column_label,
-        column_type: column_type || 'text'
+        column_label: safeLabel,
+        column_type: safeType,
       });
 
     if (error) {
@@ -78,8 +97,12 @@ export async function DELETE(request) {
     if (!id) {
       return NextResponse.json({ error: 'ID harus diisi' }, { status: 400 });
     }
+    const columnId = Number(id);
+    if (!Number.isInteger(columnId) || columnId < 1) {
+      return NextResponse.json({ error: 'ID tidak valid' }, { status: 400 });
+    }
 
-    const { error } = await supabase.from('table_schemas').delete().eq('id', id);
+    const { error } = await supabase.from('table_schemas').delete().eq('id', columnId);
     if (error) throw error;
 
     return NextResponse.json({ success: true });

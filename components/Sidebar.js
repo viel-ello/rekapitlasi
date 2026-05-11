@@ -37,7 +37,7 @@ export default function Sidebar({ user, onLogout, collapsed, onToggle, mobileOpe
   const handlePwSubmit = async (e) => {
     e.preventDefault();
     if (pwForm.new !== pwForm.confirm) { setPwMsg({ type: 'error', text: 'Password baru tidak cocok' }); return; }
-    if (pwForm.new.length < 6) { setPwMsg({ type: 'error', text: 'Password minimal 6 karakter' }); return; }
+    if (pwForm.new.length < 12) { setPwMsg({ type: 'error', text: 'Password minimal 12 karakter' }); return; }
     try {
       const res = await fetch('/api/auth/password', {
         method: 'POST',
@@ -46,9 +46,9 @@ export default function Sidebar({ user, onLogout, collapsed, onToggle, mobileOpe
       });
       const data = await res.json();
       if (res.ok) {
-        setPwMsg({ type: 'success', text: 'Password berhasil diubah' });
+        setPwMsg({ type: 'success', text: data.message || 'Password berhasil diubah. Silakan login kembali.' });
         setPwForm({ old: '', new: '', confirm: '' });
-        setTimeout(() => { setShowPwModal(false); setPwMsg(null); }, 2000);
+        setTimeout(() => { setShowPwModal(false); setPwMsg(null); onLogout?.(); }, 2000);
       } else {
         setPwMsg({ type: 'error', text: data.error || 'Gagal mengubah password' });
       }
@@ -109,7 +109,8 @@ export default function Sidebar({ user, onLogout, collapsed, onToggle, mobileOpe
                 key={item.href}
                 href={item.href}
                 className={`nav-item ${isActive(item.href) ? 'nav-item-active' : ''}`}
-                title={item.label}
+                title={collapsed ? (item.label + (item.sub ? ' — ' + item.sub : '')) : undefined}
+                aria-label={item.label + (item.sub ? ' — ' + item.sub : '')}
               >
                 <span className="nav-icon"><Icon className="w-5 h-5" /></span>
                 {!collapsed && (
@@ -133,7 +134,8 @@ export default function Sidebar({ user, onLogout, collapsed, onToggle, mobileOpe
                   key={item.href}
                   href={item.href}
                   className={`nav-item ${isActive(item.href) ? 'nav-item-active' : ''}`}
-                  title={item.label}
+                  title={collapsed ? item.label : undefined}
+                  aria-label={item.label}
                 >
                   <span className="nav-icon"><Icon className="w-5 h-5" /></span>
                   {!collapsed && <span>{item.label}</span>}
@@ -158,11 +160,11 @@ export default function Sidebar({ user, onLogout, collapsed, onToggle, mobileOpe
           </div>
         )}
         <div className="flex flex-col gap-0.5">
-          <button className="nav-item" onClick={() => setShowPwModal(true)}>
+          <button className="nav-item" onClick={() => setShowPwModal(true)} aria-label="Ganti password">
             <span className="nav-icon"><Lock className="w-5 h-5" /></span>
             {!collapsed && <span>Ganti Password</span>}
           </button>
-          <button className="nav-item text-red-500 hover:!text-red-600 hover:!bg-red-50" onClick={onLogout}>
+          <button className="nav-item text-red-500 hover:!text-red-600 hover:!bg-red-50" onClick={onLogout} aria-label="Keluar dari aplikasi">
             <span className="nav-icon"><ArrowRightToBracket className="w-5 h-5" /></span>
             {!collapsed && <span>Keluar</span>}
           </button>
@@ -186,11 +188,11 @@ export default function Sidebar({ user, onLogout, collapsed, onToggle, mobileOpe
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">Password Baru</label>
-                <input type="password" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" value={pwForm.new} onChange={e => setPwForm({...pwForm, new: e.target.value})} required />
+                <input type="password" minLength={12} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" value={pwForm.new} onChange={e => setPwForm({...pwForm, new: e.target.value})} required />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">Konfirmasi Password</label>
-                <input type="password" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" value={pwForm.confirm} onChange={e => setPwForm({...pwForm, confirm: e.target.value})} required />
+                <input type="password" minLength={12} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" value={pwForm.confirm} onChange={e => setPwForm({...pwForm, confirm: e.target.value})} required />
               </div>
               <div className="flex gap-2 pt-2">
                 <button type="submit" className="flex-1 bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-lg text-sm font-medium transition-colors">Simpan</button>

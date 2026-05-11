@@ -28,13 +28,23 @@ export async function PUT(request) {
 
     const { id, nama, is_active } = await request.json();
     if (!id) return NextResponse.json({ error: 'ID desa harus diisi' }, { status: 400 });
+    const desaId = Number(id);
+    if (!Number.isInteger(desaId) || desaId < 1) {
+      return NextResponse.json({ error: 'ID desa tidak valid' }, { status: 400 });
+    }
 
     const updates = {};
-    if (nama !== undefined) updates.nama = nama;
+    if (nama !== undefined) {
+      const cleanName = String(nama).trim();
+      if (cleanName.length < 2 || cleanName.length > 100) {
+        return NextResponse.json({ error: 'Nama desa harus 2-100 karakter' }, { status: 400 });
+      }
+      updates.nama = cleanName;
+    }
     if (is_active !== undefined) updates.is_active = is_active ? 1 : 0;
 
     if (Object.keys(updates).length > 0) {
-      const { error } = await supabase.from('desa').update(updates).eq('id', id);
+      const { error } = await supabase.from('desa').update(updates).eq('id', desaId);
       if (error) throw error;
     }
     

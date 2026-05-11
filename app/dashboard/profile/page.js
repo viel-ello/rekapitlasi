@@ -18,6 +18,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
   const [pwMsg, setPwMsg] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -36,14 +37,21 @@ export default function ProfilePage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setPwMsg(null);
-    if (pwForm.next !== pwForm.confirm) {
-      setPwMsg({ type: 'error', text: 'Kata sandi baru dan konfirmasi tidak cocok' });
+    setFieldErrors({});
+
+    // Client-side validation per field
+    const errors = {};
+    if (!pwForm.current) errors.current = 'Kata sandi lama harus diisi';
+    if (!pwForm.next) errors.next = 'Kata sandi baru harus diisi';
+    else if (pwForm.next.length < 6) errors.next = 'Kata sandi baru minimal 6 karakter';
+    if (!pwForm.confirm) errors.confirm = 'Konfirmasi kata sandi harus diisi';
+    else if (pwForm.next !== pwForm.confirm) errors.confirm = 'Kata sandi baru dan konfirmasi tidak cocok';
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       return;
     }
-    if (pwForm.next.length < 6) {
-      setPwMsg({ type: 'error', text: 'Kata sandi baru minimal 6 karakter' });
-      return;
-    }
+
     setSubmitting(true);
     try {
       const res = await fetch('/api/auth/password', {
@@ -53,7 +61,7 @@ export default function ProfilePage() {
       });
       const data = await res.json();
       if (res.ok) {
-        setPwMsg({ type: 'success', text: 'Kata sandi berhasil diubah' });
+        setPwMsg({ type: 'success', text: data.message || 'Kata sandi berhasil diubah. Silakan login kembali.' });
         setPwForm({ current: '', next: '', confirm: '' });
       } else {
         setPwMsg({ type: 'error', text: data.error || 'Gagal mengubah kata sandi' });
@@ -128,21 +136,24 @@ export default function ProfilePage() {
         <form onSubmit={handleSubmit} className="space-y-3 max-w-md">
           <div>
             <label htmlFor="pw-current" className="block text-sm font-medium text-gray-700 mb-1">Kata Sandi Lama</label>
-            <input id="pw-current" type="password" autoComplete="current-password" required
-              value={pwForm.current} onChange={(e) => setPwForm({ ...pwForm, current: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
+            <input id="pw-current" type="password" autoComplete="current-password"
+              value={pwForm.current} onChange={(e) => { setPwForm({ ...pwForm, current: e.target.value }); setFieldErrors(prev => ({ ...prev, current: undefined })); }}
+              className={`w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none ${fieldErrors.current ? 'border-red-300 bg-red-50' : 'border-gray-200'}`} />
+            {fieldErrors.current && <p className="text-xs text-red-600 mt-1">{fieldErrors.current}</p>}
           </div>
           <div>
             <label htmlFor="pw-next" className="block text-sm font-medium text-gray-700 mb-1">Kata Sandi Baru</label>
-            <input id="pw-next" type="password" autoComplete="new-password" required minLength={6}
-              value={pwForm.next} onChange={(e) => setPwForm({ ...pwForm, next: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
+            <input id="pw-next" type="password" autoComplete="new-password" minLength={6}
+              value={pwForm.next} onChange={(e) => { setPwForm({ ...pwForm, next: e.target.value }); setFieldErrors(prev => ({ ...prev, next: undefined })); }}
+              className={`w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none ${fieldErrors.next ? 'border-red-300 bg-red-50' : 'border-gray-200'}`} />
+            {fieldErrors.next && <p className="text-xs text-red-600 mt-1">{fieldErrors.next}</p>}
           </div>
           <div>
             <label htmlFor="pw-confirm" className="block text-sm font-medium text-gray-700 mb-1">Konfirmasi Kata Sandi Baru</label>
-            <input id="pw-confirm" type="password" autoComplete="new-password" required minLength={6}
-              value={pwForm.confirm} onChange={(e) => setPwForm({ ...pwForm, confirm: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
+            <input id="pw-confirm" type="password" autoComplete="new-password" minLength={6}
+              value={pwForm.confirm} onChange={(e) => { setPwForm({ ...pwForm, confirm: e.target.value }); setFieldErrors(prev => ({ ...prev, confirm: undefined })); }}
+              className={`w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none ${fieldErrors.confirm ? 'border-red-300 bg-red-50' : 'border-gray-200'}`} />
+            {fieldErrors.confirm && <p className="text-xs text-red-600 mt-1">{fieldErrors.confirm}</p>}
           </div>
           <button type="submit" disabled={submitting}
             className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50">

@@ -145,11 +145,11 @@ function UsersTab({ toast, setToast }) {
           <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Username</label>
-              <input name="username" required className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" />
+              <input name="username" required minLength={3} maxLength={32} pattern="[a-zA-Z0-9_.-]+" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Password</label>
-              <input name="password" type="password" required className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" />
+              <input name="password" type="password" required minLength={12} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Nama Lengkap</label>

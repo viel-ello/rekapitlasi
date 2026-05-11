@@ -5,6 +5,8 @@ import { Lock, FloppyDisk, Search, ExclamationCircle, CheckCircle } from 'flowbi
 import { validateRow, countIssues } from '@/lib/validation';
 import { applyColumnOverrides } from '@/lib/columnOverrides';
 import { useYears } from '@/lib/useYears';
+import { useKeyboardShortcut } from '@/lib/useKeyboardShortcut';
+import PeriodWorkflowBadge from '@/components/PeriodWorkflowBadge';
 
 /**
  * Reusable Pokja data table component with role-based access control and inline validation
@@ -216,6 +218,9 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
     setTimeout(() => setToast(null), 4000);
   };
 
+  // Keyboard shortcut: Ctrl+S → simpan semua
+  useKeyboardShortcut({ 'ctrl+s': saveAll }, { enabled: canEdit });
+
   const getTotal = (key, isDynamic = false, type = 'number') => {
     if (type !== 'number') return '-';
     if (isDynamic) {
@@ -225,6 +230,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
   };
 
   const filteredDesa = desa.filter(d => d.nama.toLowerCase().includes(searchQuery.toLowerCase()));
+  const dirtyCount = Object.values(saveStatus).filter(s => s === 'dirty').length;
   const validationSummary = filteredDesa.reduce((acc, d) => {
     const validation = validateRow(data[d.id] || {}, effectiveColumns, prevYearData[d.id] || null);
     const issues = countIssues(validation);
@@ -347,6 +353,15 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
               </span>
             )}
           </p>
+          <div className="mt-2">
+            <PeriodWorkflowBadge
+              tableName={tableName}
+              tahun={tahun}
+              userRole={userRole}
+              canEdit={canEdit}
+              onStatusChange={() => fetchData(tahun)}
+            />
+          </div>
         </div>
         
         <div className="flex flex-wrap items-center gap-3">
@@ -391,6 +406,31 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
           {validationSummary.errors > 0 && <span>{validationSummary.errors} error</span>}
           {validationSummary.warnings > 0 && <span>{validationSummary.warnings} warning</span>}
           {validationSummary.infos > 0 && <span>{validationSummary.infos} kolom belum diisi</span>}
+        </div>
+      )}
+
+      {/* Sticky banner: perubahan belum tersimpan */}
+      {canEdit && dirtyCount > 0 && (
+        <div className="sticky top-16 z-30 mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 shadow-md">
+          <div className="flex items-center gap-2 text-sm font-medium text-amber-800">
+            <ExclamationCircle className="w-4 h-4" />
+            <span>{dirtyCount} desa memiliki perubahan belum tersimpan</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { fetchData(tahun); }}
+              className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
+            >
+              Batalkan
+            </button>
+            <button
+              onClick={saveAll}
+              disabled={saving === 'all'}
+              className="px-3 py-1.5 text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg disabled:opacity-50"
+            >
+              {saving === 'all' ? 'Menyimpan...' : 'Simpan Semua'}
+            </button>
+          </div>
         </div>
       )}
 

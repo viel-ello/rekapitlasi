@@ -9,6 +9,7 @@ import { writeLog } from '@/lib/audit';
 import { ROLE_TABLE_MAP } from '@/lib/excel/sheetMap';
 import { importToSupabase } from '@/lib/excel/importToSupabase';
 import { buildImportDiff, sheetsFromDiff } from '@/lib/excel/previewDiff';
+import { parseYear, validateImportPayload } from '@/lib/requestValidation';
 
 export async function POST(request) {
   try {
@@ -16,14 +17,20 @@ export async function POST(request) {
     if (!user) return requireAuth.deny();
 
     const { parsedData, tahun } = await request.json();
-    const targetYear = Number(tahun);
 
-    if (!Array.isArray(parsedData) || !targetYear) {
+    if (!Array.isArray(parsedData) || !tahun) {
       return NextResponse.json({ error: 'Data import dan tahun harus diisi' }, { status: 400 });
     }
 
-    if (!Number.isInteger(targetYear) || targetYear < 2000 || targetYear > 2100) {
-      return NextResponse.json({ error: 'Tahun tidak valid (2000-2100)' }, { status: 400 });
+    const year = parseYear(tahun);
+    if (year.error) {
+      return NextResponse.json({ error: year.error }, { status: 400 });
+    }
+    const targetYear = year.value;
+
+    const importPayload = validateImportPayload(parsedData);
+    if (importPayload.error) {
+      return NextResponse.json({ error: importPayload.error }, { status: 400 });
     }
 
     const { diff, desaList } = await buildImportDiff(parsedData, targetYear, user);

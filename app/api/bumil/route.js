@@ -8,6 +8,8 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { getAuthUser, canWrite, requireAuth } from '@/lib/auth';
 import { writeLog } from '@/lib/audit';
+import { checkPeriodLock } from '@/lib/periodLock';
+import { sanitizeDataWritePayload } from '@/lib/requestValidation';
 
 export async function GET(request) {
   try {
@@ -65,23 +67,28 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { desa_id, tahun, bulan, ...fields } = body;
+    const sanitizedPayload = await sanitizeDataWritePayload('data_bumil', body, { requireMonth: true });
+    if (sanitizedPayload.error) {
+      return NextResponse.json({ error: sanitizedPayload.error }, { status: 400 });
+    }
+    const payload = sanitizedPayload.data;
 
-    if (!desa_id || !tahun || !bulan) {
+    const lock = await checkPeriodLock('data_bumil', Number(payload.tahun), Number(payload.bulan));
+    if (lock.locked && user.role !== 'admin') {
       return NextResponse.json(
-        { error: 'desa_id, tahun, dan bulan harus diisi' },
-        { status: 400 }
+        { error: `Periode ${payload.tahun}-${payload.bulan} untuk data_bumil sudah ${lock.status}. Hubungi admin untuk membuka kembali.` },
+        { status: 403 }
       );
     }
 
     const { error: upsertError } = await supabase
       .from('data_bumil')
-      .upsert({ desa_id, tahun, bulan, ...fields, updated_at: new Date().toISOString() }, { onConflict: 'desa_id,tahun,bulan' });
+      .upsert({ ...payload, updated_at: new Date().toISOString() }, { onConflict: 'desa_id,tahun,bulan' });
 
     if (upsertError) throw upsertError;
 
-    const { data: desa } = await supabase.from('desa').select('nama').eq('id', desa_id).single();
-    await writeLog({ userId: user.userId, username: user.username, action: 'update', tableName: 'data_bumil', desaNama: desa?.nama, detail: `Tahun ${tahun} Bulan ${bulan}` });
+    const { data: desa } = await supabase.from('desa').select('nama').eq('id', payload.desa_id).single();
+    await writeLog({ userId: user.userId, username: user.username, action: 'update', tableName: 'data_bumil', desaNama: desa?.nama, detail: `Tahun ${payload.tahun} Bulan ${payload.bulan}` });
 
     return NextResponse.json({ success: true });
   } catch (error) {

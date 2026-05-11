@@ -8,6 +8,8 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { getAuthUser, canWrite, requireAuth } from '@/lib/auth';
 import { writeLog } from '@/lib/audit';
+import { checkPeriodLock } from '@/lib/periodLock';
+import { sanitizeDataWritePayload } from '@/lib/requestValidation';
 
 export async function GET(request) {
   try {
@@ -61,21 +63,29 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { desa_id, tahun, ...fields } = body;
+    const sanitizedPayload = await sanitizeDataWritePayload('data_umum', body);
+    if (sanitizedPayload.error) {
+      return NextResponse.json({ error: sanitizedPayload.error }, { status: 400 });
+    }
+    const payload = sanitizedPayload.data;
 
-    if (!desa_id || !tahun) {
-      return NextResponse.json({ error: 'desa_id dan tahun harus diisi' }, { status: 400 });
+    const lock = await checkPeriodLock('data_umum', Number(payload.tahun));
+    if (lock.locked && user.role !== 'admin') {
+      return NextResponse.json(
+        { error: `Periode ${payload.tahun} untuk data_umum sudah ${lock.status}. Hubungi admin untuk membuka kembali.` },
+        { status: 403 }
+      );
     }
 
     // Upsert into Supabase (requires unique constraint on desa_id, tahun which we added)
     const { error: upsertError } = await supabase
       .from('data_umum')
-      .upsert({ desa_id, tahun, ...fields, updated_at: new Date().toISOString() }, { onConflict: 'desa_id,tahun' });
+      .upsert({ ...payload, updated_at: new Date().toISOString() }, { onConflict: 'desa_id,tahun' });
 
     if (upsertError) throw upsertError;
 
-    const { data: desa } = await supabase.from('desa').select('nama').eq('id', desa_id).single();
-    await writeLog({ userId: user.userId, username: user.username, action: 'update', tableName: 'data_umum', desaNama: desa?.nama, detail: `Tahun ${tahun}` });
+    const { data: desa } = await supabase.from('desa').select('nama').eq('id', payload.desa_id).single();
+    await writeLog({ userId: user.userId, username: user.username, action: 'update', tableName: 'data_umum', desaNama: desa?.nama, detail: `Tahun ${payload.tahun}` });
 
     return NextResponse.json({ success: true });
   } catch (error) {
