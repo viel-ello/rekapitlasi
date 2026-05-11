@@ -42,7 +42,7 @@ Konvensi paling penting di versi ini:
 - `lib/audit.js` sekarang `async` dan semua pemanggil harus `await writeLog(...)` agar log tidak hilang di serverless.
 - Tabel `audit_logs` punya kolom opsional `before_json`, `after_json`, `ip` (ditambahkan di `supabase_schema_updates_v2.sql`). Pakai untuk mutasi penting.
 
-## Column overrides (rename / hide kolom standar)
+## Kolom overrides (rename / hide kolom standar)
 
 - Tabel: `table_column_overrides(table_name, column_key, label_override, is_hidden)`.
 - Admin UI: `/dashboard/admin` → tab "Kolom" → subtab "Kolom Standar".
@@ -59,6 +59,16 @@ Konvensi paling penting di versi ini:
 - Tabel `table_schemas` + kolom JSONB `custom_columns` pada setiap tabel data.
 - Admin UI: tab "Kolom" → subtab "Kolom Dinamis".
 - Endpoint: `/api/admin/columns`.
+
+## Tahun aktif (report_years)
+
+- Tabel `report_years(tahun, is_active)` — daftar tahun yang tampil di semua dropdown UI.
+- Admin UI: tab **"Tahun"** di `/dashboard/admin`.
+- Endpoint:
+  - `GET /api/years` (user login) — daftar tahun aktif dengan fallback otomatis ke current year ±2 saat tabel kosong.
+  - `GET/POST/PATCH/DELETE /api/admin/years` — admin CRUD.
+- Hook client: `useYears()` di `lib/useYears.js` — dipakai di `DashboardPage`, `DataStatsPage`, `PokjaDataPage`, `BumilDataPage`, `ImportTab`, `AiChatBubble`. Setiap dropdown tahun otomatis menyesuaikan kalau tahun baru ditambah oleh admin.
+- Menghapus tahun dari daftar TIDAK menghapus data yang sudah tersimpan di `data_umum`, `data_pokja*`, dll. — hanya menyembunyikan dari dropdown.
 
 ## AI / Gemini
 

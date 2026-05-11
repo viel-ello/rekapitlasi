@@ -5,6 +5,7 @@ import { FloppyDisk, Lock, Search, CheckCircle, ExclamationCircle } from 'flowbi
 import { MONTHS } from '@/lib/dataPages';
 import { DataPageIcon } from '@/components/DataPageIcon';
 import { applyColumnOverrides } from '@/lib/columnOverrides';
+import { useYears } from '@/lib/useYears';
 
 export default function BumilDataPage({ config }) {
   const [desa, setDesa] = useState([]);
@@ -18,6 +19,12 @@ export default function BumilDataPage({ config }) {
   const [userRole, setUserRole] = useState('');
   const [overrides, setOverrides] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const { years } = useYears();
+
+  useEffect(() => {
+    if (years.length > 0 && !years.includes(tahun)) setTahun(years[0]);
+  }, [years]);
 
   const effectiveColumns = useMemo(
     () => applyColumnOverrides(config.columns, overrides).filter((c) => !c.hidden),
@@ -240,7 +247,7 @@ export default function BumilDataPage({ config }) {
             {MONTHS.map((b, i) => <option key={b} value={i + 1}>{b}</option>)}
           </select>
           <select value={tahun} onChange={(e) => setTahun(Number(e.target.value))} className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none" aria-label="Pilih tahun data bumil">
-            {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => <option key={y} value={y}>{y}</option>)}
+            {years.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
         </div>
       </div>

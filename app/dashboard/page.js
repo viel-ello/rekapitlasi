@@ -10,6 +10,7 @@ import {
 import { Heart } from 'flowbite-react-icons/solid';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import { timeAgo } from '@/lib/time';
+import { useYears } from '@/lib/useYears';
 
 const TABLE_FILTERS = [
   { value: 'all', label: 'Semua Data', short: 'Semua' },
@@ -130,6 +131,14 @@ export default function DashboardPage() {
   const [downloading, setDownloading] = useState(null);
   const [downloadingTemplate, setDownloadingTemplate] = useState(null);
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
+  const { years } = useYears();
+
+  // Jika tahun aktif saat ini tidak ada dalam daftar, pilih tahun pertama
+  useEffect(() => {
+    if (years.length > 0 && !years.includes(tahun)) {
+      setTahun(years[0]);
+    }
+  }, [years]);
 
   useEffect(() => {
     fetchRekap();
@@ -287,7 +296,7 @@ export default function DashboardPage() {
             className="px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 font-medium focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none shadow-sm"
             aria-label="Pilih tahun dashboard"
           >
-            {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => <option key={y} value={y}>{y}</option>)}
+            {years.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
           <select
             value={bulan}
@@ -546,26 +555,28 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-primary-100 p-5 shadow-sm">
+          <div className="bg-white rounded-xl border border-primary-100 p-5 shadow-sm overflow-hidden">
             <h3 className="flex items-center gap-2 text-sm font-bold font-mono text-dashboard mb-4 uppercase tracking-wide">
               <ChartLineUp className="w-4 h-4 text-accent-500" /> Tren Penduduk
             </h3>
-            <div className="h-40">
-              <svg viewBox="0 0 320 140" preserveAspectRatio="none" className="w-full h-full">
+            <div className="h-40 w-full">
+              <svg viewBox="0 0 320 140" preserveAspectRatio="xMidYMid meet" className="block w-full h-full">
                 {(() => {
                   if (!trend || trend.length === 0) {
                     return <text x="160" y="70" textAnchor="middle" fill="#9ca3af" fontSize="11">Belum ada data</text>;
                   }
                   const max = Math.max(...trend.map(t => t.total_jiwa), 1);
-                  const padX = 26;
-                  const padTop = 26;    // ruang untuk label angka di atas titik
-                  const padBottom = 22; // ruang untuk label tahun
-                  const innerW = 320 - padX * 2;
+                  // Padding besar supaya label ujung (~60px panjang) tidak keluar
+                  const padLeft = 36;
+                  const padRight = 36;
+                  const padTop = 22;
+                  const padBottom = 22;
+                  const innerW = 320 - padLeft - padRight;
                   const innerH = 140 - padTop - padBottom;
                   const n = trend.length;
                   const stepX = n > 1 ? innerW / (n - 1) : 0;
                   const coord = (i, v) => ({
-                    x: padX + (n > 1 ? i * stepX : innerW / 2),
+                    x: padLeft + (n > 1 ? i * stepX : innerW / 2),
                     y: padTop + innerH - (v / max) * innerH,
                   });
                   const pts = trend.map((t, i) => {
@@ -577,7 +588,6 @@ export default function DashboardPage() {
                       <path d={`M ${pts}`} fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                       {trend.map((t, i) => {
                         const { x, y } = coord(i, t.total_jiwa);
-                        // Anchor dinamis supaya label di ujung tidak keluar card
                         const anchor = i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle';
                         return (
                           <g key={i}>

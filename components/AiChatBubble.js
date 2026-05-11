@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
+import { useYears } from '@/lib/useYears';
 
 /**
  * AiChatBubble Component
@@ -22,6 +23,7 @@ export default function AiChatBubble({ tahun, user }) {
   const [pendingFile, setPendingFile] = useState(null);
   const [importPreviewData, setImportPreviewData] = useState(null);
   const [importTahun, setImportTahun] = useState(tahun || new Date().getFullYear());
+  const { years } = useYears();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -314,7 +316,7 @@ export default function AiChatBubble({ tahun, user }) {
                     onChange={e => setImportTahun(Number(e.target.value))}
                     className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-gray-50"
                   >
-                    {[2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => (
+                    {(years && years.length > 0 ? years : [2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030]).map(y => (
                       <option key={y} value={y}>{y}</option>
                     ))}
                   </select>

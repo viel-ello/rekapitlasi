@@ -15,6 +15,7 @@ import { MONTHS } from '@/lib/dataPages';
 import { buildColumnTotals, buildDesaRanking, buildStatsSummary } from '@/lib/chartStats';
 import { validateRow, countIssues } from '@/lib/validation';
 import { applyColumnOverrides } from '@/lib/columnOverrides';
+import { useYears } from '@/lib/useYears';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import { DataPageIcon } from '@/components/DataPageIcon';
 
@@ -71,6 +72,11 @@ export default function DataStatsPage({ config }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [overrides, setOverrides] = useState([]);
+  const { years } = useYears();
+
+  useEffect(() => {
+    if (years.length > 0 && !years.includes(tahun)) setTahun(years[0]);
+  }, [years]);
 
   useEffect(() => {
     setSelectedMetric(config.primaryMetric || config.columns[0]?.key);
@@ -212,7 +218,7 @@ export default function DataStatsPage({ config }) {
             className="px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 font-medium focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none shadow-sm"
             aria-label="Pilih tahun statistik"
           >
-            {Array.from({ length: 5 }, (_, index) => currentYear - index).map(year => <option key={year} value={year}>{year}</option>)}
+            {years.map(year => <option key={year} value={year}>{year}</option>)}
           </select>
           <Link
             href={config.editPath}

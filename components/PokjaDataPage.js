@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Lock, FloppyDisk, Search, ExclamationCircle, CheckCircle } from 'flowbite-react-icons/outline';
 import { validateRow, countIssues } from '@/lib/validation';
 import { applyColumnOverrides } from '@/lib/columnOverrides';
+import { useYears } from '@/lib/useYears';
 
 /**
  * Reusable Pokja data table component with role-based access control and inline validation
@@ -24,6 +25,12 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
   const [overrides, setOverrides] = useState([]);
   
   const [searchQuery, setSearchQuery] = useState('');
+
+  const { years } = useYears();
+
+  useEffect(() => {
+    if (years.length > 0 && !years.includes(tahun)) setTahun(years[0]);
+  }, [years]);
 
   const effectiveColumns = useMemo(
     () => applyColumnOverrides(columns, overrides).filter((c) => !c.hidden),
@@ -358,7 +365,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
             onChange={(e) => setTahun(Number(e.target.value))}
             className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none shadow-sm"
           >
-            {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => <option key={y} value={y}>{y}</option>)}
+            {years.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
         </div>
       </div>
