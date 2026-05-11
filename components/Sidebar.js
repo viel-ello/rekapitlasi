@@ -30,7 +30,9 @@ export default function Sidebar({ user, onLogout, collapsed, onToggle, mobileOpe
   const [pwForm, setPwForm] = useState({ old: '', new: '', confirm: '' });
   const [pwMsg, setPwMsg] = useState(null);
 
-  const isActive = (href) => pathname === href;
+  const isActive = (href) => href === '/dashboard'
+    ? pathname === href
+    : pathname === href || pathname.startsWith(`${href}/`);
 
   const handlePwSubmit = async (e) => {
     e.preventDefault();
