@@ -8,6 +8,7 @@ import {
 } from 'flowbite-react-icons/outline';
 import ConfirmModal from '@/components/ConfirmModal';
 import { DATA_PAGES as DATA_PAGES_CLIENT } from '@/lib/dataPages';
+import { notifyYearsUpdated, useYears } from '@/lib/useYears';
 
 const TABS = [
   { id: 'users', label: 'Pengguna', icon: User },
@@ -362,22 +363,13 @@ function ImportTab({ toast, setToast }) {
   const [confirmingImport, setConfirmingImport] = useState(false);
   const [importPreview, setImportPreview] = useState(null);
   const [importTahun, setImportTahun] = useState(new Date().getFullYear());
-  const [yearOptions, setYearOptions] = useState([]);
+  const { years: yearOptions } = useYears();
 
   useEffect(() => {
-    async function loadYears() {
-      try {
-        const res = await fetch('/api/years');
-        if (res.ok) {
-          const data = await res.json();
-          const list = Array.isArray(data) ? data.map(r => Number(r.tahun)).filter(Boolean) : [];
-          setYearOptions(list);
-          if (list.length > 0 && !list.includes(importTahun)) setImportTahun(list[0]);
-        }
-      } catch { /* ignore — fallback dropdown akan kosong */ }
+    if (yearOptions.length > 0 && !yearOptions.includes(importTahun)) {
+      setImportTahun(yearOptions[0]);
     }
-    loadYears();
-  }, []);
+  }, [yearOptions]);
 
   const handleImport = async (e) => {
     const file = e.target.files[0];
@@ -1034,6 +1026,7 @@ function YearsTab({ setToast }) {
         setToast({ type: 'success', message: `Tahun ${y} berhasil ditambahkan` });
         setNewYear('');
         await fetchYears();
+        notifyYearsUpdated();
       } else {
         setToast({ type: 'error', message: data.error || 'Gagal menambah tahun' });
       }
@@ -1054,6 +1047,7 @@ function YearsTab({ setToast }) {
       if (res.ok) {
         setToast({ type: 'success', message: `Tahun ${tahun} ${isActive ? 'dinonaktifkan' : 'diaktifkan'}` });
         await fetchYears();
+        notifyYearsUpdated();
       } else {
         const data = await res.json();
         setToast({ type: 'error', message: data.error || 'Gagal memperbarui tahun' });
@@ -1080,6 +1074,7 @@ function YearsTab({ setToast }) {
       if (res.ok) {
         setToast({ type: 'success', message: `Tahun ${tahun} dihapus dari daftar` });
         await fetchYears();
+        notifyYearsUpdated();
       } else {
         const data = await res.json();
         setToast({ type: 'error', message: data.error || 'Gagal menghapus tahun' });

@@ -22,8 +22,8 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Data import dan tahun harus diisi' }, { status: 400 });
     }
 
-    if (!Number.isInteger(targetYear) || targetYear < 2020 || targetYear > 2030) {
-      return NextResponse.json({ error: 'Tahun tidak valid (2020-2030)' }, { status: 400 });
+    if (!Number.isInteger(targetYear) || targetYear < 2000 || targetYear > 2100) {
+      return NextResponse.json({ error: 'Tahun tidak valid (2000-2100)' }, { status: 400 });
     }
 
     const { diff, desaList } = await buildImportDiff(parsedData, targetYear, user);

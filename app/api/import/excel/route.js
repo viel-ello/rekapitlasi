@@ -22,8 +22,8 @@ export async function POST(request) {
       return NextResponse.json({ error: 'File Excel harus diunggah' }, { status: 400 });
     }
 
-    if (!Number.isInteger(tahun) || tahun < 2020 || tahun > 2030) {
-      return NextResponse.json({ error: 'Tahun tidak valid (2020-2030)' }, { status: 400 });
+    if (!Number.isInteger(tahun) || tahun < 2000 || tahun > 2100) {
+      return NextResponse.json({ error: 'Tahun tidak valid (2000-2100)' }, { status: 400 });
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());

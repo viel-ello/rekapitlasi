@@ -138,12 +138,31 @@ export default function AiChatBubble({ tahun, user }) {
       });
       const data = await res.json();
 
-      if (data.error) {
-        setMessages(prev => [...prev, { role: 'assistant', content: `❌ ${data.error}` }]);
-      } else {
+      if (!res.ok || data.error) {
         setMessages(prev => [...prev, {
           role: 'assistant',
-          content: `${data.summary}${data.results.length ? '\n\nError detail:\n' + data.results.join('\n') : ''}`,
+          content: `❌ ${data.error || data.message || 'Gagal menyimpan hasil import'}`,
+        }]);
+      } else {
+        // data shape: { success, message, imported, results: [{ sheet, table, success, failed, error, unmatched }], diff }
+        const results = Array.isArray(data.results) ? data.results : [];
+        const detailLines = results
+          .map(r => {
+            const parts = [];
+            if (r.success > 0) parts.push(`${r.success} berhasil`);
+            if (r.failed > 0) parts.push(`${r.failed} gagal`);
+            if (r.skipped) parts.push(`dilewati (${r.reason || 'akses ditolak'})`);
+            if (r.error) parts.push(`error: ${r.error}`);
+            if (r.unmatched?.length) parts.push(`tidak cocok: ${r.unmatched.join(', ')}`);
+            return parts.length > 0 ? `  • **${r.sheet}** → ${parts.join(', ')}` : null;
+          })
+          .filter(Boolean);
+
+        const summary = data.message || `Selesai: ${data.imported || 0} baris disimpan`;
+        const detail = detailLines.length > 0 ? `\n\n${detailLines.join('\n')}` : '';
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `✅ ${summary}${detail}`,
         }]);
       }
     } catch {
