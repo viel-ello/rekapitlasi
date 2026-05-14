@@ -1,5 +1,6 @@
 import './globals.css';
 import ThemeProvider from '@/components/ThemeProvider';
+import { Analytics } from '@vercel/analytics/next';
 
 export const metadata = {
   title: 'Sistem Rekapitulasi Data PKK — Kecamatan Baturetno',
@@ -30,6 +31,7 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <ThemeProvider>{children}</ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );
