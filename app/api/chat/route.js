@@ -1,3 +1,13 @@
+/**
+ * @file PKK Assistant chat route — Google Gemini (reverted dari Claude migration).
+ *
+ * Model default: gemini-flash-latest (override via GEMINI_MODEL env).
+ * SDK: @google/generative-ai (function calling + JSON mode).
+ *
+ * Endpoints:
+ *   POST /api/chat              (body: { message, history, tahun })
+ *   POST /api/chat (multipart)  (file upload: Excel interpretation)
+ */
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { supabase } from '@/lib/supabase';
@@ -36,9 +46,7 @@ const ROLE_LABELS = {
   user: 'User Biasa (hanya bisa melihat data)',
 };
 
-// Fetch context data from database for the AI.
-// Default: hanya tahun aktif ±1 untuk menghemat token dan membatasi data
-// yang dikirim ke pihak ketiga (Gemini).
+// Fetch context data from database for the AI (tahun aktif ±1).
 async function getDbContext(role, tahun) {
   const currentYear = Number(tahun) || new Date().getFullYear();
   const contextYears = [currentYear - 1, currentYear, currentYear + 1];
@@ -92,34 +100,34 @@ BATASAN — WAJIB DIPATUHI:
    - Administrasi desa di Kecamatan Baturetno
    - Cara menggunakan aplikasi Rekapitulasi PKK ini
    - Analisis, statistik, dan perbandingan data antar desa
-   - Perhitungan dasar: penjumlahan, pengurangan, perkalian, pembagian, rata-rata, persentase, dan operasi statistik lainnya (ini DIPERBOLEHKAN karena mendukung pekerjaan pengguna)
+   - Perhitungan dasar (penjumlahan, rata-rata, persentase, dll) — DIPERBOLEHKAN karena mendukung pekerjaan
 
 2. Kamu HARUS MENOLAK dengan sopan jika user bertanya tentang:
-   - Topik yang JELAS tidak berkaitan dengan PKK/desa/pekerjaan (misalnya: resep masakan, coding, puisi, cuaca, berita, hiburan, gosip, dll)
+   - Topik yang JELAS tidak berkaitan dengan PKK/desa/pekerjaan (resep, coding, puisi, cuaca, berita, gosip, dll)
    - Permintaan untuk membuat konten kreatif yang tidak terkait PKK
    - Pertanyaan pribadi atau di luar konteks pekerjaan
    Contoh penolakan: "Maaf, saya hanya bisa membantu hal-hal yang berkaitan dengan data PKK dan administrasi desa. Silakan tanyakan tentang data rekapitulasi! 😊"
 
-3. ATURAN AKSES DATA — INI SANGAT PENTING:
+3. ATURAN AKSES DATA — SANGAT PENTING:
    - User ini berperan sebagai: ${userRole}
    ${canEdit ? `- User ini HANYA BOLEH meminta edit/input data di: ${editableTables}` : '- User ini TIDAK BOLEH meminta edit data apapun'}
-   - Jika user meminta edit data di luar haknya, TOLAK dan jelaskan: "Maaf, dengan role ${userRole} Anda hanya bisa mengedit ${canEdit ? editableTables : 'tidak ada tabel'}. Hubungi admin untuk mengubah hak akses."
+   - Jika user meminta edit data di luar haknya, TOLAK dengan jelas: "Maaf, dengan role ${userRole} Anda hanya bisa mengedit ${canEdit ? editableTables : 'tidak ada tabel'}. Hubungi admin untuk mengubah hak akses."
    - Semua user (termasuk role 'user') BOLEH MELIHAT dan BERTANYA tentang semua data
 
-4. FITUR IMPORT EXCEL (PENTING!):
+4. FITUR IMPORT EXCEL:
    - Jika user bertanya apakah kamu bisa memproses/membaca file Excel, JAWAB BAHWA KAMU BISA!
-   - Arahkan user untuk mengklik **ikon penjepit kertas (attachment)** di sebelah kiri kotak ketikan chat untuk mengunggah file Excel (.xlsx).
-   - Setelah diunggah, kamu akan otomatis memproses datanya dan memberikan preview sebelum disimpan.
+   - Arahkan user untuk mengklik **ikon penjepit kertas (attachment)** di sebelah kiri kotak ketikan chat untuk unggah file Excel (.xlsx).
+   - Setelah diunggah, kamu akan otomatis memproses data dan memberi preview sebelum disimpan.
 
 5. Selalu jawab dalam Bahasa Indonesia
-6. Berikan jawaban yang ringkas tapi informatif
+6. Berikan jawaban ringkas tapi informatif
 7. Format angka dengan pemisah ribuan Indonesia (titik)
-8. Jangan pernah membuat/mengarang data palsu
-9. Saat menjawab pertanyaan statistik atau analisis data, SELALU sertakan di akhir jawaban: "📊 Sumber: [nama_tabel] tahun [tahun]" agar user bisa memverifikasi. Contoh: "📊 Sumber: data_pokja4 tahun 2025"
+8. Jangan pernah mengarang data
+9. Saat menjawab pertanyaan statistik/analisis data, SELALU sertakan di akhir jawaban: "📊 Sumber: [nama_tabel] tahun [tahun]" agar user bisa memverifikasi.
 
 KONTEKS DATABASE:
-- data_umum: Data umum PKK (jumlah jiwa, KK, kader TP PKK, dasa wisma, dusun, dll)
-- data_pokja1: Penghayatan Pancasila & Gotong Royong (kader PKBN, PKDRT, pola asuh, simulasi, lansia, kerja bakti, keagamaan, jimpitan, arisan)
+- data_umum: Data umum PKK (jumlah jiwa, KK, kader TP PKK, dasa wisma, dusun)
+- data_pokja1: Penghayatan Pancasila & Gotong Royong (kader PKBN, PKDRT, pola asuh, lansia, kerja bakti, keagamaan, jimpitan, arisan)
 - data_pokja2: Pendidikan & Koperasi (paket A/B/C, UP2K, toko PKK, koperasi)
 - data_pokja3: Pangan & Sandang (beras, peternakan, perikanan, TOGA, industri RT, rumah sehat)
 - data_pokja4: Kesehatan & Lingkungan (posyandu, KB, lansia, jamban, SPAL, sumber air)
@@ -127,7 +135,7 @@ KONTEKS DATABASE:
 `;
 }
 
-// Database schema description for AI interpretation
+// Database schema description for AI interpretation of Excel import
 const DB_SCHEMA = `
 Tabel yang tersedia dan kolomnya (semua kolom bertipe INTEGER):
 
@@ -148,7 +156,6 @@ Daftar desa yang valid (gunakan nama persis ini): Setorejo, Kedungombo, Boto, Se
 
 // === FILE UPLOAD HANDLER (AI-powered interpretation) ===
 async function handleFileUpload(request) {
-  // Auth check — MANDATORY for file uploads too
   const authUser = await getAuthUser(request);
   if (!authUser) {
     return NextResponse.json({ error: 'Sesi login telah berakhir. Silakan login kembali.' }, { status: 401 });
@@ -157,25 +164,18 @@ async function handleFileUpload(request) {
   const formData = await request.formData();
   const file = formData.get('file');
 
-  // 1. Validate file exists
   if (!file || file.size === 0) {
     return NextResponse.json({ error: 'File tidak ditemukan' }, { status: 400 });
   }
-
-  // 2. Validate file size (max 5MB)
   if (file.size > 5 * 1024 * 1024) {
     return NextResponse.json({ error: 'File terlalu besar (maksimal 5MB)' }, { status: 400 });
   }
-
-  // 3. Validate file name extension
   const name = typeof file.name === 'string' ? file.name.toLowerCase() : '';
   if (!name.endsWith('.xlsx')) {
     return NextResponse.json({
       error: 'Hanya file Excel .xlsx yang didukung. File .xls lama dan .docx tidak bisa diproses.',
     }, { status: 400 });
   }
-
-  // 4. Validate magic bytes (.xlsx = PK zip format)
   const buffer = Buffer.from(await file.arrayBuffer());
   if (buffer.length < 4 || buffer[0] !== 0x50 || buffer[1] !== 0x4B) {
     return NextResponse.json({
@@ -183,7 +183,6 @@ async function handleFileUpload(request) {
     }, { status: 400 });
   }
 
-  // 4. Extract raw data from Excel (all sheets, all rows)
   const ExcelJS = (await import('exceljs')).default;
   const wb = new ExcelJS.Workbook();
   try {
@@ -192,16 +191,15 @@ async function handleFileUpload(request) {
     return NextResponse.json({ error: 'File Excel rusak atau tidak bisa dibaca.' }, { status: 400 });
   }
 
-  // Convert all sheets to text for AI interpretation
   const sheetsData = [];
-  wb.eachSheet((ws, sheetId) => {
+  wb.eachSheet((ws) => {
     if (sheetsData.length >= MAX_EXCEL_SHEETS_FOR_AI) return;
     const rows = [];
     let rowCount = 0;
-    ws.eachRow((row, rowNumber) => {
-      if (rowCount >= 100) return; // limit per sheet for token efficiency
+    ws.eachRow({ includeEmpty: false }, (row) => {
+      if (rowCount >= 100) return;
       const cells = [];
-      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+      row.eachCell({ includeEmpty: true }, (cell) => {
         cells.push(cell.value !== null && cell.value !== undefined ? String(cell.value) : '');
       });
       rows.push(cells.join(' | '));
@@ -216,7 +214,6 @@ async function handleFileUpload(request) {
     return NextResponse.json({ error: 'File Excel kosong, tidak ada data.' }, { status: 400 });
   }
 
-  // 5. Ask Gemini to interpret the data
   if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'PASTE_API_KEY_ANDA_DISINI') {
     return NextResponse.json({ error: 'API Key Gemini belum dikonfigurasi.' }, { status: 400 });
   }
@@ -281,11 +278,8 @@ ${excelContent}`;
       }, { status: 400 });
     }
 
-    // Build preview text from AI result
     let preview = '';
-    if (parsed.summary) {
-      preview = `🤖 **AI Interpretation:** ${parsed.summary}\n\n`;
-    }
+    if (parsed.summary) preview = `🤖 **AI Interpretation:** ${parsed.summary}\n\n`;
 
     if (parsed.sheets && parsed.sheets.length > 0) {
       for (const s of parsed.sheets) {
@@ -321,22 +315,17 @@ ${excelContent}`;
   }
 }
 
-
 export async function POST(request) {
   try {
     const contentType = request.headers.get('content-type') || '';
 
-    // === FILE UPLOAD PATH ===
     if (contentType.includes('multipart/form-data')) {
       return handleFileUpload(request);
     }
 
-    // === NORMAL CHAT PATH ===
     const body = await request.json();
     const { message, history, tahun } = body;
-    // NOTE: We intentionally ignore body.user — role MUST come from JWT
 
-    // ---- AUTH CHECK: Role from JWT only ----
     const authUser = await getAuthUser(request);
     if (!authUser) {
       return NextResponse.json({
@@ -356,16 +345,14 @@ export async function POST(request) {
 
     if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'PASTE_API_KEY_ANDA_DISINI') {
       return NextResponse.json({
-        reply: '⚠️ API Key Gemini belum dikonfigurasi. Silakan isi GEMINI_API_KEY di file .env.local lalu restart server.'
+        reply: '⚠️ API Key Gemini belum dikonfigurasi. Silakan isi GEMINI_API_KEY di file .env.local lalu restart server.',
       });
     }
 
-    // Extract user info FROM JWT (server-side, not client)
     const userRole = authUser.role || 'user';
     const userName = authUser.username || 'Pengguna';
     const allowedTables = ROLE_PERMISSIONS[userRole] || [];
 
-    // Get database context — hanya tahun aktif ±1
     const year = parseYear(tahun || new Date().getFullYear());
     if (year.error) {
       return NextResponse.json({ error: year.error }, { status: 400 });
@@ -374,13 +361,12 @@ export async function POST(request) {
     const ctx = await getDbContext(userRole, currentYear);
 
     const contextMessage = `
-DATA SELURUH TAHUN:
+DATA SELURUH TAHUN (hanya tahun ${currentYear - 1}-${currentYear + 1}):
 Tahun yang tersedia: ${ctx.availableYears.join(', ')}
 Daftar Desa: ${ctx.desa.map(d => `${d.nama} (ID:${d.id})`).join(', ')}
 
 ${Object.entries(ctx.summaries).map(([table, rows]) => {
   if (rows.length === 0) return `${table}: Belum ada data`;
-  // Group by year
   const byYear = {};
   rows.forEach(r => {
     if (!byYear[r.tahun]) byYear[r.tahun] = [];
@@ -401,26 +387,26 @@ Tahun yang sedang dipilih user di dashboard: ${currentYear}
     const systemPrompt = buildSystemPrompt(userRole, userName, allowedTables);
 
     const updateDataDeclaration = {
-      name: "update_desa_data",
-      description: "Update data for a specific desa in a specific table for the current year. You must only use this if the user has explicitly asked to update/input data and has the right access.",
+      name: 'update_desa_data',
+      description: 'Update data for a specific desa in a specific table for the current year. Only use this if the user has explicitly asked to update/input data AND has the right access.',
       parameters: {
-        type: "OBJECT",
+        type: 'OBJECT',
         properties: {
           table_name: {
-            type: "STRING",
-            description: "The name of the table to update (must be one of: data_umum, data_pokja1, data_pokja2, data_pokja3, data_pokja4, data_bumil)"
+            type: 'STRING',
+            description: 'Nama tabel (harus salah satu dari: data_umum, data_pokja1, data_pokja2, data_pokja3, data_pokja4, data_kegiatan_warga, data_bumil)',
           },
           desa_id: {
-            type: "INTEGER",
-            description: "The ID of the desa to update"
+            type: 'INTEGER',
+            description: 'ID desa yang akan di-update',
           },
           updates: {
-            type: "OBJECT",
-            description: "Key-value pairs of the columns to update and their new numeric values. Example: { jiwa_l: 100, jiwa_p: 150 }"
-          }
+            type: 'OBJECT',
+            description: 'Key-value pairs kolom → nilai integer. Contoh: { jml_kk: 100 }',
+          },
         },
-        required: ["table_name", "desa_id", "updates"]
-      }
+        required: ['table_name', 'desa_id', 'updates'],
+      },
     };
 
     const model = genAI.getGenerativeModel({
@@ -429,7 +415,6 @@ Tahun yang sedang dipilih user di dashboard: ${currentYear}
       tools: [{ functionDeclarations: [updateDataDeclaration] }],
     });
 
-    // Build chat history — batasi hanya 12 pesan terakhir untuk kontrol token
     const chatHistory = (Array.isArray(history) ? history : []).slice(-MAX_CHAT_HISTORY_ITEMS).map(h => ({
       role: h.role === 'user' ? 'user' : 'model',
       parts: [{ text: String(h.content || '').slice(0, MAX_CHAT_MESSAGE_LENGTH) }],
@@ -438,106 +423,93 @@ Tahun yang sedang dipilih user di dashboard: ${currentYear}
     const chat = model.startChat({ history: chatHistory });
     let result = await chat.sendMessage(message.trim());
 
-    // Handle function calls if Gemini decides to use the tool
     const functionCalls = result.response.functionCalls();
     if (functionCalls && functionCalls.length > 0) {
       const call = functionCalls[0];
-      
+
       if (call.name === 'update_desa_data') {
         const { table_name, desa_id, updates } = call.args;
-        
         let apiResponse;
-        
-        // 1. Server-side whitelist validation for table_name
+
         if (!VALID_TABLES.includes(table_name)) {
           apiResponse = { error: `Tabel '${table_name}' tidak valid.` };
-        }
-        // 2. Verify access from JWT role (NOT from body)
-        else if (!allowedTables.includes(table_name)) {
+        } else if (!allowedTables.includes(table_name)) {
           apiResponse = { error: `Akses ditolak: Role '${userRole}' tidak diizinkan mengubah tabel '${table_name}'.` };
-        }
-        // 3. Validate column names against whitelist
-        else {
+        } else {
           const validCols = VALID_COLUMNS[table_name] || [];
           if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
             apiResponse = { error: 'Payload update tidak valid.' };
           } else if (Object.keys(updates).length === 0) {
             apiResponse = { error: 'Minimal satu kolom harus diupdate.' };
           } else {
-          const invalidCols = Object.keys(updates).filter(k => !validCols.includes(k));
-          
-          if (invalidCols.length > 0) {
-            apiResponse = { error: `Kolom tidak valid: ${invalidCols.join(', ')}. Kolom yang diizinkan: ${validCols.join(', ')}` };
-          } else {
-            // 4. Sanitize values — only allow integer numbers
-            const validDesaId = toBoundedInteger(desa_id, 'desa_id', { min: 1, max: 2147483647 });
-            if (validDesaId.error) {
-              apiResponse = { error: validDesaId.error };
+            const invalidCols = Object.keys(updates).filter(k => !validCols.includes(k));
+            if (invalidCols.length > 0) {
+              apiResponse = { error: `Kolom tidak valid: ${invalidCols.join(', ')}. Kolom yang diizinkan: ${validCols.join(', ')}` };
             } else {
-            const sanitizedUpdates = {};
-            for (const [key, value] of Object.entries(updates)) {
-              const parsed = toBoundedInteger(value, key);
-              if (parsed.error) {
-                apiResponse = { error: parsed.error };
-                break;
-              }
-              sanitizedUpdates[key] = parsed.value;
-            }
-
-            // 5. Perform database update
-            if (!apiResponse) {
-              const { data: updatedRows, error } = await supabase
-                .from(table_name)
-                .update(sanitizedUpdates)
-                .eq('desa_id', validDesaId.value)
-                .eq('tahun', currentYear)
-                .select('id');
-                
-              if (error) {
-                apiResponse = { error: `Gagal menyimpan ke database: ${error.message}` };
-              } else if (!updatedRows || updatedRows.length === 0) {
-                apiResponse = { error: `Data desa ${validDesaId.value} tahun ${currentYear} belum ada. Isi lewat halaman data atau import terlebih dahulu.` };
+              const validDesaId = toBoundedInteger(desa_id, 'desa_id', { min: 1, max: 2147483647 });
+              if (validDesaId.error) {
+                apiResponse = { error: validDesaId.error };
               } else {
-                await writeLog({
-                  userId: authUser.userId,
-                  username: userName,
-                  action: 'ai_update',
-                  tableName: table_name,
-                  detail: `AI update desa_id ${validDesaId.value} tahun ${currentYear}: ${Object.keys(sanitizedUpdates).join(', ')}`,
-                });
-                apiResponse = { success: true, message: `Data desa ${validDesaId.value} di tabel ${table_name} berhasil diperbarui.` };
+                const sanitizedUpdates = {};
+                for (const [key, value] of Object.entries(updates)) {
+                  const parsed = toBoundedInteger(value, key);
+                  if (parsed.error) {
+                    apiResponse = { error: parsed.error };
+                    break;
+                  }
+                  sanitizedUpdates[key] = parsed.value;
+                }
+
+                if (!apiResponse) {
+                  const { data: updatedRows, error } = await supabase
+                    .from(table_name)
+                    .update(sanitizedUpdates)
+                    .eq('desa_id', validDesaId.value)
+                    .eq('tahun', currentYear)
+                    .select('id');
+
+                  if (error) {
+                    apiResponse = { error: `Gagal menyimpan ke database: ${error.message}` };
+                  } else if (!updatedRows || updatedRows.length === 0) {
+                    apiResponse = { error: `Data desa ${validDesaId.value} tahun ${currentYear} belum ada. Isi lewat halaman data atau import terlebih dahulu.` };
+                  } else {
+                    await writeLog({
+                      userId: authUser.userId,
+                      username: userName,
+                      action: 'ai_update',
+                      tableName: table_name,
+                      detail: `AI update desa_id ${validDesaId.value} tahun ${currentYear}: ${Object.keys(sanitizedUpdates).join(', ')}`,
+                    });
+                    apiResponse = { success: true, message: `Data desa ${validDesaId.value} di tabel ${table_name} berhasil diperbarui.` };
+                  }
+                }
               }
             }
-            }
-          }
           }
         }
-        
-        // 6. Send the result back to Gemini so it can answer the user
+
         result = await chat.sendMessage([{
           functionResponse: {
             name: 'update_desa_data',
-            response: apiResponse
-          }
+            response: apiResponse,
+          },
         }]);
       }
     }
 
     const reply = result.response.text();
-
     return NextResponse.json({ reply });
   } catch (error) {
     console.error('AI Chat error:', error);
-    
-    // Check if it's a quota error
+
     if (error.status === 429 || (error.message && error.message.includes('Quota exceeded'))) {
       return NextResponse.json({
-        reply: '⚠️ **Gagal memproses:** API Key Anda telah mencapai batas kuota (Quota Exceeded). Silakan gunakan API Key dari akun Google lain atau pastikan project Anda memiliki akses Free Tier.'
+        reply: '⚠️ **Gagal memproses:** API Key Anda telah mencapai batas kuota (Quota Exceeded). Silakan gunakan API Key dari akun Google lain atau pastikan project Anda memiliki akses Free Tier.',
       }, { status: 200 });
     }
 
     return NextResponse.json({
-      reply: '❌ Maaf, terjadi kesalahan saat memproses pesan Anda. Silakan coba lagi.'
+      reply: '❌ Maaf, terjadi kesalahan saat memproses pesan Anda. Silakan coba lagi.',
     }, { status: 200 });
   }
 }

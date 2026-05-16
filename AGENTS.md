@@ -74,6 +74,7 @@ Konvensi paling penting di versi ini:
 
 - Model default: `gemini-flash-latest` (alias ke flash terbaru). Override via `GEMINI_MODEL` env.
 - Sebelumnya memakai `gemini-1.5-flash` yang sudah deprecated → menyebabkan 404.
+- Catatan: sempat bereksperimen pindah ke Claude Sonnet 4.5 via `@anthropic-ai/sdk` tapi di-rollback. Kalau suatu saat mau pindah lagi, pattern integrasi sudah pernah dibangun dan bisa ditemukan di history git.
 - Konteks DB yang dikirim ke Gemini dibatasi ke tahun aktif ±1 untuk menghemat token dan membatasi exposure data.
 - Chat history dibatasi 12 pesan terakhir.
 - Function call `update_desa_data` divalidasi server-side terhadap `VALID_TABLES` + `VALID_COLUMNS`, role dari JWT, dan integer sanitization.

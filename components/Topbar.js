@@ -3,9 +3,10 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Bell, ArrowRightToBracket, Lock, AngleDown, Bars } from 'flowbite-react-icons/outline';
+import { Bell, ArrowRightToBracket, Lock, AngleDown, Bars, Sun, Moon, Cog } from 'flowbite-react-icons/outline';
 import { User } from 'flowbite-react-icons/solid';
 import { timeAgo } from '@/lib/time';
+import { useTheme } from '@/lib/useTheme';
 
 export default function Topbar({ user, onMobileMenuToggle, onOpenPasswordModal }) {
   const [showDropdown, setShowDropdown] = useState(false);
@@ -15,6 +16,7 @@ export default function Topbar({ user, onMobileMenuToggle, onOpenPasswordModal }
   const dropdownRef = useRef(null);
   const notifRef = useRef(null);
   const router = useRouter();
+  const { theme, setTheme } = useTheme();
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -52,7 +54,6 @@ export default function Topbar({ user, onMobileMenuToggle, onOpenPasswordModal }
     localStorage.removeItem('user');
     router.push('/');
   };
-
   const handleProfile = () => {
     setShowDropdown(false);
     router.push('/dashboard/profile');
@@ -99,7 +100,7 @@ export default function Topbar({ user, onMobileMenuToggle, onOpenPasswordModal }
   };
 
   return (
-    <header className="flex items-center justify-between px-4 md:px-6 py-3 bg-white/80 backdrop-blur-lg border-b border-gray-100 sticky top-0 z-30">
+    <header className="flex items-center justify-between px-4 md:px-6 py-3 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-100 dark:border-gray-800 sticky top-0 z-30">
       <div className="flex items-center gap-3 flex-1">
         <button
           className="md:hidden p-2 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-500"
@@ -185,34 +186,45 @@ export default function Topbar({ user, onMobileMenuToggle, onOpenPasswordModal }
           </button>
 
           {showDropdown && (
-            <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
-              <div className="flex items-center gap-3 p-4 border-b border-gray-50">
+            <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-center gap-3 p-4 border-b border-gray-50 dark:border-gray-800">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-600 to-primary-500 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
                   {getInitials(user?.nama_lengkap)}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-gray-800 truncate">{user?.nama_lengkap}</p>
-                  <p className="text-xs text-gray-400 truncate">@{user?.username}</p>
+                  <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{user?.nama_lengkap}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 truncate">@{user?.username}</p>
                 </div>
               </div>
               <div className="py-1">
                 <button
                   onClick={handleProfile}
-                  className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-800 transition-colors"
+                  className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-800 transition-colors dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-100"
                 >
                   <User className="w-4 h-4" /> Profil Saya
                 </button>
                 <button
                   onClick={handleChangePassword}
-                  className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-800 transition-colors"
+                  className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-800 transition-colors dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-100"
                 >
                   <Lock className="w-4 h-4" /> Ganti Password
                 </button>
               </div>
-              <div className="border-t border-gray-50 py-1">
+
+              {/* Theme switcher */}
+              <div className="border-t border-gray-50 dark:border-gray-800 py-1">
+                <div className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Tema</div>
+                <div className="px-3 pb-2 flex gap-1">
+                  <ThemeBtn current={theme} value="light" onClick={() => setTheme('light')} icon={Sun} label="Terang" />
+                  <ThemeBtn current={theme} value="dark" onClick={() => setTheme('dark')} icon={Moon} label="Gelap" />
+                  <ThemeBtn current={theme} value="system" onClick={() => setTheme('system')} icon={Cog} label="Sistem" />
+                </div>
+              </div>
+
+              <div className="border-t border-gray-50 dark:border-gray-800 py-1">
                 <button
                   onClick={handleLogout}
-                  className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+                  className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors dark:hover:bg-red-950/40"
                 >
                   <ArrowRightToBracket className="w-4 h-4" /> Keluar
                 </button>
@@ -222,5 +234,25 @@ export default function Topbar({ user, onMobileMenuToggle, onOpenPasswordModal }
         </div>
       </div>
     </header>
+  );
+}
+
+
+function ThemeBtn({ current, value, onClick, icon: Icon, label }) {
+  const active = current === value;
+  return (
+    <button
+      onClick={onClick}
+      className={`flex-1 inline-flex flex-col items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-semibold transition-colors ${
+        active
+          ? 'bg-primary-600 text-white'
+          : 'bg-gray-50 text-gray-600 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+      }`}
+      aria-pressed={active}
+      aria-label={`Tema ${label}`}
+    >
+      <Icon className="w-4 h-4" />
+      <span>{label}</span>
+    </button>
   );
 }

@@ -26,6 +26,7 @@ export default function AiChatBubble({ tahun, user }) {
   const { years } = useYears();
   const [privacyDismissed, setPrivacyDismissed] = useState(true);
   const [toastMsg, setToastMsg] = useState(null);
+  const [selectedRows, setSelectedRows] = useState({}); // { [tableName]: Set<desaId> }
 
   // Load privacy banner state
   useEffect(() => {
@@ -127,7 +128,16 @@ export default function AiChatBubble({ tahun, user }) {
              diff: diffData.diff,
              fileName: data.fileName,
            });
-           setOpen(false); // Close chat bubble to show modal clearly
+           // Default-select semua row insert/update
+           const initialSel = {};
+           for (const sheet of diffData.diff || []) {
+             const ids = (sheet.rows || [])
+               .filter((r) => (r.action === 'insert' || r.action === 'update') && r.desaId)
+               .map((r) => r.desaId);
+             if (ids.length > 0) initialSel[sheet.tableName] = new Set(ids);
+           }
+           setSelectedRows(initialSel);
+           setOpen(false);
         }
       }
     } catch {
@@ -151,10 +161,15 @@ export default function AiChatBubble({ tahun, user }) {
     }]);
 
     try {
+      // Convert Set→Array untuk JSON
+      const selectedDesaIds = {};
+      for (const [t, set] of Object.entries(selectedRows)) {
+        if (set && set.size > 0) selectedDesaIds[t] = [...set];
+      }
       const res = await fetch('/api/import/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ parsedData, tahun: importTahun }),
+        body: JSON.stringify({ parsedData, tahun: importTahun, selectedDesaIds }),
       });
       const data = await res.json();
 
@@ -279,13 +294,47 @@ export default function AiChatBubble({ tahun, user }) {
                   <div className="flex-1 text-sm text-blue-900 font-medium">{importPreviewData.fileName}</div>
                 </div>
 
-                {importPreviewData.diff.map((sheetDiff, i) => (
+                {importPreviewData.diff.map((sheetDiff, i) => {
+                  const selectableRows = (sheetDiff.rows || []).filter((r) => (r.action === 'insert' || r.action === 'update') && r.desaId);
+                  const sel = selectedRows[sheetDiff.tableName] || new Set();
+                  const allSelected = selectableRows.length > 0 && selectableRows.every((r) => sel.has(r.desaId));
+                  const noneSelected = sel.size === 0;
+                  const insertOnly = (action) => () => {
+                    const next = new Set();
+                    selectableRows.filter((r) => r.action === action).forEach((r) => next.add(r.desaId));
+                    setSelectedRows((prev) => ({ ...prev, [sheetDiff.tableName]: next }));
+                  };
+                  const toggleAll = () => {
+                    const next = allSelected ? new Set() : new Set(selectableRows.map((r) => r.desaId));
+                    setSelectedRows((prev) => ({ ...prev, [sheetDiff.tableName]: next }));
+                  };
+                  const toggleRow = (desaId) => {
+                    setSelectedRows((prev) => {
+                      const cur = new Set(prev[sheetDiff.tableName] || []);
+                      cur.has(desaId) ? cur.delete(desaId) : cur.add(desaId);
+                      return { ...prev, [sheetDiff.tableName]: cur };
+                    });
+                  };
+                  return (
                   <div key={i} className="mb-8">
-                    <h4 className="font-bold text-gray-800 flex items-center gap-2 mb-3">
+                    <h4 className="font-bold text-gray-800 flex items-center gap-2 mb-3 flex-wrap">
                       <span>Sheet: {sheetDiff.sheetName}</span>
                       <span className="text-xs font-normal bg-gray-200 text-gray-700 px-2 py-0.5 rounded-md">→ {sheetDiff.tableName}</span>
+                      <span className="text-xs font-normal text-primary-700 ml-auto">{sel.size} dari {selectableRows.length} terpilih</span>
                     </h4>
-                    
+
+                    <div className="flex flex-wrap items-center gap-2 mb-3 text-xs">
+                      <button onClick={toggleAll} className="px-2 py-1 bg-white border border-gray-200 hover:bg-gray-50 rounded-lg font-medium text-gray-700">
+                        {allSelected ? 'Kosongkan' : 'Pilih semua'}
+                      </button>
+                      <button onClick={insertOnly('insert')} className="px-2 py-1 bg-green-50 border border-green-200 hover:bg-green-100 rounded-lg font-medium text-green-700">
+                        Hanya yang baru
+                      </button>
+                      <button onClick={insertOnly('update')} className="px-2 py-1 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-lg font-medium text-blue-700">
+                        Hanya yang diubah
+                      </button>
+                    </div>
+
                     <div className="flex gap-4 mb-3 text-sm">
                       <div className="flex items-center gap-1"><div className="w-3 h-3 bg-green-500 rounded-sm"></div> <span className="font-medium">{sheetDiff.counts.insert}</span> Baru</div>
                       <div className="flex items-center gap-1"><div className="w-3 h-3 bg-blue-500 rounded-sm"></div> <span className="font-medium">{sheetDiff.counts.update}</span> Ubah</div>
@@ -298,26 +347,47 @@ export default function AiChatBubble({ tahun, user }) {
                         <table className="w-full text-sm text-left">
                           <thead className="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase">
                             <tr>
-                              <th className="px-4 py-3 w-10">Aksi</th>
-                              <th className="px-4 py-3 w-40">Desa</th>
-                              <th className="px-4 py-3">Perubahan (Hanya yang berbeda)</th>
+                              <th className="px-2 py-3 w-8">
+                                <input
+                                  type="checkbox"
+                                  checked={allSelected}
+                                  onChange={toggleAll}
+                                  aria-label={`Pilih semua baris ${sheetDiff.tableName}`}
+                                />
+                              </th>
+                              <th className="px-3 py-3 w-10">Aksi</th>
+                              <th className="px-3 py-3 w-40">Desa</th>
+                              <th className="px-3 py-3">Perubahan (Hanya yang berbeda)</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-50">
-                            {sheetDiff.rows.map((row, j) => (
+                            {sheetDiff.rows.map((row, j) => {
+                              const checkable = (row.action === 'insert' || row.action === 'update') && row.desaId;
+                              const checked = checkable && sel.has(row.desaId);
+                              return (
                               <tr key={j} className={
                                 row.action === 'insert' ? 'bg-green-50/30' : 
                                 row.action === 'update' ? 'bg-blue-50/30' : 
                                 row.action === 'error' ? 'bg-red-50/30' : 'opacity-50'
                               }>
-                                <td className="px-4 py-2">
+                                <td className="px-2 py-2 align-top">
+                                  {checkable ? (
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      onChange={() => toggleRow(row.desaId)}
+                                      aria-label={`Pilih ${row.desaName}`}
+                                    />
+                                  ) : null}
+                                </td>
+                                <td className="px-3 py-2">
                                   {row.action === 'insert' && <span className="px-2 py-1 bg-green-100 text-green-700 text-[10px] font-bold rounded uppercase">Baru</span>}
                                   {row.action === 'update' && <span className="px-2 py-1 bg-blue-100 text-blue-700 text-[10px] font-bold rounded uppercase">Ubah</span>}
                                   {row.action === 'skip' && <span className="px-2 py-1 bg-gray-100 text-gray-600 text-[10px] font-bold rounded uppercase">Skip</span>}
                                   {row.action === 'error' && <span className="px-2 py-1 bg-red-100 text-red-700 text-[10px] font-bold rounded uppercase">Error</span>}
                                 </td>
-                                <td className="px-4 py-2 font-medium text-gray-800">{row.desaName}</td>
-                                <td className="px-4 py-2 font-mono text-xs">
+                                <td className="px-3 py-2 font-medium text-gray-800">{row.desaName}</td>
+                                <td className="px-3 py-2 font-mono text-xs">
                                   {row.action === 'error' && <span className="text-red-500">{row.reason}</span>}
                                   {row.action === 'skip' && <span className="text-gray-400">Tidak ada perubahan</span>}
                                   {(row.action === 'insert' || row.action === 'update') && (
@@ -338,13 +408,15 @@ export default function AiChatBubble({ tahun, user }) {
                                   )}
                                 </td>
                               </tr>
-                            ))}
+                            );
+                            })}
                           </tbody>
                         </table>
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
 
               <div className="p-4 sm:p-6 bg-white border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -367,12 +439,18 @@ export default function AiChatBubble({ tahun, user }) {
                   >
                     Batal
                   </button>
-                  <button
-                    onClick={confirmImport}
-                    className="flex-1 sm:flex-none px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl shadow-lg shadow-green-500/30 transition-all active:scale-95"
-                  >
-                    Konfirmasi & Simpan
-                  </button>
+                  {(() => {
+                    const totalSelected = Object.values(selectedRows).reduce((s, set) => s + (set?.size || 0), 0);
+                    return (
+                      <button
+                        onClick={confirmImport}
+                        disabled={totalSelected === 0}
+                        className="flex-1 sm:flex-none px-5 py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-xl shadow-lg shadow-green-500/30 transition-all active:scale-95"
+                      >
+                        Simpan {totalSelected > 0 ? `${totalSelected} baris` : ''}
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
             </motion.div>

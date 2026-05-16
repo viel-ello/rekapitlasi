@@ -16,7 +16,7 @@ export async function POST(request) {
     const user = await requireAuth(request);
     if (!user) return requireAuth.deny();
 
-    const { parsedData, tahun } = await request.json();
+    const { parsedData, tahun, selectedDesaIds } = await request.json();
 
     if (!Array.isArray(parsedData) || !tahun) {
       return NextResponse.json({ error: 'Data import dan tahun harus diisi' }, { status: 400 });
@@ -34,7 +34,21 @@ export async function POST(request) {
     }
 
     const { diff, desaList } = await buildImportDiff(parsedData, targetYear, user);
-    const sheetsToImport = sheetsFromDiff(diff);
+
+    // Validasi & sanitize selectedDesaIds: { [tableName]: number[] }
+    let selection = null;
+    if (selectedDesaIds && typeof selectedDesaIds === 'object' && !Array.isArray(selectedDesaIds)) {
+      selection = {};
+      for (const [t, ids] of Object.entries(selectedDesaIds)) {
+        if (typeof t !== 'string') continue;
+        if (!Array.isArray(ids)) continue;
+        const cleaned = ids.map((n) => Number(n)).filter((n) => Number.isInteger(n) && n > 0);
+        if (cleaned.length > 0) selection[t] = cleaned;
+      }
+      if (Object.keys(selection).length === 0) selection = null;
+    }
+
+    const sheetsToImport = sheetsFromDiff(diff, selection);
 
     if (sheetsToImport.length === 0) {
       const failed = diff.reduce((sum, sheet) => sum + (sheet.counts?.error || 0), 0);

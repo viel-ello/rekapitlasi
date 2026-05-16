@@ -4,6 +4,13 @@ import ThemeProvider from '@/components/ThemeProvider';
 export const metadata = {
   title: 'Sistem Rekapitulasi Data PKK — Kecamatan Baturetno',
   description: 'Aplikasi web untuk rekapitulasi data kegiatan PKK tingkat Kecamatan Baturetno, Kabupaten Wonogiri, Jawa Tengah.',
+  icons: {
+    icon: [
+      { url: '/logo.png', type: 'image/png' },
+    ],
+    shortcut: '/logo.png',
+    apple: '/logo.png',
+  },
 };
 
 // Inline script di <head> supaya theme class ter-apply sebelum hydrasi, tanpa flash.

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { User, Lock, Shield, CheckCircle, ExclamationCircle, Clock } from 'flowbite-react-icons/outline';
+import { timeAgo } from '@/lib/time';
 
 const ROLE_LABELS = {
   admin: 'Administrator',
@@ -13,6 +14,18 @@ const ROLE_LABELS = {
   user: 'Pengguna',
 };
 
+const ACTION_LABEL = {
+  update: 'Update',
+  create: 'Create',
+  delete: 'Delete',
+  import: 'Import',
+  period_submit: 'Ajukan periode',
+  period_approve: 'Setujui periode',
+  period_return: 'Kembalikan periode',
+  period_lock: 'Kunci periode',
+  period_unlock: 'Buka periode',
+};
+
 export default function ProfilePage() {
   const [me, setMe] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -20,6 +33,8 @@ export default function ProfilePage() {
   const [pwMsg, setPwMsg] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [activity, setActivity] = useState([]);
+  const [activityLoading, setActivityLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
@@ -31,7 +46,18 @@ export default function ProfilePage() {
       }
       setLoading(false);
     }
+    async function loadActivity() {
+      try {
+        const res = await fetch('/api/auth/me/activity');
+        if (res.ok) {
+          const data = await res.json();
+          setActivity(data.items || []);
+        }
+      } catch { /* silent */ }
+      setActivityLoading(false);
+    }
     load();
+    loadActivity();
   }, []);
 
   const handleSubmit = async (e) => {
@@ -118,7 +144,42 @@ export default function ProfilePage() {
               )}
             </div>
           </div>
+          <div>
+            <div className="text-xs font-semibold text-gray-500 mb-1">Login Terakhir</div>
+            <div className="text-sm font-medium text-gray-800 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-primary-600" />
+              {me?.lastLoginAt ? timeAgo(me.lastLoginAt) : 'Belum tercatat'}
+            </div>
+          </div>
         </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+        <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide mb-4">Aktivitas 30 Hari Terakhir</h2>
+        {activityLoading ? (
+          <div className="text-sm text-gray-400">Memuat...</div>
+        ) : activity.length === 0 ? (
+          <div className="text-sm text-gray-400">Belum ada aktivitas tercatat.</div>
+        ) : (
+          <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+            {activity.map((a) => (
+              <div key={a.id} className="flex items-start gap-3 py-2 border-b border-gray-50 last:border-0">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary-500 mt-2 flex-shrink-0"></div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="inline-flex px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 text-[10px] font-mono font-semibold uppercase">
+                      {ACTION_LABEL[a.action] || a.action}
+                    </span>
+                    <span className="text-sm font-medium text-gray-700">{a.table_name}</span>
+                    {a.desa_nama && <span className="text-xs text-gray-500">• {a.desa_nama}</span>}
+                  </div>
+                  {a.detail && <div className="text-xs text-gray-500 mt-0.5 truncate">{a.detail}</div>}
+                  <div className="text-[10px] text-gray-400 mt-0.5">{timeAgo(a.created_at)}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">

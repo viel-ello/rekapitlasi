@@ -12,6 +12,16 @@
   body {
     @apply font-sans bg-dashboard text-dashboard antialiased;
   }
+  .dark body {
+    background-color: #0b1310;
+    color: #d1fae5;
+  }
+  .dark .bg-dashboard {
+    background-color: #0b1310;
+  }
+  .dark .text-dashboard {
+    color: #d1fae5;
+  }
 }
 
 /* ---- Sidebar Layout ---- */
@@ -34,6 +44,41 @@
   flex-direction: column;
   overflow-y: auto;
   overflow-x: visible;
+}
+.dark .sidebar {
+  background: #111a16;
+  border-right-color: #1f2a25;
+}
+.dark .sidebar-brand {
+  border-bottom-color: #1f2a25;
+}
+.dark .nav-item {
+  color: #94a3a0;
+}
+.dark .nav-item:hover {
+  background: #15201b;
+  color: #6ee7b7;
+}
+.dark .nav-item-active {
+  background: #15201b;
+  color: #6ee7b7;
+}
+.dark .sidebar-footer {
+  border-top-color: #1f2a25;
+}
+.dark .sidebar-user-card {
+  background: #15201b;
+}
+.dark .sidebar-user-card span {
+  color: #d1fae5;
+}
+.dark .sidebar-toggle {
+  background: #15201b;
+  border-color: #2d3a33;
+  color: #94a3a0;
+}
+.dark .nav-section-title {
+  color: #6b7672;
 }
 .sidebar-collapsed {
   width: var(--sidebar-collapsed);
@@ -347,4 +392,281 @@
   border-right-color: #1f2937;
   z-index: 100;
   pointer-events: none;
+}
+
+
+/* ---- Dark mode overrides untuk komponen utama ---- */
+.dark .data-table th {
+  background: #15201b;
+  color: #94a3a0;
+  border-bottom-color: #1f2a25;
+}
+.dark .data-table td {
+  border-bottom-color: #1f2a25;
+}
+.dark .data-table tbody tr:hover td {
+  background: #15201b;
+}
+.dark .data-table .col-desa {
+  background: #111a16;
+  color: #d1fae5;
+}
+.dark .data-table tbody tr:hover .col-desa {
+  background: #15201b;
+}
+.dark .data-table .cell-input {
+  color: #d1fae5;
+}
+.dark .data-table .cell-input:hover {
+  background: #15201b;
+  border-color: #2d3a33;
+}
+.dark .data-table .cell-input:focus {
+  background: #15201b;
+}
+.dark .data-table .row-total {
+  background: #15201b !important;
+}
+.dark .data-table .row-total td {
+  border-top-color: #34d399;
+  color: #6ee7b7;
+}
+
+/* Dark scrollbar */
+.dark ::-webkit-scrollbar-thumb {
+  background: #2d3a33;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #3d4d44;
+}
+
+
+/* Dark default untuk class umum yang dipakai luas:
+   bg-white → background card
+   border-gray-100/200 → outline card
+   text-gray-700/800 → heading
+   Komponen yang sudah pakai bg-white tanpa dark: prefix akan otomatis ter-translate. */
+.dark .bg-white {
+  background-color: #111a16;
+}
+.dark .bg-gray-50 {
+  background-color: #15201b;
+}
+.dark .border-gray-100,
+.dark .border-gray-200 {
+  border-color: #1f2a25;
+}
+.dark .text-gray-800 {
+  color: #e5e7eb;
+}
+.dark .text-gray-700 {
+  color: #d1d5db;
+}
+.dark .text-gray-600 {
+  color: #b0b8b3;
+}
+.dark .text-gray-500 {
+  color: #94a3a0;
+}
+.dark .text-gray-400 {
+  color: #7a8580;
+}
+.dark .hover\:bg-gray-50:hover {
+  background-color: #15201b;
+}
+.dark .hover\:bg-gray-100:hover {
+  background-color: #1c2722;
+}
+
+/* Selectively keep accent backgrounds tetap muda di dark — jangan auto translate */
+.dark .bg-primary-50 {
+  background-color: rgba(16, 185, 129, 0.12);
+}
+.dark .bg-blue-50 {
+  background-color: rgba(59, 130, 246, 0.12);
+}
+.dark .bg-green-50 {
+  background-color: rgba(34, 197, 94, 0.12);
+}
+.dark .bg-amber-50 {
+  background-color: rgba(245, 158, 11, 0.12);
+}
+.dark .bg-red-50 {
+  background-color: rgba(239, 68, 68, 0.12);
+}
+.dark .bg-blue-100 {
+  background-color: rgba(59, 130, 246, 0.18);
+}
+
+
+/* ─── Dark mode token application ──────────────────────────────────────── */
+.dark {
+  color-scheme: dark;
+}
+
+/* Sidebar */
+.dark .sidebar {
+  background: #111c18;
+  border-right-color: #1f2a25;
+}
+.dark .sidebar-brand,
+.dark .sidebar-footer {
+  border-color: #1f2a25;
+}
+.dark .nav-item {
+  color: #94a3b8;
+}
+.dark .nav-item:hover {
+  background: #14201b;
+  color: #34d399;
+}
+.dark .nav-item-active {
+  background: #14201b;
+  color: #34d399;
+}
+.dark .nav-section-title {
+  color: #6b7280;
+}
+.dark .sidebar-toggle {
+  background: #14201b;
+  border-color: #1f2a25;
+  color: #94a3b8;
+}
+.dark .sidebar-toggle:hover {
+  background: #1c2a24;
+  color: #34d399;
+  border-color: #34d399;
+}
+.dark .sidebar-user-card {
+  background: #14201b;
+}
+
+/* Surfaces — bg-white & border-gray-* */
+.dark .bg-white {
+  background-color: #111c18;
+}
+.dark .bg-gray-50,
+.dark .bg-gray-50\/50,
+.dark .bg-gray-50\/60,
+.dark .bg-gray-100\/60,
+.dark .bg-gray-50\/40 {
+  background-color: #14201b;
+}
+.dark .bg-gray-100 {
+  background-color: #1c2a24;
+}
+
+/* Borders */
+.dark .border-gray-100,
+.dark .border-gray-200 {
+  border-color: #1f2a25;
+}
+.dark .border-primary-100 {
+  border-color: #14463a;
+}
+.dark .border-primary-200 {
+  border-color: #1a5b48;
+}
+
+/* Text scale */
+.dark .text-gray-900,
+.dark .text-gray-800 {
+  color: #e5e7eb;
+}
+.dark .text-gray-700 {
+  color: #d1d5db;
+}
+.dark .text-gray-600 {
+  color: #9ca3af;
+}
+.dark .text-gray-500 {
+  color: #94a3b8;
+}
+.dark .text-gray-400 {
+  color: #6b7280;
+}
+.dark .text-primary-700,
+.dark .text-primary-800,
+.dark .text-primary-900 {
+  color: #34d399;
+}
+
+/* Tabel data-table */
+.dark .data-table th {
+  background: #14201b;
+  color: #94a3b8;
+  border-bottom-color: #1f2a25;
+}
+.dark .data-table td {
+  border-bottom-color: #1f2a25;
+}
+.dark .data-table tbody tr:hover td {
+  background: #14463a;
+}
+.dark .data-table .col-desa {
+  background: #111c18;
+  color: #e5e7eb;
+}
+.dark .data-table tbody tr:hover .col-desa {
+  background: #14463a;
+}
+.dark .data-table .cell-input {
+  color: #e5e7eb;
+}
+.dark .data-table .cell-input:hover {
+  background: #14201b;
+  border-color: #1f2a25;
+}
+.dark .data-table .cell-input:focus {
+  background: #14201b;
+}
+.dark .data-table .row-total {
+  background-color: #14463a !important;
+}
+
+/* Input/select baseline override */
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #14201b;
+  color: #e5e7eb;
+  border-color: #1f2a25;
+}
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #6b7280;
+}
+
+/* Pastel accent backgrounds (success/warning/error/info) — soften di dark */
+.dark .bg-green-50 { background-color: rgba(16, 185, 129, 0.12); }
+.dark .text-green-700, .dark .text-green-600 { color: #34d399; }
+.dark .border-green-100, .dark .border-green-200 { border-color: rgba(16, 185, 129, 0.25); }
+
+.dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.12); }
+.dark .text-amber-700, .dark .text-amber-600, .dark .text-amber-800 { color: #fbbf24; }
+.dark .border-amber-100, .dark .border-amber-200 { border-color: rgba(245, 158, 11, 0.25); }
+
+.dark .bg-red-50 { background-color: rgba(239, 68, 68, 0.12); }
+.dark .text-red-700, .dark .text-red-600, .dark .text-red-500 { color: #f87171; }
+.dark .border-red-100, .dark .border-red-200 { border-color: rgba(239, 68, 68, 0.25); }
+
+.dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.12); }
+.dark .text-blue-700, .dark .text-blue-600, .dark .text-blue-800 { color: #60a5fa; }
+.dark .border-blue-100, .dark .border-blue-200 { border-color: rgba(59, 130, 246, 0.25); }
+
+.dark .bg-primary-50 { background-color: rgba(16, 185, 129, 0.10); }
+.dark .bg-primary-50\/30,
+.dark .bg-primary-50\/40 { background-color: rgba(16, 185, 129, 0.07); }
+
+/* Skeleton */
+.dark .skeleton {
+  background: linear-gradient(90deg, #1c2a24 25%, #243a32 50%, #1c2a24 75%);
+}
+
+/* Scrollbar */
+.dark ::-webkit-scrollbar-thumb {
+  background: #1f2a25;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #34d399;
 }

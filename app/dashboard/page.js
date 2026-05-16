@@ -11,6 +11,8 @@ import { Heart } from 'flowbite-react-icons/solid';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import { timeAgo } from '@/lib/time';
 import { useYears } from '@/lib/useYears';
+import { useRouter } from 'next/navigation';
+import DashboardToolbar from '@/components/DashboardToolbar';
 
 const TABLE_FILTERS = [
   { value: 'all', label: 'Semua Data', short: 'Semua' },
@@ -124,6 +126,9 @@ function HorizontalStatBar({ label, value, max, tone = 'primary', sub, subTitle 
 export default function DashboardPage() {
   const [rekap, setRekap] = useState(null);
   const [trend, setTrend] = useState([]);
+  const [compareData, setCompareData] = useState(null); // { aggregate, byDesa }
+  const [compareDesaIds, setCompareDesaIds] = useState([]); // [] = aggregate only
+  const router = useRouter();
   const [tahun, setTahun] = useState(new Date().getFullYear());
   const [jenisData, setJenisData] = useState('all');
   const [bulan, setBulan] = useState(12);
@@ -142,7 +147,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchRekap();
-  }, [tahun, jenisData, bulan]);
+  }, [tahun, jenisData, bulan, compareDesaIds.join(',')]);
 
   const fetchRekap = async () => {
     setLoading(true);
@@ -152,12 +157,23 @@ export default function DashboardPage() {
         jenis: jenisData,
         bulan: String(bulan),
       });
+      const trendUrl = compareDesaIds.length > 0
+        ? `/api/rekap/trend?desa_ids=${compareDesaIds.join(',')}`
+        : '/api/rekap/trend';
       const [resRekap, resTrend] = await Promise.all([
         fetch(`/api/rekap?${params.toString()}`),
-        fetch('/api/rekap/trend')
+        fetch(trendUrl),
       ]);
       setRekap(await resRekap.json());
-      setTrend(await resTrend.json());
+      const trendJson = await resTrend.json();
+      // Backward-compat: kalau aggregate-only, response = array
+      if (Array.isArray(trendJson)) {
+        setTrend(trendJson);
+        setCompareData(null);
+      } else {
+        setTrend(trendJson.aggregate || []);
+        setCompareData(trendJson);
+      }
     } catch (err) {
       console.error('Failed to fetch:', err);
     }
@@ -289,94 +305,17 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-bold text-dashboard font-mono">Dashboard Operasional</h1>
           <p className="text-sm text-primary-600 mt-0.5">TP PKK Kecamatan Baturetno — Tahun {tahun}</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <select
-            value={tahun}
-            onChange={(e) => setTahun(Number(e.target.value))}
-            className="px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 font-medium focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none shadow-sm"
-            aria-label="Pilih tahun dashboard"
-          >
-            {years.map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
-          <select
-            value={bulan}
-            onChange={(e) => setBulan(Number(e.target.value))}
-            className="px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 font-medium focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none shadow-sm"
-            aria-label="Pilih bulan dashboard"
-          >
-            {MONTHS.map((month, index) => <option key={month} value={index + 1}>{month}</option>)}
-          </select>
-          <select
-            value={jenisData}
-            onChange={(e) => setJenisData(e.target.value)}
-            className="px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 font-medium focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none shadow-sm"
-            aria-label="Pilih jenis data"
-          >
-            {TABLE_FILTERS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-          </select>
-          
-          <div className="relative">
-            <button
-              onClick={() => setShowTemplateMenu(!showTemplateMenu)}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-semibold rounded-xl transition-all shadow-sm"
-            >
-              <Download className="w-4 h-4" /> Template Excel
-            </button>
-            {showTemplateMenu && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setShowTemplateMenu(false)}></div>
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 z-20 py-2 animate-in fade-in slide-in-from-top-2">
-                  <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Pilih Tabel</div>
-                  {[
-                    { key: 'data_umum', label: 'Data Umum' },
-                    { key: 'data_pokja1', label: 'Pokja I' },
-                    { key: 'data_pokja2', label: 'Pokja II' },
-                    { key: 'data_pokja3', label: 'Pokja III' },
-                    { key: 'data_pokja4', label: 'Pokja IV' },
-                    { key: 'data_kegiatan_warga', label: 'Kegiatan Warga' },
-                    { key: 'data_bumil', label: 'Data Bumil' },
-                  ].map((t) => (
-                    <button
-                      key={t.key}
-                      onClick={() => handleDownloadTemplate(t.key, t.label)}
-                      disabled={downloadingTemplate === t.key}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700 transition-colors flex items-center justify-between"
-                    >
-                      {t.label}
-                      {downloadingTemplate === t.key && <div className="w-3 h-3 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-
-          <div className="flex bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden p-0.5">
-            <button
-              onClick={() => handleDownload('excel')}
-              disabled={downloading === 'excel'}
-              className="inline-flex items-center gap-1.5 px-3 py-2 bg-transparent hover:bg-green-50 text-green-700 text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
-              title="Export Laporan Excel"
-            >
-              {downloading === 'excel' ? '...' : 'Excel'}
-            </button>
-            <div className="w-px bg-gray-200 my-1"></div>
-            <button
-              onClick={() => handleDownload('word')}
-              disabled={downloading === 'word'}
-              className="inline-flex items-center gap-1.5 px-3 py-2 bg-transparent hover:bg-blue-50 text-blue-700 text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
-              title="Export Laporan Word"
-            >
-              {downloading === 'word' ? '...' : 'Word'}
-            </button>
-          </div>
-
-          <a
-            href="/dashboard/admin"
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm font-semibold rounded-xl transition-colors shadow-sm"
-          >
-            <Upload className="w-4 h-4" /> Import Excel
-          </a>
+        <div className="md:max-w-2xl w-full md:w-auto">
+          <DashboardToolbar
+            tahun={tahun} setTahun={setTahun} years={years}
+            bulan={bulan} setBulan={setBulan} months={MONTHS}
+            jenisData={jenisData} setJenisData={setJenisData} tableFilters={TABLE_FILTERS}
+            onDownloadExcel={() => handleDownload('excel')}
+            onDownloadWord={() => handleDownload('word')}
+            onDownloadTemplate={handleDownloadTemplate}
+            downloading={downloading}
+            downloadingTemplate={downloadingTemplate}
+          />
         </div>
       </div>
 
@@ -485,8 +424,26 @@ export default function DashboardPage() {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {(completeness.perDesa || []).map((d) => (
-                  <tr key={d.id} className="hover:bg-gray-50/50">
-                    <td className="px-4 py-2 font-medium text-gray-700">{d.nama}</td>
+                  <tr
+                    key={d.id}
+                    className="hover:bg-primary-50/40 cursor-pointer transition-colors"
+                    onClick={() => router.push(`/dashboard/desa/${d.id}?tahun=${tahun}&bulan=${bulan}`)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        router.push(`/dashboard/desa/${d.id}?tahun=${tahun}&bulan=${bulan}`);
+                      }
+                    }}
+                    aria-label={`Lihat detail ${d.nama}`}
+                  >
+                    <td className="px-4 py-2 font-medium text-gray-700 group">
+                      <span className="inline-flex items-center gap-1">
+                        {d.nama}
+                        <span className="text-primary-600 opacity-0 group-hover:opacity-100 transition-opacity text-xs">→</span>
+                      </span>
+                    </td>
                     {activeTables.map(t => {
                       const status = d.tableStatuses?.[t]?.status || 'belum_lengkap';
                       const label = d.tableStatuses?.[t]?.label || getStatusLabel(status);
@@ -556,58 +513,189 @@ export default function DashboardPage() {
           </div>
 
           <div className="bg-white rounded-xl border border-primary-100 p-5 shadow-sm overflow-hidden">
-            <h3 className="flex items-center gap-2 text-sm font-bold font-mono text-dashboard mb-4 uppercase tracking-wide">
-              <ChartLineUp className="w-4 h-4 text-accent-500" /> Tren Penduduk
-            </h3>
-            <div className="h-40 w-full">
-              <svg viewBox="0 0 320 140" preserveAspectRatio="xMidYMid meet" className="block w-full h-full">
-                {(() => {
-                  if (!trend || trend.length === 0) {
-                    return <text x="160" y="70" textAnchor="middle" fill="#9ca3af" fontSize="11">Belum ada data</text>;
-                  }
-                  const max = Math.max(...trend.map(t => t.total_jiwa), 1);
-                  // Padding besar supaya label ujung (~60px panjang) tidak keluar
-                  const padLeft = 36;
-                  const padRight = 36;
-                  const padTop = 22;
-                  const padBottom = 22;
-                  const innerW = 320 - padLeft - padRight;
-                  const innerH = 140 - padTop - padBottom;
-                  const n = trend.length;
-                  const stepX = n > 1 ? innerW / (n - 1) : 0;
-                  const coord = (i, v) => ({
-                    x: padLeft + (n > 1 ? i * stepX : innerW / 2),
-                    y: padTop + innerH - (v / max) * innerH,
-                  });
-                  const pts = trend.map((t, i) => {
-                    const { x, y } = coord(i, t.total_jiwa);
-                    return `${x},${y}`;
-                  }).join(' L ');
-                  return (
-                    <>
-                      <path d={`M ${pts}`} fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                      {trend.map((t, i) => {
-                        const { x, y } = coord(i, t.total_jiwa);
-                        const anchor = i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle';
-                        return (
-                          <g key={i}>
-                            <circle cx={x} cy={y} r="3.5" fill="#fff" stroke="#059669" strokeWidth="2" />
-                            <text x={x} y={y - 10} textAnchor={anchor} fill="#064E3B" fontSize="10" fontWeight="700">
-                              {Number(t.total_jiwa || 0).toLocaleString('id-ID')}
-                            </text>
-                            <text x={x} y={140 - 6} textAnchor={anchor} fill="#64748b" fontSize="10">{t.tahun}</text>
-                          </g>
-                        );
-                      })}
-                    </>
-                  );
-                })()}
-              </svg>
+            <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+              <h3 className="flex items-center gap-2 text-sm font-bold font-mono text-dashboard uppercase tracking-wide">
+                <ChartLineUp className="w-4 h-4 text-accent-500" /> Tren Penduduk
+              </h3>
+              <DesaCompareSelector
+                desaList={completeness.perDesa || []}
+                selected={compareDesaIds}
+                onChange={setCompareDesaIds}
+              />
             </div>
+            <div className="h-44 w-full">
+              <TrendCompareChart
+                aggregate={trend}
+                byDesa={compareData?.byDesa}
+                desaIds={compareDesaIds}
+                field="total_jiwa"
+              />
+            </div>
+            {compareDesaIds.length > 0 && compareData?.byDesa && (
+              <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+                {compareDesaIds.map((id, idx) => {
+                  const colors = ['#059669', '#3B82F6', '#F59E0B', '#EF4444', '#A855F7'];
+                  const c = colors[idx % colors.length];
+                  const nama = compareData.byDesa[id]?.nama || `Desa ${id}`;
+                  return (
+                    <span key={id} className="inline-flex items-center gap-1.5 text-xs">
+                      <span className="w-3 h-1 rounded-sm" style={{ background: c }} />
+                      <span className="text-gray-700">{nama}</span>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
     </motion.div>
+  );
+}
+
+
+// ── Helper: dropdown pilih desa untuk comparison ─────────────────────────────
+function DesaCompareSelector({ desaList, selected, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const filtered = (desaList || []).filter((d) => d.nama.toLowerCase().includes(search.toLowerCase()));
+
+  const toggle = (id) => {
+    if (selected.includes(id)) {
+      onChange(selected.filter((x) => x !== id));
+    } else {
+      if (selected.length >= 5) return; // max 5 untuk legibility
+      onChange([...selected, id]);
+    }
+  };
+
+  const label = selected.length === 0
+    ? 'Total kecamatan'
+    : selected.length === 1
+      ? (desaList.find((d) => d.id === selected[0])?.nama || 'Desa')
+      : `${selected.length} desa terpilih`;
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-white border border-gray-200 hover:bg-gray-50 rounded-lg"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        <MapPin className="w-3.5 h-3.5 text-gray-500" /> {label}
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-1.5 w-64 bg-white border border-gray-100 rounded-xl shadow-lg z-20 overflow-hidden">
+            <div className="p-2 border-b border-gray-50">
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Cari desa..."
+                className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:ring-2 focus:ring-primary-500 outline-none"
+              />
+            </div>
+            <div className="max-h-60 overflow-y-auto py-1">
+              <button
+                onClick={() => { onChange([]); setOpen(false); }}
+                className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 font-medium text-primary-700"
+              >
+                Total kecamatan
+              </button>
+              <div className="border-t border-gray-50 my-1" />
+              {filtered.map((d) => (
+                <label key={d.id} className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-gray-50 cursor-pointer">
+                  <input type="checkbox" checked={selected.includes(d.id)} onChange={() => toggle(d.id)} />
+                  <span className="text-gray-700">{d.nama}</span>
+                </label>
+              ))}
+              {filtered.length === 0 && <div className="px-3 py-2 text-xs text-gray-400">Tidak ditemukan</div>}
+            </div>
+            <div className="px-3 py-1.5 border-t border-gray-50 text-[10px] text-gray-400">Maksimal 5 desa untuk perbandingan</div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Helper: chart trend dengan opsi multi-line untuk comparison ──────────────
+function TrendCompareChart({ aggregate, byDesa, desaIds, field }) {
+  const COLORS = ['#059669', '#3B82F6', '#F59E0B', '#EF4444', '#A855F7'];
+
+  // Data series
+  const series = [];
+  if (!desaIds || desaIds.length === 0) {
+    if (!aggregate || aggregate.length === 0) {
+      return (
+        <svg viewBox="0 0 320 140" preserveAspectRatio="xMidYMid meet" className="block w-full h-full">
+          <text x="160" y="70" textAnchor="middle" fill="#9ca3af" fontSize="11">Belum ada data</text>
+        </svg>
+      );
+    }
+    series.push({ label: 'Total', color: COLORS[0], rows: aggregate, primary: true });
+  } else {
+    desaIds.forEach((id, idx) => {
+      const d = byDesa?.[id];
+      if (d) series.push({ label: d.nama, color: COLORS[idx % COLORS.length], rows: d.rows, primary: idx === 0 });
+    });
+  }
+
+  if (series.length === 0) {
+    return (
+      <svg viewBox="0 0 320 140" preserveAspectRatio="xMidYMid meet" className="block w-full h-full">
+        <text x="160" y="70" textAnchor="middle" fill="#9ca3af" fontSize="11">Belum ada data</text>
+      </svg>
+    );
+  }
+
+  const padLeft = 40, padRight = 40, padTop = 20, padBottom = 22;
+  const W = 320, H = 140;
+  const innerW = W - padLeft - padRight;
+  const innerH = H - padTop - padBottom;
+
+  const allValues = series.flatMap((s) => s.rows.map((r) => Number(r[field] || 0)));
+  const max = Math.max(...allValues, 1);
+  const years = (series[0]?.rows || []).map((r) => r.tahun);
+  const n = years.length;
+  const stepX = n > 1 ? innerW / (n - 1) : 0;
+  const xAt = (i) => padLeft + (n > 1 ? i * stepX : innerW / 2);
+  const yAt = (v) => padTop + innerH - (v / max) * innerH;
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" className="block w-full h-full">
+      {/* Lines */}
+      {series.map((s, sidx) => {
+        const pts = s.rows.map((r, i) => `${xAt(i)},${yAt(Number(r[field] || 0))}`).join(' L ');
+        return <path key={sidx} d={`M ${pts}`} fill="none" stroke={s.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity={s.primary ? 1 : 0.85} />;
+      })}
+
+      {/* Points + labels (only primary series) */}
+      {series.map((s, sidx) => s.rows.map((r, i) => {
+        const x = xAt(i);
+        const y = yAt(Number(r[field] || 0));
+        const anchor = i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle';
+        return (
+          <g key={`${sidx}-${i}`}>
+            <circle cx={x} cy={y} r={s.primary ? 3.5 : 2.5} fill="#fff" stroke={s.color} strokeWidth="2" />
+            {s.primary && (
+              <text x={x} y={y - 10} textAnchor={anchor} fill="#1f2937" fontSize="10" fontWeight="700">
+                {Number(r[field] || 0).toLocaleString('id-ID')}
+              </text>
+            )}
+          </g>
+        );
+      }))}
+
+      {/* X axis (tahun) */}
+      {years.map((y, i) => (
+        <text key={`yr-${i}`} x={xAt(i)} y={H - 6} textAnchor={i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'} fill="#64748b" fontSize="10">{y}</text>
+      ))}
+    </svg>
   );
 }

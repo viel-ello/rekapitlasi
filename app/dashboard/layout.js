@@ -6,6 +6,7 @@ import Sidebar from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
 import AiChatBubble from '@/components/AiChatBubble';
 import ToastViewport from '@/components/Toast';
+import OnboardingTour from '@/components/OnboardingTour';
 import { ToastProvider } from '@/lib/useToast';
 
 export default function DashboardLayout({ children }) {
@@ -35,7 +36,7 @@ export default function DashboardLayout({ children }) {
     const validateSession = async () => {
       const stored = localStorage.getItem('user');
       if (!stored) {
-        router.push('/');
+        router.push('/login');
         return;
       }
       try {
@@ -47,7 +48,7 @@ export default function DashboardLayout({ children }) {
         setLoading(false);
       } catch (err) {
         localStorage.removeItem('user');
-        router.push('/');
+        router.push('/login');
       }
     };
     validateSession();
@@ -102,6 +103,7 @@ export default function DashboardLayout({ children }) {
 
         <AiChatBubble />
         <ToastViewport />
+        <OnboardingTour />
       </div>
     </ToastProvider>
   );

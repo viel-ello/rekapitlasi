@@ -4,7 +4,7 @@ import { jwtVerify } from 'jose';
 /**
  * @file Proxy (Next.js 16) — pengganti middleware.js.
  * Lindungi rute /dashboard dengan verifikasi JWT, bukan sekadar cek keberadaan cookie.
- * Kalau JWT tidak valid/expired, cookie di-clear dan user diarahkan ke login.
+ * Kalau JWT tidak valid/expired, cookie di-clear dan user diarahkan ke /login.
  */
 
 const SECRET = process.env.JWT_SECRET;
@@ -15,14 +15,13 @@ export async function proxy(request) {
   }
 
   const token = request.cookies.get('auth-token')?.value;
-  const loginUrl = new URL('/', request.url);
+  const loginUrl = new URL('/login', request.url);
 
   if (!token) {
     return NextResponse.redirect(loginUrl);
   }
 
   if (!SECRET) {
-    // Config error — jangan biarkan user lolos tanpa verifikasi
     return NextResponse.redirect(loginUrl);
   }
 

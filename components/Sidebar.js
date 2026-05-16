@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   ChartPie, ClipboardList, Shield, BookOpen,
   Users, Cog, AngleRight, AngleLeft, Lock,
-  ArrowRightToBracket, Swatchbook, Heart, UserCircle
+  ArrowRightToBracket, Swatchbook, Heart, UserCircle, ChartLineUp
 } from 'flowbite-react-icons/outline';
 
 const menuItems = [
@@ -18,6 +18,7 @@ const menuItems = [
   { href: '/dashboard/pokja4', label: 'Pokja IV', icon: Heart, sub: 'Kesehatan & Lingkungan' },
   { href: '/dashboard/kegiatan-warga', label: 'Kegiatan Warga', icon: Users },
   { href: '/dashboard/bumil', label: 'Data Bumil', icon: UserCircle },
+  { href: '/dashboard/reports', label: 'Report Builder', icon: ChartLineUp, sub: 'Laporan kustom' },
 ];
 
 const adminItems = [
@@ -68,7 +69,6 @@ export default function Sidebar({ user, onLogout, collapsed, onToggle, mobileOpe
                 src="/logo.png"
                 alt="Logo"
                 className="w-9 h-9 object-cover rounded-full"
-                onError={(e) => { e.currentTarget.src = '/map-baturetno.svg'; e.currentTarget.classList.replace('object-cover', 'object-contain'); }}
               />
             </div>
             <div className="brand-text min-w-0">
@@ -91,7 +91,6 @@ export default function Sidebar({ user, onLogout, collapsed, onToggle, mobileOpe
               src="/logo.png"
               alt="Logo"
               className="w-8 h-8 object-cover rounded-full"
-              onError={(e) => { e.currentTarget.src = '/map-baturetno.svg'; e.currentTarget.classList.replace('object-cover', 'object-contain'); }}
             />
             <AngleRight className="w-3 h-3 text-gray-400" />
           </button>

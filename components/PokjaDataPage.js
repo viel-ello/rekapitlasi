@@ -240,8 +240,9 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
     return acc;
   }, { errors: 0, warnings: 0, infos: 0 });
 
-  // Mobile card view renderer
+  // Mobile card view renderer — accordion: default tertutup, expand untuk edit
   const MobileCard = ({ d, i }) => {
+    const [expanded, setExpanded] = useState(false);
     const rowData = data[d.id] || {};
     const prevRowData = prevYearData[d.id] || null;
     const validation = validateRow(rowData, effectiveColumns, prevRowData);
@@ -250,77 +251,103 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
     const isSaved = saveStatus[d.id] === 'saved';
     const isDirty = saveStatus[d.id] === 'dirty';
     const isError = saveStatus[d.id] === 'error';
+    const filledCount = effectiveColumns.filter((c) => Number(rowData[c.key] || 0) > 0).length;
 
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 shadow-sm relative">
-        <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-100">
-          <div>
-            <span className="text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md mr-2">{i + 1}</span>
-            <span className="font-bold text-gray-800">{d.nama}</span>
+      <div className={`bg-white rounded-xl border ${isDirty ? 'border-amber-200' : 'border-gray-200'} mb-3 shadow-sm overflow-hidden`}>
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-gray-50 active:bg-gray-100 transition-colors text-left"
+          style={{ minHeight: 56 }}
+          aria-expanded={expanded}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md flex-shrink-0">{i + 1}</span>
+            <div className="min-w-0">
+              <div className="font-bold text-gray-800 truncate">{d.nama}</div>
+              <div className="text-[10px] text-gray-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                <span>{filledCount}/{effectiveColumns.length} kolom terisi</span>
+                {isDirty && <span className="text-amber-600 font-semibold">• Belum disimpan</span>}
+                {isSaved && <span className="text-green-600 font-semibold">• Tersimpan</span>}
+                {isError && <span className="text-red-600 font-semibold">• Gagal simpan</span>}
+              </div>
+            </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             {(errors > 0 || warnings > 0) && (
-              <span className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${errors > 0 ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>
-                <ExclamationCircle className="w-3 h-3" /> {errors || warnings} issue
+              <span className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${errors > 0 ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-700'}`}>
+                <ExclamationCircle className="w-3 h-3" /> {errors || warnings}
               </span>
             )}
+            <svg className={`w-5 h-5 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </button>
+
+        {expanded && (
+          <div className="px-4 pb-4 pt-1 border-t border-gray-100">
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              {effectiveColumns.map((col) => {
+                const valObj = validation[col.key] || { valid: true };
+                const hasError = valObj.severity === 'error';
+                const hasWarning = valObj.severity === 'warning';
+                return (
+                  <div key={col.key} className="flex flex-col">
+                    <label htmlFor={`${d.id}-${col.key}`} className="text-[10px] uppercase font-semibold text-gray-500 mb-1">
+                      {col.label}
+                    </label>
+                    {canEdit ? (
+                      <input
+                        id={`${d.id}-${col.key}`}
+                        type="number"
+                        inputMode="numeric"
+                        className={`w-full text-base py-2.5 px-3 rounded-lg border outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${
+                          hasError ? 'border-red-300 bg-red-50 text-red-900' :
+                          hasWarning ? 'border-amber-300 bg-amber-50 text-amber-900' :
+                          'border-gray-200 bg-gray-50 focus:bg-white'
+                        }`}
+                        style={{ minHeight: 44 }}
+                        value={rowData[col.key] ?? ''}
+                        onChange={(e) => handleChange(d.id, col.key, e.target.value)}
+                        onBlur={() => saveRow(d.id)}
+                        min="0"
+                      />
+                    ) : (
+                      <div className="text-base font-medium text-gray-800 py-2.5 px-3">
+                        {(rowData[col.key] || 0).toLocaleString('id-ID')}
+                      </div>
+                    )}
+                    {(hasError || hasWarning) && (
+                      <span className={`text-[10px] mt-1 ${hasError ? 'text-red-500' : 'text-amber-600'}`}>
+                        {valObj.warning}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
             {canEdit && (
               <button
                 onClick={() => saveRow(d.id)}
                 disabled={isSaving}
-                className={`p-1.5 rounded-lg transition-colors ${
-                  isSaved ? 'bg-green-100 text-green-600' : 
-                  isDirty ? 'bg-amber-100 text-amber-700' :
-                  isError ? 'bg-red-100 text-red-600' :
-                  isSaving ? 'bg-primary-50 text-primary-500' : 
-                  'bg-gray-100 text-gray-600 hover:bg-primary-50 hover:text-primary-600'
+                className={`w-full mt-4 inline-flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-colors ${
+                  isSaved ? 'bg-green-100 text-green-700' :
+                  isError ? 'bg-red-100 text-red-700' :
+                  isDirty ? 'bg-primary-600 hover:bg-primary-700 text-white' :
+                  'bg-gray-100 text-gray-600'
                 }`}
+                style={{ minHeight: 44 }}
                 aria-label={`Simpan data ${d.nama}`}
               >
-                {isSaving ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> :
-                 isSaved ? <CheckCircle className="w-4 h-4" /> :
-                 <FloppyDisk className="w-4 h-4" />}
+                {isSaving ? <><div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> Menyimpan...</> :
+                 isSaved ? <><CheckCircle className="w-4 h-4" /> Tersimpan</> :
+                 <><FloppyDisk className="w-4 h-4" /> Simpan Perubahan</>}
               </button>
             )}
           </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          {effectiveColumns.map(col => {
-            const valObj = validation[col.key] || { valid: true };
-            const hasError = valObj.severity === 'error';
-            const hasWarning = valObj.severity === 'warning';
-            
-            return (
-              <div key={col.key} className="flex flex-col">
-                <label className="text-[10px] uppercase font-semibold text-gray-500 mb-1">{col.label}</label>
-                {canEdit ? (
-                  <input
-                    type="number"
-                    className={`w-full text-sm py-1.5 px-2 rounded-md border outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${
-                      hasError ? 'border-red-300 bg-red-50 text-red-900 focus:border-red-500 focus:ring-red-500' :
-                      hasWarning ? 'border-amber-300 bg-amber-50 text-amber-900 focus:border-amber-500 focus:ring-amber-500' :
-                      'border-gray-200 bg-gray-50 hover:bg-white'
-                    }`}
-                    value={rowData[col.key] ?? ''}
-                    onChange={(e) => handleChange(d.id, col.key, e.target.value)}
-                    onBlur={() => saveRow(d.id)}
-                    min="0"
-                  />
-                ) : (
-                  <div className="text-sm font-medium text-gray-800">
-                    {(rowData[col.key] || 0).toLocaleString('id-ID')}
-                  </div>
-                )}
-                {(hasError || hasWarning) && (
-                  <span className={`text-[10px] mt-0.5 ${hasError ? 'text-red-500' : 'text-amber-500'}`}>
-                    {valObj.warning}
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
+        )}
       </div>
     );
   };
