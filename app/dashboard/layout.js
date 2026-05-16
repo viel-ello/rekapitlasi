@@ -73,7 +73,7 @@ export default function DashboardLayout({ children }) {
 
   return (
     <ToastProvider>
-      <div className="min-h-screen bg-dashboard">
+      <div className="min-h-screen bg-dashboard dark:bg-gray-950 text-gray-800 dark:text-gray-100">
         {/* Mobile overlay backdrop */}
         {mobileOpen && (
           <div

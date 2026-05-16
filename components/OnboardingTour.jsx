@@ -79,7 +79,7 @@ export default function OnboardingTour() {
     setActive(false);
   }, []);
 
-  // Hitung posisi target setiap step berubah
+  // Hitung posisi target setiap step berubah + scroll into view
   useEffect(() => {
     if (!active) return;
     const target = STEPS[step]?.target;
@@ -94,12 +94,19 @@ export default function OnboardingTour() {
         return;
       }
       const r = el.getBoundingClientRect();
+      // Auto scroll kalau target di luar viewport
+      if (r.top < 0 || r.bottom > window.innerHeight) {
+        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
       setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
     };
     update();
+    // Re-measure setelah scroll selesai
+    const t = setTimeout(update, 400);
     window.addEventListener('resize', update);
     window.addEventListener('scroll', update, true);
     return () => {
+      clearTimeout(t);
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update, true);
     };
@@ -248,40 +255,53 @@ export default function OnboardingTour() {
 /**
  * Hitung posisi tooltip relatif ke target rect.
  * Kalau target null, render di tengah viewport.
+ * Auto-flip ke center kalau tooltip tidak muat di sisi yang diminta.
  */
 function computeTooltipPosition(rect, placement) {
+  if (typeof window === 'undefined') {
+    return { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' };
+  }
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
   if (!rect) {
     return { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' };
   }
 
+  // Estimasi ukuran tooltip card (max-w-sm = ~384px, height ~220px)
+  const tw = Math.min(360, vw - 32);
+  const th = 220;
   const margin = 16;
-  // Default placement: bottom
-  let top = rect.top + rect.height + margin;
-  let left = rect.left + rect.width / 2;
-  let transform = 'translateX(-50%)';
 
-  if (placement === 'top') {
-    top = rect.top - margin;
-    transform = 'translate(-50%, -100%)';
-  } else if (placement === 'left') {
-    top = rect.top + rect.height / 2;
-    left = rect.left - margin;
-    transform = 'translate(-100%, -50%)';
-  } else if (placement === 'right') {
-    top = rect.top + rect.height / 2;
-    left = rect.left + rect.width + margin;
-    transform = 'translateY(-50%)';
+  // Coba placement yang diminta dulu
+  const tryPlacement = (p) => {
+    let top, left;
+    if (p === 'top') {
+      top = rect.top - th - margin;
+      left = rect.left + rect.width / 2 - tw / 2;
+    } else if (p === 'bottom') {
+      top = rect.top + rect.height + margin;
+      left = rect.left + rect.width / 2 - tw / 2;
+    } else if (p === 'left') {
+      top = rect.top + rect.height / 2 - th / 2;
+      left = rect.left - tw - margin;
+    } else if (p === 'right') {
+      top = rect.top + rect.height / 2 - th / 2;
+      left = rect.left + rect.width + margin;
+    }
+    const fits = top >= margin && top + th <= vh - margin && left >= margin && left + tw <= vw - margin;
+    return { top, left, fits };
+  };
+
+  // Try requested, then alternates
+  const candidates = [placement || 'bottom', 'bottom', 'top', 'right', 'left'];
+  for (const p of candidates) {
+    const r = tryPlacement(p);
+    if (r.fits) {
+      return { top: `${r.top}px`, left: `${r.left}px`, transform: 'none' };
+    }
   }
 
-  // Clamp ke dalam viewport
-  if (typeof window !== 'undefined') {
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    if (top < margin) top = margin;
-    if (top > vh - margin) top = vh - margin;
-    if (left < margin) left = margin;
-    if (left > vw - margin) left = vw - margin;
-  }
-
-  return { top: `${top}px`, left: `${left}px`, transform };
+  // Tidak ada yang muat — fallback ke center viewport
+  return { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' };
 }
