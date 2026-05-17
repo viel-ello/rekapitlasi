@@ -760,67 +760,167 @@ function buildRekapDawisSheet(wb, tahun, dusunListSorted, dataMap) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Data Umum — single-row header
+// Data Umum — multi-row header sesuai gambar referensi (Annex Data Umum)
+// Layout:
+//   Row 1: Title "DATA UMUM"
+//   Row 2: "TP PKK DESA BELIKURIP"
+//   Row 3: "KECAMATAN : BATURETNO"   |  "TAHUN : <tahun>"
+//   Row 4: "KABUPATEN : WONOGIRI"
+//   Row 5: "PROVINSI  : JAWA TENGAH"
+//   Row 7-9: Multi-row header 3 level
+//   Row 10:  Column numbers
+//   Row 11+: Data 9 dusun
 // ──────────────────────────────────────────────────────────────────────────────
 function buildDataUmumSheet(wb, tahun, dusunListSorted, dataMap) {
-  const ws = wb.addWorksheet('Data Umum', { pageSetup: { orientation: 'landscape', paperSize: 9 } });
+  const ws = wb.addWorksheet('Data Umum', { pageSetup: { orientation: 'landscape', paperSize: 8 } });
 
-  const cols = [
-    { key: 'jml_dusun', label: 'Dusun/Lingk.' },
+  // Definisi leaf columns (urutan pasti sesuai gambar):
+  //   3=PKK RW, 4=PKK RT, 5=DASA WISMA, 6=KK, 7=KRT,
+  //   8=Jiwa L, 9=Jiwa P, 10=ANG TP PKK L, 11=ANG TP PKK P,
+  //   12=UMUM L, 13=UMUM P, 14=KHUSUS L, 15=KHUSUS P,
+  //   16=HONORER L, 17=HONORER P, 18=BANTUAN L, 19=BANTUAN P, 20=KETERANGAN
+  const leaves = [
     { key: 'jml_pkk_rw', label: 'PKK RW' },
     { key: 'jml_pkk_rt', label: 'PKK RT' },
-    { key: 'jml_dasa_wisma', label: 'Dasa Wisma' },
-    { key: 'jml_krt', label: 'KRT' },
+    { key: 'jml_dasa_wisma', label: 'DASA WISMA' },
     { key: 'jml_kk', label: 'KK' },
-    { key: 'jml_jiwa_l', label: 'Jiwa (L)' },
-    { key: 'jml_jiwa_p', label: 'Jiwa (P)' },
-    { key: 'jml_kader_tp_pkk_l', label: 'Kdr TPP (L)' },
-    { key: 'jml_kader_tp_pkk_p', label: 'Kdr TPP (P)' },
-    { key: 'jml_kader_umum_l', label: 'Kdr Umum (L)' },
-    { key: 'jml_kader_umum_p', label: 'Kdr Umum (P)' },
-    { key: 'jml_kader_khusus_l', label: 'Kdr Khusus (L)' },
-    { key: 'jml_kader_khusus_p', label: 'Kdr Khusus (P)' },
+    { key: 'jml_krt', label: 'KRT' },
+    { key: 'jml_jiwa_l', label: 'L' },
+    { key: 'jml_jiwa_p', label: 'P' },
+    { key: 'jml_kader_tp_pkk_l', label: 'L' },
+    { key: 'jml_kader_tp_pkk_p', label: 'P' },
+    { key: 'jml_kader_umum_l', label: 'L' },
+    { key: 'jml_kader_umum_p', label: 'P' },
+    { key: 'jml_kader_khusus_l', label: 'L' },
+    { key: 'jml_kader_khusus_p', label: 'P' },
+    { key: 'jml_tenaga_honorer_l', label: 'L' },
+    { key: 'jml_tenaga_honorer_p', label: 'P' },
+    { key: 'jml_tenaga_bantuan_l', label: 'L' },
+    { key: 'jml_tenaga_bantuan_p', label: 'P' },
+    { key: 'keterangan', label: 'KETERANGAN', isText: true },
   ];
 
-  const totalCols = 2 + cols.length;
+  const totalCols = 2 + leaves.length;     // No + Nama Dusun + leaves
   const lastColLetter = ws.getColumn(totalCols).letter;
-  ws.mergeCells(`A1:${lastColLetter}1`); ws.getCell('A1').value = 'DATA UMUM PKK';
-  ws.mergeCells(`A2:${lastColLetter}2`); ws.getCell('A2').value = `${BRAND.organization} · TAHUN ${tahun}`;
+
+  // Title rows
+  ws.mergeCells(`A1:${lastColLetter}1`); ws.getCell('A1').value = 'DATA UMUM';
+  ws.mergeCells(`A2:${lastColLetter}2`); ws.getCell('A2').value = 'TP PKK DESA BELIKURIP';
   for (const r of [1, 2]) {
     const cell = ws.getCell(r, 1);
-    cell.font = { bold: true, name: 'Arial', size: r === 1 ? 14 : 11 };
+    cell.font = { bold: true, name: 'Arial', size: r === 1 ? 14 : 12 };
     cell.alignment = { horizontal: 'center' };
   }
 
-  // Header (row 4)
-  const headers = ['No', 'DUSUN', ...cols.map((c) => c.label)];
-  headers.forEach((h, i) => { ws.getCell(4, i + 1).value = h; });
+  // Identity block (rows 3-5)
+  ws.getCell('A3').value = 'KECAMATAN  : BATURETNO';
+  ws.getCell('A4').value = 'KABUPATEN  : WONOGIRI';
+  ws.getCell('A5').value = 'PROVINSI   : JAWA TENGAH';
+  ws.getCell(3, totalCols - 2).value = `TAHUN : ${tahun}`;
+  for (const r of [3, 4, 5]) {
+    ws.getCell(r, 1).font = { name: 'Arial', size: 10, bold: true };
+  }
+  ws.getCell(3, totalCols - 2).font = { name: 'Arial', size: 10, bold: true };
 
-  // Data (rows 5-13)
+  // ─── Multi-row header (rows 7, 8, 9) ────────────────────────────────────
+  const headerStart = 7;
+
+  // Row 7 (level 1): No, NAMA DUSUN/LING, JUMLAH KELOMPOK, JUMLAH, JUMLAH JIWA, JUMLAH KADER, JUMLAH TENAGA SEKARANG, KETERANGAN
+  // Row 8 (level 2): under KADER → ANG TP PKK / UMUM / KHUSUS, under TENAGA → HONORER / BANTUAN, others colSpan or rowSpan into r8
+  // Row 9 (level 3): L / P labels under each gender pair
+  const r7 = headerStart, r8 = headerStart + 1, r9 = headerStart + 2;
+
+  // No & NAMA DUSUN/LING (rowSpan 3)
+  ws.mergeCells(r7, 1, r9, 1); ws.getCell(r7, 1).value = 'NO';
+  ws.mergeCells(r7, 2, r9, 2); ws.getCell(r7, 2).value = 'NAMA DUSUN/LING';
+
+  // Group 1: JUMLAH KELOMPOK (cols 3-5, leaves 0-2)
+  ws.mergeCells(r7, 3, r7, 5); ws.getCell(r7, 3).value = 'JUMLAH KELOMPOK';
+  for (let i = 0; i < 3; i++) ws.mergeCells(r8, 3 + i, r9, 3 + i);
+  ws.getCell(r8, 3).value = 'PKK RW';
+  ws.getCell(r8, 4).value = 'PKK RT';
+  ws.getCell(r8, 5).value = 'DASA WISMA';
+
+  // Group 2: JUMLAH (cols 6-7, leaves 3-4 = KK, KRT)
+  ws.mergeCells(r7, 6, r7, 7); ws.getCell(r7, 6).value = 'JUMLAH';
+  ws.mergeCells(r8, 6, r9, 6); ws.getCell(r8, 6).value = 'KK';
+  ws.mergeCells(r8, 7, r9, 7); ws.getCell(r8, 7).value = 'KRT';
+
+  // Group 3: JUMLAH JIWA (cols 8-9)
+  ws.mergeCells(r7, 8, r7, 9); ws.getCell(r7, 8).value = 'JUMLAH JIWA';
+  ws.mergeCells(r8, 8, r9, 8); ws.getCell(r8, 8).value = 'L';
+  ws.mergeCells(r8, 9, r9, 9); ws.getCell(r8, 9).value = 'P';
+
+  // Group 4: JUMLAH KADER (cols 10-15) → ANG TP PKK | UMUM | KHUSUS (each L/P)
+  ws.mergeCells(r7, 10, r7, 15); ws.getCell(r7, 10).value = 'JUMLAH KADER';
+  ws.mergeCells(r8, 10, r8, 11); ws.getCell(r8, 10).value = 'ANG TP PKK';
+  ws.mergeCells(r8, 12, r8, 13); ws.getCell(r8, 12).value = 'UMUM';
+  ws.mergeCells(r8, 14, r8, 15); ws.getCell(r8, 14).value = 'KHUSUS';
+  ws.getCell(r9, 10).value = 'L'; ws.getCell(r9, 11).value = 'P';
+  ws.getCell(r9, 12).value = 'L'; ws.getCell(r9, 13).value = 'P';
+  ws.getCell(r9, 14).value = 'L'; ws.getCell(r9, 15).value = 'P';
+
+  // Group 5: JUMLAH TENAGA SEKARANG (cols 16-19) → HONORER | BANTUAN
+  ws.mergeCells(r7, 16, r7, 19); ws.getCell(r7, 16).value = 'JUMLAH TENAGA SEKARANG';
+  ws.mergeCells(r8, 16, r8, 17); ws.getCell(r8, 16).value = 'HONORER';
+  ws.mergeCells(r8, 18, r8, 19); ws.getCell(r8, 18).value = 'BANTUAN';
+  ws.getCell(r9, 16).value = 'L'; ws.getCell(r9, 17).value = 'P';
+  ws.getCell(r9, 18).value = 'L'; ws.getCell(r9, 19).value = 'P';
+
+  // Last col: KETERANGAN (rowSpan 3)
+  ws.mergeCells(r7, 20, r9, 20); ws.getCell(r7, 20).value = 'KETERANGAN';
+
+  // Style header rows
+  for (let r = r7; r <= r9; r++) {
+    for (let c = 1; c <= totalCols; c++) {
+      const cell = ws.getCell(r, c);
+      cell.font = { bold: true, name: 'Arial', size: 9, color: { argb: 'FFFFFFFF' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D7377' } };
+    }
+  }
+
+  // Row 10 — column numbers (1 .. totalCols)
+  const numRow = headerStart + 3;
+  for (let c = 1; c <= totalCols; c++) {
+    const cell = ws.getCell(numRow, c);
+    cell.value = c;
+    cell.font = { italic: true, name: 'Arial', size: 9 };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+  }
+
+  // Data rows (start at numRow + 1)
+  const dataStart = numRow + 1;
   dusunListSorted.forEach((dusun, idx) => {
-    const r = 5 + idx;
+    const r = dataStart + idx;
     const data = dataMap[dusun.nama] || {};
     ws.getCell(r, 1).value = idx + 1;
     ws.getCell(r, 2).value = dusun.nama;
-    cols.forEach((c, ci) => { ws.getCell(r, 3 + ci).value = data[c.key] ?? 0; });
+    leaves.forEach((leaf, ci) => {
+      const colIdx = 3 + ci;
+      ws.getCell(r, colIdx).value = leaf.isText ? (data[leaf.key] || '') : (data[leaf.key] ?? 0);
+    });
   });
 
-  // Total (row 14)
-  ws.getCell(14, 2).value = 'JUMLAH';
-  for (let col = 3; col <= totalCols; col++) {
+  // Total row
+  const totalRow = dataStart + dusunListSorted.length;
+  ws.mergeCells(totalRow, 1, totalRow, 2);
+  ws.getCell(totalRow, 1).value = 'JUMLAH';
+  ws.getCell(totalRow, 1).alignment = { horizontal: 'center', vertical: 'middle' };
+  for (let ci = 0; ci < leaves.length; ci++) {
+    if (leaves[ci].isText) continue;
+    const col = 3 + ci;
     const letter = ws.getColumn(col).letter;
-    ws.getCell(14, col).value = { formula: `SUM(${letter}5:${letter}13)` };
+    ws.getCell(totalRow, col).value = {
+      formula: `SUM(${letter}${dataStart}:${letter}${dataStart + dusunListSorted.length - 1})`,
+    };
   }
 
-  applyBorderRange(ws, 4, 14, 1, totalCols);
-  applyBoldRows(ws, [4, 14], 1, totalCols);
-  // Header background
-  for (let c = 1; c <= totalCols; c++) {
-    ws.getCell(4, c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D7377' } };
-    ws.getCell(4, c).font = { bold: true, color: { argb: 'FFFFFFFF' }, name: 'Arial', size: 10 };
-  }
+  applyBorderRange(ws, headerStart, totalRow, 1, totalCols);
+  applyBoldRows(ws, [totalRow], 1, totalCols);
 
-  setColumnWidths(ws, [4, 18, ...cols.map(() => 11)]);
+  // Column widths
+  setColumnWidths(ws, [4, 18, ...leaves.map((l) => (l.isText ? 22 : 9))]);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

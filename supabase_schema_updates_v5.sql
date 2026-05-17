@@ -137,6 +137,13 @@ ALTER TABLE data_bumil  ADD COLUMN IF NOT EXISTS keterangan TEXT;
 ALTER TABLE data_bumil ADD COLUMN IF NOT EXISTS akte_l INTEGER DEFAULT 0;
 ALTER TABLE data_bumil ADD COLUMN IF NOT EXISTS akte_p INTEGER DEFAULT 0;
 
+-- 7b. Tambah kolom Data Umum baru (Tenaga Honorer/Bantuan + Keterangan) ---------
+ALTER TABLE data_umum ADD COLUMN IF NOT EXISTS jml_tenaga_honorer_l INTEGER DEFAULT 0;
+ALTER TABLE data_umum ADD COLUMN IF NOT EXISTS jml_tenaga_honorer_p INTEGER DEFAULT 0;
+ALTER TABLE data_umum ADD COLUMN IF NOT EXISTS jml_tenaga_bantuan_l INTEGER DEFAULT 0;
+ALTER TABLE data_umum ADD COLUMN IF NOT EXISTS jml_tenaga_bantuan_p INTEGER DEFAULT 0;
+ALTER TABLE data_umum ADD COLUMN IF NOT EXISTS keterangan TEXT;
+
 -- 8. Tambah kolom Pokja II baru -------------------------------------------------
 ALTER TABLE data_pokja2 ADD COLUMN IF NOT EXISTS jml_warga_3_buta    INTEGER DEFAULT 0;
 ALTER TABLE data_pokja2 ADD COLUMN IF NOT EXISTS kf_klp              INTEGER DEFAULT 0;

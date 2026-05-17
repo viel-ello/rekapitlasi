@@ -34,7 +34,7 @@ const VALID_TABLES = [
 ];
 
 const VALID_COLUMNS = {
-  data_umum: ['jml_dusun', 'jml_pkk_rw', 'jml_pkk_rt', 'jml_dasa_wisma', 'jml_krt', 'jml_kk', 'jml_jiwa_l', 'jml_jiwa_p', 'jml_kader_tp_pkk_l', 'jml_kader_tp_pkk_p', 'jml_kader_umum_l', 'jml_kader_umum_p', 'jml_kader_khusus_l', 'jml_kader_khusus_p'],
+  data_umum: ['jml_dusun', 'jml_pkk_rw', 'jml_pkk_rt', 'jml_dasa_wisma', 'jml_krt', 'jml_kk', 'jml_jiwa_l', 'jml_jiwa_p', 'jml_kader_tp_pkk_l', 'jml_kader_tp_pkk_p', 'jml_kader_umum_l', 'jml_kader_umum_p', 'jml_kader_khusus_l', 'jml_kader_khusus_p', 'jml_tenaga_honorer_l', 'jml_tenaga_honorer_p', 'jml_tenaga_bantuan_l', 'jml_tenaga_bantuan_p', 'keterangan'],
   data_pokja1: ['kader_pkbn', 'kader_pkdrt', 'kader_pola_asuh', 'pkbn_jml_klp_simulasi', 'pkbn_jml_anggota', 'pkdrt_jml_klp_simulasi', 'pkdrt_jml_anggota', 'pola_asuh_jml_klp', 'pola_asuh_jml_anggota', 'lansia_jml_klp', 'lansia_jml_anggota', 'gr_kerja_bakti', 'gr_rukun_kematian', 'gr_keagamaan', 'gr_jimpitan', 'gr_arisan', 'keterangan'],
   data_pokja2: ['jml_warga_3_buta', 'paket_a_klp', 'paket_a_wrg', 'paket_b_klp', 'paket_b_wrg', 'paket_c_klp', 'paket_c_wrg', 'kf_klp', 'kf_wrg', 'paud_sejenis', 'taman_bacaan', 'klp_pembaca', 'bkb_klp', 'bkb_jml_ibu_peserta', 'bkb_ape_set_a', 'bkb_ape_set_b', 'kader_tutor_kf', 'kader_tutor_paud', 'kader_bkb', 'kader_khusus_koperasi', 'kader_khusus_keterampilan', 'yg_dilatih_lp3pkk', 'yg_dilatih_tp3pkk', 'yg_dilatih_damaspkk', 'up2k_pemula_klp', 'up2k_pemula_psrt', 'up2k_madya_klp', 'up2k_madya_psrt', 'up2k_utama_klp', 'up2k_utama_psrt', 'up2k_mandiri_klp', 'up2k_mandiri_psrt', 'koperasi_berbadan_hukum_kop', 'koperasi_berbadan_hukum_angg', 'keterangan'],
   data_pokja3: ['kader_pangan', 'kader_sandang', 'kader_tata_laksana_rt', 'pangan_beras', 'pangan_non_beras', 'pemanfaatan_peternakan', 'pemanfaatan_perikanan', 'pemanfaatan_warung_hidup', 'pemanfaatan_lumbung_hidup', 'pemanfaatan_toga', 'pemanfaatan_tanaman_keras', 'industri_pangan', 'industri_sandang', 'industri_jasa', 'rumah_sehat', 'rumah_kurang_sehat', 'keterangan'],
@@ -171,7 +171,7 @@ KONTEKS DATABASE:
 const DB_SCHEMA = `
 Tabel yang tersedia di database (semua kolom numerik bertipe INTEGER):
 
-1. data_umum: jml_dusun, jml_pkk_rw, jml_pkk_rt, jml_dasa_wisma, jml_krt, jml_kk, jml_jiwa_l, jml_jiwa_p, jml_kader_tp_pkk_l, jml_kader_tp_pkk_p, jml_kader_umum_l, jml_kader_umum_p, jml_kader_khusus_l, jml_kader_khusus_p
+1. data_umum: jml_dusun, jml_pkk_rw, jml_pkk_rt, jml_dasa_wisma, jml_krt, jml_kk, jml_jiwa_l, jml_jiwa_p, jml_kader_tp_pkk_l, jml_kader_tp_pkk_p, jml_kader_umum_l, jml_kader_umum_p, jml_kader_khusus_l, jml_kader_khusus_p, jml_tenaga_honorer_l, jml_tenaga_honorer_p, jml_tenaga_bantuan_l, jml_tenaga_bantuan_p, keterangan
 
 2. data_pokja1: kader_pkbn, kader_pkdrt, kader_pola_asuh, pkbn_jml_klp_simulasi, pkbn_jml_anggota, pkdrt_jml_klp_simulasi, pkdrt_jml_anggota, pola_asuh_jml_klp, pola_asuh_jml_anggota, lansia_jml_klp, lansia_jml_anggota, gr_kerja_bakti, gr_rukun_kematian, gr_keagamaan, gr_jimpitan, gr_arisan
 

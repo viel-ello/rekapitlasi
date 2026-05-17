@@ -48,6 +48,11 @@ CREATE TABLE IF NOT EXISTS data_umum (
   jml_kader_umum_p INTEGER DEFAULT 0,
   jml_kader_khusus_l INTEGER DEFAULT 0,
   jml_kader_khusus_p INTEGER DEFAULT 0,
+  jml_tenaga_honorer_l INTEGER DEFAULT 0,
+  jml_tenaga_honorer_p INTEGER DEFAULT 0,
+  jml_tenaga_bantuan_l INTEGER DEFAULT 0,
+  jml_tenaga_bantuan_p INTEGER DEFAULT 0,
+  keterangan TEXT,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE (dusun_id, tahun)
 );
