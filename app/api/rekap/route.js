@@ -1,7 +1,11 @@
 /**
- * @file Rekap API Route — Aggregated summary data for dashboard
+ * @file Rekap API Route — Aggregated summary data for dashboard.
  * GET /api/rekap?tahun=2025
- * Includes completeness status per desa
+ * Termasuk completeness status per dusun.
+ *
+ * Migration v5: unit data dusun (sebelumnya desa). Response shape backward-compat:
+ * `perDesa` & `perDesaJiwa` dipertahankan sebagai alias dari `perDusun` (sama isi,
+ * field id/nama tetap, plus `desa_id`/`desa_nama` aliasing `dusun_id`/`dusun_nama`).
  */
 
 import { NextResponse } from 'next/server';
@@ -18,7 +22,8 @@ import {
 } from '@/lib/dataQuality';
 import { toNumericValue } from '@/lib/chartStats';
 
-const ALL_TABLES = OPERATIONAL_TABLES.map((item) => item.table);
+// Tabel canonical untuk completeness check (dedup yang `aliasOf`-nya canonical).
+const ALL_TABLES = OPERATIONAL_TABLES.filter((item) => !item.aliasOf).map((item) => item.table);
 
 async function getHiddenKeysPerTable() {
   const { data } = await supabase
@@ -33,6 +38,11 @@ async function getHiddenKeysPerTable() {
   return hidden;
 }
 
+/** Resolve unit_id row dengan fallback dusun_id → desa_id. */
+function unitIdOf(row) {
+  return row?.dusun_id ?? row?.desa_id;
+}
+
 export async function GET(request) {
   try {
     const user = await requireAuth(request);
@@ -44,78 +54,103 @@ export async function GET(request) {
     const jenis = searchParams.get('jenis') || 'all';
     const selectedTables = jenis !== 'all' && isKnownOperationalTable(jenis) ? [jenis] : ALL_TABLES;
 
-    // Fetch desa
-    const { data: desaList, error: desaError } = await supabase.from('desa').select('*').eq('is_active', 1).order('nomor_urut');
-    if (desaError) throw desaError;
-    const totalDesa = desaList.length;
+    // Fetch dusun
+    const { data: dusunList, error: dusunError } = await supabase
+      .from('dusun')
+      .select('id, nama, nomor_urut, is_active')
+      .eq('is_active', 1)
+      .order('nomor_urut');
+    if (dusunError) throw dusunError;
+    const totalDusun = dusunList.length;
 
     // Fetch data_umum
     const { data: umumList, error: umumError } = await supabase.from('data_umum').select('*').eq('tahun', tahun);
     if (umumError) throw umumError;
 
-    const dataUmum = umumList.reduce((acc, curr) => {
-      acc.total_kk += curr.jml_kk || 0;
-      acc.total_jiwa_l += curr.jml_jiwa_l || 0;
-      acc.total_jiwa_p += curr.jml_jiwa_p || 0;
-      acc.total_krt += curr.jml_krt || 0;
-      acc.total_dasa_wisma += curr.jml_dasa_wisma || 0;
-      return acc;
-    }, { total_kk: 0, total_jiwa_l: 0, total_jiwa_p: 0, total_krt: 0, total_dasa_wisma: 0 });
+    const dataUmum = (umumList || []).reduce(
+      (acc, curr) => {
+        acc.total_kk += curr.jml_kk || 0;
+        acc.total_jiwa_l += curr.jml_jiwa_l || 0;
+        acc.total_jiwa_p += curr.jml_jiwa_p || 0;
+        acc.total_krt += curr.jml_krt || 0;
+        acc.total_dasa_wisma += curr.jml_dasa_wisma || 0;
+        return acc;
+      },
+      { total_kk: 0, total_jiwa_l: 0, total_jiwa_p: 0, total_krt: 0, total_dasa_wisma: 0 }
+    );
 
-    const perDesaJiwa = desaList.map(d => {
-      const du = umumList.find(u => u.desa_id === d.id) || {};
+    const perDusunJiwa = dusunList.map((d) => {
+      const du = (umumList || []).find((u) => unitIdOf(u) === d.id) || {};
       return {
         nama: d.nama,
         nomor_urut: d.nomor_urut,
         jiwa_l: du.jml_jiwa_l || 0,
         jiwa_p: du.jml_jiwa_p || 0,
-        kk: du.jml_kk || 0
+        kk: du.jml_kk || 0,
       };
     });
 
-    // Kader pokja 1
+    // Pokja I
     const { data: p1List } = await supabase.from('data_pokja1').select('*').eq('tahun', tahun);
-    const kaderPokja1 = (p1List || []).reduce((sum, c) => sum + (c.kader_pkbn || 0) + (c.kader_pkdrt || 0) + (c.kader_pola_asuh || 0), 0);
+    const kaderPokja1 = (p1List || []).reduce(
+      (sum, c) => sum + (c.kader_pkbn || 0) + (c.kader_pkdrt || 0) + (c.kader_pola_asuh || 0),
+      0
+    );
 
-    // Pokja 2
+    // Pokja II
     const { data: p2List } = await supabase.from('data_pokja2').select('*').eq('tahun', tahun);
-    const pokja2Summary = (p2List || []).reduce((acc, row) => {
-      acc.paket += toNumericValue(row.paket_a_wrg) + toNumericValue(row.paket_b_wrg) + toNumericValue(row.paket_c_wrg);
-      acc.up2k += toNumericValue(row.up2k_pemula_psrt) + toNumericValue(row.up2k_madya_psrt) + toNumericValue(row.up2k_utama_psrt) + toNumericValue(row.up2k_mandiri_psrt);
-      acc.koperasi += toNumericValue(row.koperasi_belum_bh_angg) + toNumericValue(row.koperasi_berbadan_hukum_angg);
-      acc.usahaMikro += toNumericValue(row.usaha_mikro);
-      return acc;
-    }, { paket: 0, up2k: 0, koperasi: 0, usahaMikro: 0 });
+    const pokja2Summary = (p2List || []).reduce(
+      (acc, row) => {
+        acc.paket += toNumericValue(row.paket_a_wrg) + toNumericValue(row.paket_b_wrg) + toNumericValue(row.paket_c_wrg);
+        acc.up2k += toNumericValue(row.up2k_pemula_psrt) + toNumericValue(row.up2k_madya_psrt) + toNumericValue(row.up2k_utama_psrt) + toNumericValue(row.up2k_mandiri_psrt);
+        acc.koperasi += toNumericValue(row.koperasi_berbadan_hukum_angg);
+        return acc;
+      },
+      { paket: 0, up2k: 0, koperasi: 0 }
+    );
 
-    // Kader pokja 3
+    // Pokja III
     const { data: p3List } = await supabase.from('data_pokja3').select('*').eq('tahun', tahun);
-    const kaderPokja3 = (p3List || []).reduce((sum, c) => sum + (c.kader_pangan || 0) + (c.kader_sandang || 0) + (c.kader_tata_laksana_rt || 0), 0);
+    const kaderPokja3 = (p3List || []).reduce(
+      (sum, c) => sum + (c.kader_pangan || 0) + (c.kader_sandang || 0) + (c.kader_tata_laksana_rt || 0),
+      0
+    );
     const rumahSehatTotal = (p3List || []).reduce((sum, c) => sum + toNumericValue(c.rumah_sehat), 0);
 
-    // Kader pokja 4
+    // Pokja IV
     const { data: p4List } = await supabase.from('data_pokja4').select('*').eq('tahun', tahun);
-    const kaderPokja4 = (p4List || []).reduce((sum, c) => sum + (c.kader_posyandu || 0) + (c.kader_gizi || 0) + (c.kader_kesling || 0) + (c.kader_kb || 0), 0);
+    const kaderPokja4 = (p4List || []).reduce(
+      (sum, c) => sum + (c.kader_posyandu || 0) + (c.kader_gizi || 0) + (c.kader_kesling || 0) + (c.kader_kb || 0),
+      0
+    );
     const posyanduTotal = (p4List || []).reduce((sum, c) => sum + (c.posyandu_jumlah || 0), 0);
 
     // Bumil
     const { data: bumilList } = await supabase.from('data_bumil').select('ibu_hamil, ibu_melahirkan, bayi_lahir_l, bayi_lahir_p').eq('tahun', tahun);
-    const bumilSummary = (bumilList || []).reduce((acc, curr) => {
-      acc.total_hamil += curr.ibu_hamil || 0;
-      acc.total_melahirkan += curr.ibu_melahirkan || 0;
-      acc.total_bayi_lahir += (curr.bayi_lahir_l || 0) + (curr.bayi_lahir_p || 0);
-      return acc;
-    }, { total_hamil: 0, total_melahirkan: 0, total_bayi_lahir: 0 });
+    const bumilSummary = (bumilList || []).reduce(
+      (acc, curr) => {
+        acc.total_hamil += curr.ibu_hamil || 0;
+        acc.total_melahirkan += curr.ibu_melahirkan || 0;
+        acc.total_bayi_lahir += (curr.bayi_lahir_l || 0) + (curr.bayi_lahir_p || 0);
+        return acc;
+      },
+      { total_hamil: 0, total_melahirkan: 0, total_bayi_lahir: 0 }
+    );
 
-    const { data: kegiatanList } = await supabase.from('data_kegiatan_warga').select('*').eq('tahun', tahun);
-    const kegiatanWargaSummary = (kegiatanList || []).reduce((acc, row) => {
-      acc.anggota += toNumericValue(row.jml_anggota_l) + toNumericValue(row.jml_anggota_p);
-      acc.balita += toNumericValue(row.balita_l) + toNumericValue(row.balita_p);
-      acc.pus += toNumericValue(row.pus);
-      acc.lansia += toNumericValue(row.lansia);
-      acc.rumahSehat += toNumericValue(row.rumah_sehat);
-      acc.jknBpjs += toNumericValue(row.jkn_bpjs);
-      return acc;
-    }, { anggota: 0, balita: 0, pus: 0, lansia: 0, rumahSehat: 0, jknBpjs: 0 });
+    // Rekap Dawis (sebelumnya kegiatan_warga)
+    const { data: dawisList } = await supabase.from('data_rekap_dawis').select('*').eq('tahun', tahun);
+    const rekapDawisSummary = (dawisList || []).reduce(
+      (acc, row) => {
+        acc.anggota += toNumericValue(row.jml_anggota_l) + toNumericValue(row.jml_anggota_p);
+        acc.balita += toNumericValue(row.balita_l) + toNumericValue(row.balita_p);
+        acc.pus += toNumericValue(row.pus);
+        acc.lansia += toNumericValue(row.lansia);
+        acc.rumahSehat += toNumericValue(row.rumah_sehat);
+        acc.jknBpjs += toNumericValue(row.jkn_bpjs);
+        return acc;
+      },
+      { anggota: 0, balita: 0, pus: 0, lansia: 0, rumahSehat: 0, jknBpjs: 0 }
+    );
 
     const dashboardIndicators = [
       { label: 'KK', value: dataUmum.total_kk, category: 'Data Umum', tone: 'primary' },
@@ -124,10 +159,10 @@ export async function GET(request) {
       { label: 'Kader Pokja I', value: kaderPokja1, category: 'Pokja I', tone: 'amber' },
       { label: 'Warga Paket A-C', value: pokja2Summary.paket, category: 'Pokja II', tone: 'blue' },
       { label: 'Peserta UP2K', value: pokja2Summary.up2k, category: 'Pokja II', tone: 'primary' },
-      { label: 'Rumah Sehat', value: rumahSehatTotal + kegiatanWargaSummary.rumahSehat, category: 'Pokja III/Warga', tone: 'green' },
+      { label: 'Rumah Sehat', value: rumahSehatTotal + rekapDawisSummary.rumahSehat, category: 'Pokja III/Dawis', tone: 'green' },
       { label: 'Posyandu', value: posyanduTotal, category: 'Pokja IV', tone: 'amber' },
       { label: 'Ibu Hamil', value: bumilSummary.total_hamil, category: 'Bumil', tone: 'blue' },
-      { label: 'JKN/BPJS', value: kegiatanWargaSummary.jknBpjs, category: 'Kegiatan Warga', tone: 'primary' },
+      { label: 'JKN/BPJS', value: rekapDawisSummary.jknBpjs, category: 'Rekap Dawis', tone: 'primary' },
     ];
 
     // ── Completeness check ──
@@ -151,14 +186,20 @@ export async function GET(request) {
         const currentMap = {};
         const previousMap = {};
 
-        (currentRows || []).forEach((row) => { currentMap[row.desa_id] = row; });
-        (previousRows || []).forEach((row) => { previousMap[row.desa_id] = row; });
+        (currentRows || []).forEach((row) => {
+          const id = unitIdOf(row);
+          if (id != null) currentMap[id] = row;
+        });
+        (previousRows || []).forEach((row) => {
+          const id = unitIdOf(row);
+          if (id != null) previousMap[id] = row;
+        });
 
         return { table: tableName, keys, currentMap, previousMap };
       })
     );
 
-    const perDesa = desaList.map(d => {
+    const perDusun = dusunList.map((d) => {
       const tables = {};
       const tableStatuses = {};
       const statuses = [];
@@ -189,14 +230,16 @@ export async function GET(request) {
     });
 
     const completeness = {
-      total: totalDesa,
-      complete: perDesa.filter(d => d.status === COMPLETENESS_STATUS.COMPLETE).length,
-      incomplete: perDesa.filter(d => d.status === COMPLETENESS_STATUS.INCOMPLETE).length,
-      needsCheck: perDesa.filter(d => d.status === COMPLETENESS_STATUS.NEEDS_CHECK).length,
-      partial: perDesa.filter(d => d.status === COMPLETENESS_STATUS.INCOMPLETE).length,
-      empty: perDesa.filter(d => d.status === COMPLETENESS_STATUS.INCOMPLETE && d.filled === 0).length,
+      total: totalDusun,
+      complete: perDusun.filter((d) => d.status === COMPLETENESS_STATUS.COMPLETE).length,
+      incomplete: perDusun.filter((d) => d.status === COMPLETENESS_STATUS.INCOMPLETE).length,
+      needsCheck: perDusun.filter((d) => d.status === COMPLETENESS_STATUS.NEEDS_CHECK).length,
+      partial: perDusun.filter((d) => d.status === COMPLETENESS_STATUS.INCOMPLETE).length,
+      empty: perDusun.filter((d) => d.status === COMPLETENESS_STATUS.INCOMPLETE && d.filled === 0).length,
       filter: { jenis, bulan, tables: selectedTables },
-      perDesa,
+      perDusun,
+      // Backward-compat alias untuk client lama
+      perDesa: perDusun,
     };
 
     // ── Last activity ──
@@ -208,9 +251,11 @@ export async function GET(request) {
 
     return NextResponse.json({
       tahun: Number(tahun),
-      totalDesa,
+      totalDusun,
+      totalDesa: totalDusun, // alias
       dataUmum,
-      perDesaJiwa,
+      perDusunJiwa,
+      perDesaJiwa: perDusunJiwa, // alias
       kaderSummary: {
         pokja1: kaderPokja1,
         pokja2: pokja2Summary,
@@ -219,7 +264,8 @@ export async function GET(request) {
       },
       posyanduTotal,
       bumilSummary,
-      kegiatanWargaSummary,
+      rekapDawisSummary,
+      kegiatanWargaSummary: rekapDawisSummary, // alias backward-compat
       dashboardIndicators,
       completeness,
       lastActivity: lastLog?.[0] || null,

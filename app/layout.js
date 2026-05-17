@@ -2,8 +2,8 @@ import './globals.css';
 import ThemeProvider from '@/components/ThemeProvider';
 
 export const metadata = {
-  title: 'Sistem Rekapitulasi Data PKK — Kecamatan Baturetno',
-  description: 'Aplikasi web untuk rekapitulasi data kegiatan PKK tingkat Kecamatan Baturetno, Kabupaten Wonogiri, Jawa Tengah.',
+  title: 'Sistem Rekapitulasi Data PKK Desa Belikurip',
+  description: 'Aplikasi web untuk rekapitulasi data kegiatan PKK Desa Belikurip, Kecamatan Baturetno, Kabupaten Wonogiri, Jawa Tengah.',
   icons: {
     icon: [
       { url: '/logo.png', type: 'image/png' },

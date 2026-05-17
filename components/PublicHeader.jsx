@@ -11,7 +11,7 @@ export default function PublicHeader() {
           <img src="/logo.png" alt="Logo TP PKK Baturetno" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
           <div className="min-w-0">
             <div className="text-sm font-bold text-gray-800 truncate">PKK Rekapitulasi</div>
-            <div className="text-[11px] text-gray-500 truncate">Kecamatan Baturetno</div>
+            <div className="text-[11px] text-gray-500 truncate">Desa Belikurip</div>
           </div>
         </Link>
         <nav className="flex items-center gap-1 sm:gap-2">

@@ -45,15 +45,15 @@ export async function POST(request) {
       return NextResponse.json({ error: 'File bukan format Excel yang valid' }, { status: 400 });
     }
 
-    const { data: desaList, error: desaError } = await supabase
-      .from('desa')
+    const { data: dusunList, error: dusunError } = await supabase
+      .from('dusun')
       .select('id, nama, nomor_urut')
       .eq('is_active', 1)
       .order('nomor_urut');
 
-    if (desaError) throw desaError;
+    if (dusunError) throw dusunError;
 
-    const parsed = await parseExcel(buffer, desaList || []);
+    const parsed = await parseExcel(buffer, dusunList || []);
     const { diff } = await buildImportDiff(parsed.sheets, tahun, user);
 
     return NextResponse.json({

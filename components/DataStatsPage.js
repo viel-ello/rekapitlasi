@@ -12,7 +12,7 @@ import {
   Pen,
 } from 'flowbite-react-icons/outline';
 import { MONTHS } from '@/lib/dataPages';
-import { buildColumnTotals, buildDesaRanking, buildStatsSummary } from '@/lib/chartStats';
+import { buildColumnTotals, buildDusunRanking, buildStatsSummary } from '@/lib/chartStats';
 import { validateRow, countIssues } from '@/lib/validation';
 import { applyColumnOverrides } from '@/lib/columnOverrides';
 import { useYears } from '@/lib/useYears';
@@ -67,7 +67,7 @@ export default function DataStatsPage({ config }) {
   const [bulan, setBulan] = useState(new Date().getMonth() + 1);
   const [rows, setRows] = useState([]);
   const [prevRows, setPrevRows] = useState([]);
-  const [desa, setDesa] = useState([]);
+  const [dusunList, setDusunList] = useState([]);
   const [selectedMetric, setSelectedMetric] = useState(config.primaryMetric || config.columns[0]?.key);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -119,7 +119,7 @@ export default function DataStatsPage({ config }) {
         }
 
         const [desaRes, dataRes, prevRes] = await Promise.all([
-          fetch('/api/desa'),
+          fetch('/api/dusun'),
           fetch(`${config.apiEndpoint}?${params.toString()}`),
           fetch(`${config.apiEndpoint}?${prevParams.toString()}`),
         ]);
@@ -135,7 +135,7 @@ export default function DataStatsPage({ config }) {
         ]);
 
         if (!cancelled) {
-          setDesa(Array.isArray(desaData) ? desaData : []);
+          setDusunList(Array.isArray(desaData) ? desaData : []);
           setRows(Array.isArray(rowData) ? rowData : []);
           setPrevRows(Array.isArray(prevData) ? prevData : []);
         }
@@ -152,20 +152,20 @@ export default function DataStatsPage({ config }) {
 
   const prevMap = useMemo(() => {
     const map = {};
-    prevRows.forEach((row) => { map[row.desa_id] = row; });
+    prevRows.forEach((row) => { map[(row.dusun_id ?? row.desa_id)] = row; });
     return map;
   }, [prevRows]);
 
-  const summary = useMemo(() => buildStatsSummary(rows, effectiveColumns, desa), [rows, effectiveColumns, desa]);
+  const summary = useMemo(() => buildStatsSummary(rows, effectiveColumns, dusunList), [rows, effectiveColumns, dusunList]);
   const totals = summary.totals;
-  const maxTotal = Math.max(...totals.map(item => item.total), 1);
-  const ranking = useMemo(() => buildDesaRanking(rows, desa, selectedMetric), [rows, desa, selectedMetric]);
+  const maxTotal = Math.max(...totals.map((item) => item.total), 1);
+  const ranking = useMemo(() => buildDusunRanking(rows, dusunList, selectedMetric), [rows, dusunList, selectedMetric]);
   const maxRankValue = Math.max(...ranking.map(item => item.value), 1);
   const selectedColumn = effectiveColumns.find((column) => column.key === selectedMetric) || effectiveColumns[0];
 
   const needsCheck = useMemo(() => {
     return rows.reduce((sum, row) => {
-      const validation = validateRow(row, effectiveColumns, prevMap[row.desa_id]);
+      const validation = validateRow(row, effectiveColumns, prevMap[(row.dusun_id ?? row.desa_id)]);
       const issues = countIssues(validation);
       return sum + (issues.errors > 0 || issues.warnings > 0 ? 1 : 0);
     }, 0);
@@ -242,15 +242,15 @@ export default function DataStatsPage({ config }) {
         className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4"
       >
         <KpiCard
-          label="Desa Aktif"
-          value={summary.totalDesa}
-          sub={<><AnimatedCounter value={summary.filledDesa} duration={1.2} /> desa sudah punya record</>}
+          label="Dusun Aktif"
+          value={summary.totalDusun}
+          sub={<><AnimatedCounter value={summary.filledDusun} duration={1.2} /> dusun sudah punya record</>}
           icon={CheckCircle}
           tone="green"
         />
         <KpiCard label="Indikator" value={summary.indicatorCount} sub="kolom standar divisualkan" icon={ClipboardList} tone="blue" />
         <KpiCard label="Total Nilai" value={summary.totalValue} sub="akumulasi semua indikator" icon={ChartLineUp} tone="primary" />
-        <KpiCard label="Perlu Dicek" value={needsCheck} sub="desa dengan warning/anomali" icon={ExclamationCircle} tone="amber" />
+        <KpiCard label="Perlu Dicek" value={needsCheck} sub="dusun dengan warning/anomali" icon={ExclamationCircle} tone="amber" />
       </motion.div>
 
       <div className="grid xl:grid-cols-2 gap-6">
@@ -283,14 +283,14 @@ export default function DataStatsPage({ config }) {
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="p-4 border-b border-gray-100 bg-gray-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide">Ranking Desa</h2>
-              <p className="text-xs text-gray-500 mt-1">Perbandingan desa berdasarkan indikator fokus</p>
+              <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide">Ranking Dusun</h2>
+              <p className="text-xs text-gray-500 mt-1">Perbandingan dusun berdasarkan indikator fokus</p>
             </div>
             <select
               value={selectedMetric}
               onChange={(event) => setSelectedMetric(event.target.value)}
               className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 focus:ring-2 focus:ring-primary-500 outline-none"
-              aria-label="Pilih indikator ranking desa"
+              aria-label="Pilih indikator ranking dusun"
             >
               {effectiveColumns.map((column) => <option key={column.key} value={column.key}>{column.label}</option>)}
             </select>

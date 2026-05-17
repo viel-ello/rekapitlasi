@@ -1,9 +1,10 @@
 /**
  * @file Confirm Excel Import API
- * POST /api/import/confirm - saves only rows that were previewed as insert/update.
+ * POST /api/import/confirm — saves only rows yang di-preview sebagai insert/update.
+ *
+ * Migration v5: parameter `selectedDusunIds` canonical, `selectedDesaIds` alias.
  */
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
 import { requireAuth } from '@/lib/auth';
 import { writeLog } from '@/lib/audit';
 import { ROLE_TABLE_MAP } from '@/lib/excel/sheetMap';
@@ -16,7 +17,9 @@ export async function POST(request) {
     const user = await requireAuth(request);
     if (!user) return requireAuth.deny();
 
-    const { parsedData, tahun, selectedDesaIds } = await request.json();
+    const body = await request.json();
+    const { parsedData, tahun } = body;
+    const selectedRaw = body.selectedDusunIds ?? body.selectedDesaIds;
 
     if (!Array.isArray(parsedData) || !tahun) {
       return NextResponse.json({ error: 'Data import dan tahun harus diisi' }, { status: 400 });
@@ -33,13 +36,13 @@ export async function POST(request) {
       return NextResponse.json({ error: importPayload.error }, { status: 400 });
     }
 
-    const { diff, desaList } = await buildImportDiff(parsedData, targetYear, user);
+    const { diff, dusunList } = await buildImportDiff(parsedData, targetYear, user);
 
-    // Validasi & sanitize selectedDesaIds: { [tableName]: number[] }
+    // Validasi & sanitize selection: { [tableName]: number[] }
     let selection = null;
-    if (selectedDesaIds && typeof selectedDesaIds === 'object' && !Array.isArray(selectedDesaIds)) {
+    if (selectedRaw && typeof selectedRaw === 'object' && !Array.isArray(selectedRaw)) {
       selection = {};
-      for (const [t, ids] of Object.entries(selectedDesaIds)) {
+      for (const [t, ids] of Object.entries(selectedRaw)) {
         if (typeof t !== 'string') continue;
         if (!Array.isArray(ids)) continue;
         const cleaned = ids.map((n) => Number(n)).filter((n) => Number.isInteger(n) && n > 0);
@@ -64,7 +67,7 @@ export async function POST(request) {
     }
 
     const allowedTables = ROLE_TABLE_MAP[user.role] || [];
-    const results = await importToSupabase(sheetsToImport, targetYear, allowedTables, desaList);
+    const results = await importToSupabase(sheetsToImport, targetYear, allowedTables, dusunList);
     const totalSuccess = results.reduce((sum, result) => sum + (result.success || 0), 0);
     const totalFailed = results.reduce((sum, result) => sum + (result.failed || 0), 0);
 

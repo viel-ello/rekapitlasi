@@ -54,7 +54,7 @@ export default function WelcomePage() {
             <img src="/logo.png" alt="Logo TP PKK Baturetno" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
             <div className="min-w-0">
               <div className="text-sm font-bold text-gray-800 truncate">Sistem Rekapitulasi PKK</div>
-              <div className="text-[11px] text-gray-500 truncate">Kecamatan Baturetno</div>
+              <div className="text-[11px] text-gray-500 truncate">Desa Belikurip</div>
             </div>
           </Link>
           <div className="flex items-center gap-2">
@@ -87,15 +87,15 @@ export default function WelcomePage() {
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-10 pb-12 sm:pt-16 sm:pb-20">
           <div className="max-w-3xl">
             <span className="inline-block px-3 py-1 rounded-full bg-primary-50 border border-primary-100 text-primary-700 text-xs font-semibold uppercase tracking-wide mb-4">
-              TP PKK · Kecamatan Baturetno · Wonogiri
+              TP PKK · Desa Belikurip · Kecamatan Baturetno · Wonogiri
             </span>
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 leading-tight">
               Sistem Rekapitulasi Data
               <br className="hidden sm:block" />
-              <span className="text-primary-700"> TP PKK Kecamatan Baturetno</span>
+              <span className="text-primary-700"> TP PKK Desa Belikurip</span>
             </h1>
             <p className="mt-4 text-sm sm:text-base text-gray-600 max-w-2xl leading-relaxed">
-              Aplikasi internal untuk mencatat, memantau, dan melaporkan data kegiatan PKK 13 desa di Kecamatan Baturetno.
+              Aplikasi internal untuk mencatat, memantau, dan melaporkan data kegiatan PKK 9 dusun di Desa Belikurip.
               Data dikelola oleh administrator dan operator pokja, sebagian agregat ditampilkan terbuka untuk warga.
             </p>
 
@@ -154,7 +154,7 @@ export default function WelcomePage() {
       {/* Footer */}
       <footer className="border-t border-gray-100 bg-gray-50/50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-gray-500">
-          <div>© {new Date().getFullYear()} TP PKK Kecamatan Baturetno · Kabupaten Wonogiri, Jawa Tengah</div>
+          <div>© {new Date().getFullYear()} TP PKK Desa Belikurip · Kecamatan Baturetno · Kabupaten Wonogiri, Jawa Tengah</div>
           <div className="flex items-center gap-3">
             <Link href="/publik" className="hover:text-primary-700">Data Publik</Link>
             <span aria-hidden="true">·</span>

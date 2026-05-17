@@ -81,14 +81,14 @@ export default function LoginPage() {
             <div className="mx-auto w-16 h-16 mb-3 rounded-full bg-white shadow-md ring-2 ring-primary-100 flex items-center justify-center overflow-hidden">
               <img
                 src="/logo.png"
-                alt="Logo TP PKK Kecamatan Baturetno"
+                alt="Logo TP PKK Desa Belikurip"
                 className="w-full h-full object-cover"
               />
             </div>
             <h1 className="text-lg font-bold text-gray-800">Masuk Aplikasi</h1>
             <p className="text-xs text-gray-500 mt-1">
               Sistem Rekapitulasi Data TP PKK<br />
-              Kecamatan Baturetno, Wonogiri
+              Desa Belikurip, Kecamatan Baturetno, Wonogiri
             </p>
           </div>
 
@@ -165,7 +165,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-[11px] text-gray-400 mt-4">
-          © {new Date().getFullYear()} TP PKK Kecamatan Baturetno
+          © {new Date().getFullYear()} TP PKK Desa Belikurip · Kecamatan Baturetno
         </p>
       </motion.div>
     </div>

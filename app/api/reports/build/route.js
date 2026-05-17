@@ -56,12 +56,15 @@ function applyOverride(col, override) {
 async function gatherReport(config) {
   const overrides = await fetchOverrides();
 
-  // Desa list
-  let desaQ = supabase.from('desa').select('id, nama, nomor_urut').eq('is_active', 1).order('nomor_urut');
-  if (Array.isArray(config.desaIds) && config.desaIds.length > 0) {
-    desaQ = desaQ.in('id', config.desaIds);
+  // Dusun list (sebelumnya desa)
+  let dusunQ = supabase.from('dusun').select('id, nama, nomor_urut').eq('is_active', 1).order('nomor_urut');
+  const requestedIds = Array.isArray(config.dusunIds) && config.dusunIds.length > 0
+    ? config.dusunIds
+    : (Array.isArray(config.desaIds) ? config.desaIds : []);
+  if (requestedIds.length > 0) {
+    dusunQ = dusunQ.in('id', requestedIds);
   }
-  const { data: desaList } = await desaQ;
+  const { data: dusunList } = await dusunQ;
 
   const years = [];
   for (let y = config.tahunFrom; y <= config.tahunTo; y++) years.push(y);
@@ -71,7 +74,6 @@ async function gatherReport(config) {
     const meta = VALID_TABLES[t];
     if (!meta) continue;
 
-    // Resolve kolom yang dipilih, terapkan override
     const overrideMap = overrides[t] || {};
     const requestedKeys = Array.isArray(config.columns?.[t]) ? config.columns[t] : meta.columns.map((c) => c.key);
     const cols = meta.columns
@@ -80,18 +82,18 @@ async function gatherReport(config) {
 
     if (cols.length === 0) continue;
 
-    // Fetch rows
     let q = supabase.from(t).select('*').in('tahun', years);
     if (meta.hasMonth && config.bulan) q = q.eq('bulan', config.bulan);
-    if (Array.isArray(config.desaIds) && config.desaIds.length > 0) {
-      q = q.in('desa_id', config.desaIds);
+    if (requestedIds.length > 0) {
+      q = q.or(`dusun_id.in.(${requestedIds.join(',')}),desa_id.in.(${requestedIds.join(',')})`);
     }
     const { data: rows } = await q;
 
     const merged = (rows || [])
       .map((r) => {
-        const d = (desaList || []).find((x) => x.id === r.desa_id);
-        return d ? { ...r, _desa_nama: d.nama, _nomor_urut: d.nomor_urut } : null;
+        const unitId = r.dusun_id ?? r.desa_id;
+        const d = (dusunList || []).find((x) => x.id === unitId);
+        return d ? { ...r, _dusun_nama: d.nama, _desa_nama: d.nama, _nomor_urut: d.nomor_urut } : null;
       })
       .filter(Boolean)
       .sort((a, b) => (a.tahun !== b.tahun ? a.tahun - b.tahun : (a._nomor_urut || 0) - (b._nomor_urut || 0)));
@@ -104,7 +106,7 @@ async function gatherReport(config) {
     });
   }
 
-  return { sheets, desaList: desaList || [], years };
+  return { sheets, dusunList: dusunList || [], desaList: dusunList || [], years };
 }
 
 export async function POST(request) {
@@ -129,6 +131,7 @@ export async function POST(request) {
       tahunFrom,
       tahunTo,
       bulan: body.bulan ? Number(body.bulan) : 12,
+      dusunIds: Array.isArray(body.dusunIds) ? body.dusunIds.map((n) => Number(n)).filter(Number.isInteger) : [],
       desaIds: Array.isArray(body.desaIds) ? body.desaIds.map((n) => Number(n)).filter(Number.isInteger) : [],
       columns: body.columns || {},
     };
@@ -165,7 +168,7 @@ async function buildExcel(report, config) {
     ws.addRow([`Periode ${config.tahunFrom}–${config.tahunTo}`]);
     ws.addRow([]);
 
-    const headers = ['No', 'Desa', 'Tahun', ...sheet.columns.map((c) => c.label)];
+    const headers = ['No', 'Dusun', 'Tahun', ...sheet.columns.map((c) => c.label)];
     const headerRow = ws.addRow(headers);
     headerRow.eachCell((c) => {
       c.fill = HF;
@@ -182,7 +185,7 @@ async function buildExcel(report, config) {
     sheet.rows.forEach((r, i) => {
       const rowVals = [
         i + 1,
-        r._desa_nama,
+        r._dusun_nama || r._desa_nama,
         r.tahun,
         ...sheet.columns.map((c) => Number(r[c.key] || 0)),
       ];
@@ -222,7 +225,7 @@ async function buildWord(report, config) {
   };
 
   const sections = report.sheets.map((sheet) => {
-    const headerCells = ['No', 'Desa', 'Tahun', ...sheet.columns.map((c) => c.label)].map((label) =>
+    const headerCells = ['No', 'Dusun', 'Tahun', ...sheet.columns.map((c) => c.label)].map((label) =>
       new TableCell({
         children: [new Paragraph({ children: [new TextRun({ text: label, bold: true, size: 18 })], alignment: AlignmentType.CENTER })],
         borders: cellBorder,
@@ -231,7 +234,7 @@ async function buildWord(report, config) {
 
     const dataRows = sheet.rows.map((r, i) => new TableRow({
       children: [
-        i + 1, r._desa_nama, r.tahun, ...sheet.columns.map((c) => Number(r[c.key] || 0)),
+        i + 1, r._dusun_nama || r._desa_nama, r.tahun, ...sheet.columns.map((c) => Number(r[c.key] || 0)),
       ].map((v) => new TableCell({
         children: [new Paragraph({ children: [new TextRun({ text: String(v), size: 18 })], alignment: AlignmentType.CENTER })],
         borders: cellBorder,
@@ -280,7 +283,7 @@ async function buildPdf(report, config) {
   // Header function
   const addHeader = (text) => {
     doc.fontSize(14).font('Helvetica-Bold').text(text, { align: 'center' });
-    doc.fontSize(10).font('Helvetica').text(`Periode ${config.tahunFrom}–${config.tahunTo} · TP PKK Kec. Baturetno`, { align: 'center' });
+    doc.fontSize(10).font('Helvetica').text(`Periode ${config.tahunFrom}–${config.tahunTo} · TP PKK Desa Belikurip`, { align: 'center' });
     doc.moveDown(0.5);
   };
 
@@ -292,7 +295,6 @@ async function buildPdf(report, config) {
     addHeader(sheet.title);
 
     // Compute column widths
-    const headers = ['No', 'Desa', 'Tahun', ...sheet.columns.map((c) => c.label)];
     const usableWidth = doc.page.width - 72;
     const fixedW = [24, 90, 40];
     const dataW = (usableWidth - fixedW.reduce((a, b) => a + b, 0)) / sheet.columns.length;
@@ -304,6 +306,7 @@ async function buildPdf(report, config) {
     // Render header row
     doc.fontSize(8).font('Helvetica-Bold');
     let x = doc.page.margins.left;
+    const headers = ['No', 'Dusun', 'Tahun', ...sheet.columns.map((c) => c.label)];
     headers.forEach((h, idx) => {
       doc.rect(x, y, widths[idx], 22).fill('#0d7377').stroke('#0d7377');
       doc.fillColor('#ffffff').text(h, x + 2, y + 6, { width: widths[idx] - 4, align: 'center', ellipsis: true });
@@ -322,7 +325,7 @@ async function buildPdf(report, config) {
       let xx = doc.page.margins.left;
       const rowH = 18;
       const cells = [
-        String(i + 1), r._desa_nama || '-', String(r.tahun),
+        String(i + 1), r._dusun_nama || r._desa_nama || '-', String(r.tahun),
         ...sheet.columns.map((c) => Number(r[c.key] || 0).toLocaleString('id-ID')),
       ];
       cells.forEach((val, idx) => {

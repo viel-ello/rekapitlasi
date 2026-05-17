@@ -18,7 +18,7 @@ import { writeLog } from '@/lib/audit';
 
 const VALID_TABLES = new Set([
   'data_umum', 'data_pokja1', 'data_pokja2', 'data_pokja3', 'data_pokja4',
-  'data_kegiatan_warga', 'data_bumil',
+  'data_rekap_dawis', 'data_kegiatan_warga', 'data_bumil',
 ]);
 
 const ACTION_TO_STATUS = {

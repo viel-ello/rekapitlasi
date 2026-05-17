@@ -15,20 +15,24 @@ export async function GET(request) {
 
     let lastLoginAt = null;
     let namaLengkap = null;
+    let dusunId = user.dusun_id ?? null;
     try {
       const { data } = await supabase
         .from('users')
-        .select('last_login_at, nama_lengkap')
+        .select('last_login_at, nama_lengkap, dusun_id')
         .eq('id', user.userId)
         .single();
       lastLoginAt = data?.last_login_at || null;
       namaLengkap = data?.nama_lengkap || null;
+      // Override JWT dusun_id dengan nilai dari DB (lebih authoritative kalau admin baru update)
+      if (data?.dusun_id != null) dusunId = data.dusun_id;
     } catch { /* silent */ }
 
     return NextResponse.json({
       userId: user.userId,
       username: user.username,
       role: user.role,
+      dusun_id: dusunId,
       permissions: ROLE_PERMISSIONS[user.role] || [],
       lastLoginAt,
       namaLengkap,

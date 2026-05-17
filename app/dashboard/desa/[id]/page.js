@@ -26,7 +26,7 @@ const TAB_TABLES = [
   { id: 'data_pokja2', label: 'Pokja II', table: 'data_pokja2', editPath: '/dashboard/pokja2/edit' },
   { id: 'data_pokja3', label: 'Pokja III', table: 'data_pokja3', editPath: '/dashboard/pokja3/edit' },
   { id: 'data_pokja4', label: 'Pokja IV', table: 'data_pokja4', editPath: '/dashboard/pokja4/edit' },
-  { id: 'data_kegiatan_warga', label: 'Kegiatan Warga', table: 'data_kegiatan_warga', editPath: '/dashboard/kegiatan-warga/edit' },
+  { id: 'data_rekap_dawis', label: 'Rekapitulasi Dawis', table: 'data_rekap_dawis', editPath: '/dashboard/rekap-dawis/edit' },
   { id: 'data_bumil', label: 'Bumil', table: 'data_bumil', editPath: '/dashboard/bumil/edit' },
   { id: 'validasi', label: 'Validasi', table: null },
 ];

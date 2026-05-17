@@ -16,7 +16,7 @@ const menuItems = [
   { href: '/dashboard/pokja2', label: 'Pokja II', icon: BookOpen, sub: 'Pendidikan & Koperasi' },
   { href: '/dashboard/pokja3', label: 'Pokja III', icon: Swatchbook, sub: 'Pangan & Sandang' },
   { href: '/dashboard/pokja4', label: 'Pokja IV', icon: Heart, sub: 'Kesehatan & Lingkungan' },
-  { href: '/dashboard/kegiatan-warga', label: 'Kegiatan Warga', icon: Users },
+  { href: '/dashboard/rekap-dawis', label: 'Rekapitulasi Dawis', icon: Users },
   { href: '/dashboard/bumil', label: 'Data Bumil', icon: UserCircle },
   { href: '/dashboard/reports', label: 'Report Builder', icon: ChartLineUp, sub: 'Laporan kustom' },
 ];
@@ -73,7 +73,7 @@ export default function Sidebar({ user, onLogout, collapsed, onToggle, mobileOpe
             </div>
             <div className="brand-text min-w-0">
               <h3 className="text-sm font-bold text-gray-800 truncate">PKK Rekapitulasi</h3>
-              <span className="text-[0.65rem] text-gray-400">Kec. Baturetno</span>
+              <span className="text-[0.65rem] text-gray-400">Desa Belikurip</span>
             </div>
             <button className="sidebar-toggle" onClick={onToggle} aria-label="Tutup sidebar">
               <AngleLeft className="w-4 h-4" />

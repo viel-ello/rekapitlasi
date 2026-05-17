@@ -70,7 +70,7 @@ const POKJA_DEFS = [
     // Row 1 groups
     headerRow1: [
       { label: 'No', rowSpan: 3 },
-      { label: 'NAMA DESA', rowSpan: 3 },
+      { label: 'NAMA DUSUN', rowSpan: 3 },
       { label: 'JUMLAH KADER', colSpan: 3 },
       { label: 'PENGHAYATAN DAN PENGAMALAN PANCASILA', colSpan: 8 },
       { label: 'GOTONG ROYONG', colSpan: 5 },
@@ -128,7 +128,7 @@ const POKJA_DEFS = [
     table: 'data_pokja2',
     headerRow1: [
       { label: 'No', rowSpan: 3 },
-      { label: 'NAMA DESA', rowSpan: 3 },
+      { label: 'NAMA DUSUN', rowSpan: 3 },
       { label: 'JUMLAH KADER', colSpan: 2, rowSpan: 2 },
       { label: 'PENDIDIKAN & KETERAMPILAN', colSpan: 10 },
       { label: 'PENGEMBANGAN KEHIDUPAN BERKOPERASI', colSpan: 13 },
@@ -186,7 +186,7 @@ const POKJA_DEFS = [
     table: 'data_pokja3',
     headerRow1: [
       { label: 'No', rowSpan: 3 },
-      { label: 'NAMA DESA', rowSpan: 3 },
+      { label: 'NAMA DUSUN', rowSpan: 3 },
       { label: 'JUMLAH KADER', colSpan: 3, rowSpan: 2 },
       { label: 'PANGAN', colSpan: 2, rowSpan: 2 },
       { label: 'PEMANFAATAN PEKARANGAN', colSpan: 6 },
@@ -224,7 +224,7 @@ const POKJA_DEFS = [
     table: 'data_pokja4',
     headerRow1: [
       { label: 'No', rowSpan: 3 },
-      { label: 'NAMA DESA', rowSpan: 3 },
+      { label: 'NAMA DUSUN', rowSpan: 3 },
       { label: 'JUMLAH KADER', colSpan: 6, rowSpan: 2 },
       { label: 'POSYANDU', colSpan: 2, rowSpan: 2 },
       { label: 'LANSIA', colSpan: 3 },
@@ -265,9 +265,13 @@ const POKJA_DEFS = [
 
 /* ─── Build a Pokja section ─── */
 async function buildPokjaSection(pokja, tahun) {
-  const { data: desa } = await supabase.from('desa').select('*').eq('is_active', 1).order('nomor_urut', { ascending: true });
+  const { data: dusunRows } = await supabase
+    .from('dusun')
+    .select('id, nama, nomor_urut')
+    .eq('is_active', 1)
+    .order('nomor_urut', { ascending: true });
   const { data: tableData } = await supabase.from(pokja.table).select('*').eq('tahun', tahun);
-  const desaList = desa || [];
+  const dusunList = dusunRows || [];
   const allData = tableData || [];
 
   const children = [];
@@ -276,7 +280,7 @@ async function buildPokjaSection(pokja, tahun) {
   // Title
   children.push(
     new Paragraph({ children: [new TextRun({ text: 'DATA KEGIATAN PKK', bold: true, size: 24, font: 'Times New Roman' })], alignment: AlignmentType.CENTER, spacing: { after: 100 } }),
-    new Paragraph({ children: [new TextRun({ text: 'TP PKK : KECAMATAN BATURETNO', bold: true, size: 24, font: 'Times New Roman' })], alignment: AlignmentType.CENTER, spacing: { after: 100 } }),
+    new Paragraph({ children: [new TextRun({ text: 'TP PKK DESA BELIKURIP · KECAMATAN BATURETNO', bold: true, size: 24, font: 'Times New Roman' })], alignment: AlignmentType.CENTER, spacing: { after: 100 } }),
     new Paragraph({ children: [new TextRun({ text: `TAHUN : ${tahun}`, bold: true, size: 24, font: 'Times New Roman' })], alignment: AlignmentType.CENTER, spacing: { after: 100 } }),
     new Paragraph({ children: [new TextRun({ text: pokja.name, bold: true, size: 24, font: 'Times New Roman' })], alignment: AlignmentType.CENTER, spacing: { after: 200 } }),
   );
@@ -296,10 +300,10 @@ async function buildPokjaSection(pokja, tahun) {
   const dataRows = [];
   const totals = new Array(pokja.flatKeys.length).fill(0);
 
-  desaList.forEach((d, idx) => {
-    const rows = allData.filter(r => r.desa_id === d.id);
+  dusunList.forEach((d, idx) => {
+    const rows = allData.filter((r) => (r.dusun_id ?? r.desa_id) === d.id);
     const aggregated = {};
-    pokja.flatKeys.forEach(k => {
+    pokja.flatKeys.forEach((k) => {
       aggregated[k] = rows.reduce((sum, r) => sum + (Number(r[k]) || 0), 0);
     });
 

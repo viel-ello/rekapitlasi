@@ -9,7 +9,7 @@
 
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { hashPassword, requireAdmin } from '@/lib/auth';
+import { hashPassword, requireAdmin, ROLE_TO_DUSUN_NAME } from '@/lib/auth';
 import { VALID_ROLES } from '@/lib/requestValidation';
 
 const MIN_PASSWORD_LENGTH = 12;
@@ -49,6 +49,27 @@ async function getAdminCount() {
   return count || 0;
 }
 
+/**
+ * Resolve `dusun_id` untuk role kader-dusun.
+ * - Kalau role bukan kader-dusun → return null (kolom users.dusun_id di-set NULL)
+ * - Kalau role kader-dusun → cari dusun_id dari nama dusun via ROLE_TO_DUSUN_NAME mapping
+ *   Kalau dusun tidak ditemukan di DB, return error.
+ */
+async function resolveDusunIdForRole(role) {
+  const dusunNama = ROLE_TO_DUSUN_NAME[role];
+  if (!dusunNama) return { value: null };
+  const { data } = await supabase
+    .from('dusun')
+    .select('id')
+    .eq('nama', dusunNama)
+    .eq('is_active', 1)
+    .maybeSingle();
+  if (!data) {
+    return { error: `Dusun "${dusunNama}" tidak ditemukan di database. Pastikan migration v5 sudah dijalankan.` };
+  }
+  return { value: data.id };
+}
+
 export async function GET(request) {
   try {
     const admin = await requireAdmin(request);
@@ -56,7 +77,7 @@ export async function GET(request) {
 
     const { data: users, error } = await supabase
       .from('users')
-      .select('id, username, nama_lengkap, role, created_at')
+      .select('id, username, nama_lengkap, role, dusun_id, created_at')
       .order('id');
 
     if (error) throw error;
@@ -97,9 +118,21 @@ export async function POST(request) {
 
     const password_hash = await hashPassword(validPassword.value);
 
+    // Auto-resolve dusun_id untuk role kader-dusun
+    const dusunResolve = await resolveDusunIdForRole(nextRole);
+    if (dusunResolve.error) {
+      return NextResponse.json({ error: dusunResolve.error }, { status: 400 });
+    }
+
     const { error } = await supabase
       .from('users')
-      .insert({ username: validUsername.value, password_hash, nama_lengkap: validName.value, role: nextRole });
+      .insert({
+        username: validUsername.value,
+        password_hash,
+        nama_lengkap: validName.value,
+        role: nextRole,
+        dusun_id: dusunResolve.value,
+      });
 
     if (error) throw error;
 
@@ -196,6 +229,13 @@ export async function PUT(request) {
         return NextResponse.json({ error: 'Admin tidak dapat menurunkan role akun yang sedang digunakan' }, { status: 400 });
       }
       updates.role = role;
+
+      // Auto-resolve dusun_id ulang saat role berubah
+      const dusunResolve = await resolveDusunIdForRole(role);
+      if (dusunResolve.error) {
+        return NextResponse.json({ error: dusunResolve.error }, { status: 400 });
+      }
+      updates.dusun_id = dusunResolve.value;
     }
     if (nama_lengkap) {
       const validName = validateFullName(nama_lengkap);

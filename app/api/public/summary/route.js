@@ -2,10 +2,12 @@
  * @file GET /api/public/summary?tahun=&bulan=
  * Public aggregate ringkasan untuk welcome + portal publik.
  * TIDAK butuh auth. Hanya mengembalikan agregat dari tabel di allowlist.
+ *
+ * Migration v5: unit data dusun. Response shape backward-compat (`totalDesa`/`desa` field tetap, isi dusun).
  */
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { PUBLIC_DESA_FIELDS, PUBLIC_COLUMNS } from '@/lib/publicData';
+import { PUBLIC_DUSUN_FIELDS, PUBLIC_COLUMNS, PUBLIC_TABLES } from '@/lib/publicData';
 import {
   COMPLETENESS_STATUS,
   evaluateRecordCompleteness,
@@ -16,7 +18,7 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-const ALLOWED_TABLES_FOR_COMPLETENESS = OPERATIONAL_TABLES.map((t) => t.table);
+const ALLOWED_TABLES_FOR_COMPLETENESS = OPERATIONAL_TABLES.filter((t) => !t.aliasOf).map((t) => t.table);
 
 function clampYear(input) {
   const n = Number(input);
@@ -30,36 +32,50 @@ function clampMonth(input) {
   return n;
 }
 
+function unitIdOf(row) {
+  return row?.dusun_id ?? row?.desa_id;
+}
+
+function indexByUnit(rows) {
+  const out = {};
+  for (const r of rows || []) {
+    const id = unitIdOf(r);
+    if (id != null) out[id] = r;
+  }
+  return out;
+}
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const tahun = clampYear(searchParams.get('tahun') || new Date().getFullYear());
     const bulan = clampMonth(searchParams.get('bulan') || 12);
 
-    // Desa allowlist field
-    const { data: desaList } = await supabase
-      .from('desa')
-      .select(PUBLIC_DESA_FIELDS.join(','))
+    // Dusun allowlist field
+    const { data: dusunList } = await supabase
+      .from('dusun')
+      .select(PUBLIC_DUSUN_FIELDS.join(','))
       .eq('is_active', 1)
       .order('nomor_urut');
 
-    const totalDesa = (desaList || []).length;
+    const totalDusun = (dusunList || []).length;
 
-    // Aggregate totals — hanya kolom dari PUBLIC_COLUMNS
     const fetchTable = async (table, fields) => {
-      let query = supabase.from(table).select(['desa_id', ...fields].join(',')).eq('tahun', tahun);
+      // Select dusun_id (canonical) plus desa_id (legacy) untuk safety
+      const cols = ['dusun_id', 'desa_id', ...fields].join(',');
+      let query = supabase.from(table).select(cols).eq('tahun', tahun);
       if (table === 'data_bumil') query = query.eq('bulan', bulan);
       const { data } = await query;
       return data || [];
     };
 
-    const [umum, p1, p2, p3, p4, kegiatan, bumil] = await Promise.all([
+    const [umum, p1, p2, p3, p4, dawis, bumil] = await Promise.all([
       fetchTable('data_umum', PUBLIC_COLUMNS.data_umum),
       fetchTable('data_pokja1', PUBLIC_COLUMNS.data_pokja1),
       fetchTable('data_pokja2', PUBLIC_COLUMNS.data_pokja2),
       fetchTable('data_pokja3', PUBLIC_COLUMNS.data_pokja3),
       fetchTable('data_pokja4', PUBLIC_COLUMNS.data_pokja4),
-      fetchTable('data_kegiatan_warga', PUBLIC_COLUMNS.data_kegiatan_warga),
+      fetchTable('data_rekap_dawis', PUBLIC_COLUMNS.data_rekap_dawis),
       fetchTable('data_bumil', PUBLIC_COLUMNS.data_bumil),
     ]);
 
@@ -71,25 +87,25 @@ export async function GET(request) {
       total_dasa_wisma: sumColumn(umum, 'jml_dasa_wisma'),
       total_kader_pokja1: sumColumn(p1, 'kader_pkbn') + sumColumn(p1, 'kader_pkdrt') + sumColumn(p1, 'kader_pola_asuh'),
       total_paket_pokja2: sumColumn(p2, 'paket_a_wrg') + sumColumn(p2, 'paket_b_wrg') + sumColumn(p2, 'paket_c_wrg'),
-      total_rumah_sehat: sumColumn(p3, 'rumah_sehat') + sumColumn(kegiatan, 'rumah_sehat'),
+      total_rumah_sehat: sumColumn(p3, 'rumah_sehat') + sumColumn(dawis, 'rumah_sehat'),
       total_posyandu: sumColumn(p4, 'posyandu_jumlah'),
       total_bumil: sumColumn(bumil, 'ibu_hamil'),
       total_kelahiran: sumColumn(bumil, 'bayi_lahir_l') + sumColumn(bumil, 'bayi_lahir_p'),
-      total_jkn_bpjs: sumColumn(kegiatan, 'jkn_bpjs'),
+      total_jkn_bpjs: sumColumn(dawis, 'jkn_bpjs'),
     };
 
-    // Completeness per desa (gabung semua tabel)
     const tableMaps = {
-      data_umum: indexByDesa(umum),
-      data_pokja1: indexByDesa(p1),
-      data_pokja2: indexByDesa(p2),
-      data_pokja3: indexByDesa(p3),
-      data_pokja4: indexByDesa(p4),
-      data_kegiatan_warga: indexByDesa(kegiatan),
-      data_bumil: indexByDesa(bumil),
+      data_umum: indexByUnit(umum),
+      data_pokja1: indexByUnit(p1),
+      data_pokja2: indexByUnit(p2),
+      data_pokja3: indexByUnit(p3),
+      data_pokja4: indexByUnit(p4),
+      data_rekap_dawis: indexByUnit(dawis),
+      data_kegiatan_warga: indexByUnit(dawis), // alias
+      data_bumil: indexByUnit(bumil),
     };
 
-    const perDesa = (desaList || []).map((d) => {
+    const perDusun = (dusunList || []).map((d) => {
       const statuses = [];
       for (const t of ALLOWED_TABLES_FOR_COMPLETENESS) {
         const keys = getTableKeys(t);
@@ -100,29 +116,24 @@ export async function GET(request) {
     });
 
     const completeness = {
-      complete: perDesa.filter((p) => p.status === COMPLETENESS_STATUS.COMPLETE).length,
-      needsCheck: perDesa.filter((p) => p.status === COMPLETENESS_STATUS.NEEDS_CHECK).length,
-      incomplete: perDesa.filter((p) => p.status === COMPLETENESS_STATUS.INCOMPLETE).length,
+      complete: perDusun.filter((p) => p.status === COMPLETENESS_STATUS.COMPLETE).length,
+      needsCheck: perDusun.filter((p) => p.status === COMPLETENESS_STATUS.NEEDS_CHECK).length,
+      incomplete: perDusun.filter((p) => p.status === COMPLETENESS_STATUS.INCOMPLETE).length,
     };
 
     return NextResponse.json({
       tahun,
       bulan,
-      totalDesa,
+      totalDusun,
+      totalDesa: totalDusun, // alias
       totals,
       completeness,
-      desa: perDesa,
+      dusun: perDusun,
+      desa: perDusun, // alias backward-compat
+      tables: PUBLIC_TABLES,
     });
   } catch (error) {
     console.error('Public summary error:', error);
     return NextResponse.json({ error: 'Gagal memuat ringkasan publik' }, { status: 500 });
   }
-}
-
-function indexByDesa(rows) {
-  const out = {};
-  for (const r of rows || []) {
-    out[r.desa_id] = r;
-  }
-  return out;
 }

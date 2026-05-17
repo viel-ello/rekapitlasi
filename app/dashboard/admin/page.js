@@ -19,7 +19,32 @@ const TABS = [
   { id: 'import', label: 'Import Excel', icon: Upload },
 ];
 
-const ROLES = ['admin', 'pokja1', 'pokja2', 'pokja3', 'pokja4', 'sekretaris', 'user'];
+const ROLES = [
+  // Role utama
+  'admin', 'pokja1', 'pokja2', 'pokja3', 'pokja4', 'sekretaris', 'user',
+  // 9 role kader-dusun (auto-assign dusun_id berdasarkan role)
+  'dusun_soko', 'dusun_melikan', 'dusun_jamprit_wetan', 'dusun_jamprit_kulon',
+  'dusun_belikurip', 'dusun_pagersari', 'dusun_klerong', 'dusun_tanjung', 'dusun_banyuripan',
+];
+
+const ROLE_LABELS = {
+  admin: 'admin (akses penuh)',
+  pokja1: 'pokja1 — Pancasila & Gotong Royong',
+  pokja2: 'pokja2 — Pendidikan & Koperasi',
+  pokja3: 'pokja3 — Pangan & Sandang',
+  pokja4: 'pokja4 — Kesehatan & Lingkungan',
+  sekretaris: 'sekretaris — Data Umum, Rekap Dawis, Bumil',
+  user: 'user (read-only)',
+  dusun_soko: 'Kader Dusun Soko (Rekap Dawis dusun Soko)',
+  dusun_melikan: 'Kader Dusun Melikan',
+  dusun_jamprit_wetan: 'Kader Dusun Jamprit Wetan',
+  dusun_jamprit_kulon: 'Kader Dusun Jamprit Kulon',
+  dusun_belikurip: 'Kader Dusun Belikurip',
+  dusun_pagersari: 'Kader Dusun Pagersari',
+  dusun_klerong: 'Kader Dusun Klerong',
+  dusun_tanjung: 'Kader Dusun Tanjung',
+  dusun_banyuripan: 'Kader Dusun Banyuripan',
+};
 
 export default function AdminPage() {
   const [tab, setTab] = useState('users');
@@ -158,8 +183,11 @@ function UsersTab({ toast, setToast }) {
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Role</label>
               <select name="role" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none">
-                {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r] || r}</option>)}
               </select>
+              <p className="text-[11px] text-gray-500 mt-1">
+                Role kader-dusun otomatis di-link ke dusun yang sesuai. Pilih role pokja1-4 / sekretaris / admin untuk akses lintas dusun.
+              </p>
             </div>
             <button type="submit" className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors">
               <Check className="w-4 h-4" /> Simpan
@@ -190,8 +218,8 @@ function UsersTab({ toast, setToast }) {
                   </td>
                   <td>
                     {editId === u.id ? (
-                      <select className="px-2 py-1 border border-gray-200 rounded text-sm focus:ring-2 focus:ring-primary-500 outline-none" defaultValue={u.role} onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}>
-                        {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                      <select className="px-2 py-1 border border-gray-200 rounded text-sm focus:ring-2 focus:ring-primary-500 outline-none" defaultValue={u.role} onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value }))}>
+                        {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r] || r}</option>)}
                       </select>
                     ) : (
                       <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">{u.role}</span>
@@ -230,16 +258,16 @@ function DesaTab({ toast, setToast }) {
   useEffect(() => { fetchDesa(); }, []);
   const fetchDesa = async () => {
     try {
-      const res = await fetch('/api/admin/desa');
-      if (!res.ok) { setToast({ type: 'error', message: 'Gagal memuat data desa' }); setTimeout(() => setToast(null), 3000); return; }
+      const res = await fetch('/api/admin/dusun');
+      if (!res.ok) { setToast({ type: 'error', message: 'Gagal memuat data dusun' }); setTimeout(() => setToast(null), 3000); return; }
       setDesa(await res.json());
     } catch { setToast({ type: 'error', message: 'Gagal menghubungi server' }); setTimeout(() => setToast(null), 3000); }
   };
 
   const saveNama = async (id) => {
     try {
-      const res = await fetch('/api/admin/desa', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, nama: editNama }) });
-      if (res.ok) { setToast({ type: 'success', message: 'Nama desa diperbarui' }); setEditId(null); fetchDesa(); }
+      const res = await fetch('/api/admin/dusun', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, nama: editNama }) });
+      if (res.ok) { setToast({ type: 'success', message: 'Nama dusun diperbarui' }); setEditId(null); fetchDesa(); }
       else { const err = await res.json(); setToast({ type: 'error', message: err.error || 'Gagal memperbarui' }); }
     } catch { setToast({ type: 'error', message: 'Gagal menghubungi server' }); }
     setTimeout(() => setToast(null), 3000);
@@ -247,8 +275,8 @@ function DesaTab({ toast, setToast }) {
 
   const toggleActive = async (id, current) => {
     try {
-      const res = await fetch('/api/admin/desa', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, is_active: current ? 0 : 1 }) });
-      if (res.ok) { setToast({ type: 'success', message: current ? 'Desa dinonaktifkan' : 'Desa diaktifkan' }); }
+      const res = await fetch('/api/admin/dusun', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, is_active: current ? 0 : 1 }) });
+      if (res.ok) { setToast({ type: 'success', message: current ? 'Dusun dinonaktifkan' : 'Dusun diaktifkan' }); }
       else { const err = await res.json(); setToast({ type: 'error', message: err.error || 'Gagal memperbarui' }); }
     } catch { setToast({ type: 'error', message: 'Gagal menghubungi server' }); }
     fetchDesa();
@@ -262,7 +290,7 @@ function DesaTab({ toast, setToast }) {
           <thead>
             <tr>
               <th>No</th>
-              <th>Nama Desa</th>
+              <th>Nama Dusun</th>
               <th className="text-center">Status</th>
               <th className="text-center">Aksi</th>
             </tr>
@@ -317,7 +345,7 @@ function LogsTab() {
 
   const TABLE_OPTIONS = [
     '', 'data_umum', 'data_pokja1', 'data_pokja2', 'data_pokja3', 'data_pokja4',
-    'data_kegiatan_warga', 'data_bumil', 'users', 'desa', 'table_schemas',
+    'data_rekap_dawis', 'data_bumil', 'users', 'desa', 'table_schemas',
     'table_column_overrides', 'report_periods', 'report_years',
   ];
   const ACTION_OPTIONS = [
@@ -350,7 +378,7 @@ function LogsTab() {
     // Load dropdown options for filters
     (async () => {
       try {
-        const [uRes, dRes] = await Promise.all([fetch('/api/admin/users'), fetch('/api/admin/desa')]);
+        const [uRes, dRes] = await Promise.all([fetch('/api/admin/users'), fetch('/api/admin/dusun')]);
         if (uRes.ok) setUsers(await uRes.json());
         if (dRes.ok) setDesaList(await dRes.json());
       } catch { /* silent */ }
@@ -625,7 +653,7 @@ function ImportTab({ toast, setToast }) {
               { key: 'data_pokja2', label: 'Pokja II' },
               { key: 'data_pokja3', label: 'Pokja III' },
               { key: 'data_pokja4', label: 'Pokja IV' },
-              { key: 'data_kegiatan_warga', label: 'Kegiatan Warga' },
+              { key: 'data_rekap_dawis', label: 'Rekap Dawis' },
               { key: 'data_bumil', label: 'Data Bumil' },
             ].map(t => (
               <a key={t.key} href={`/api/export/template?table=${t.key}`} download
@@ -798,7 +826,7 @@ function StandardColumnsPanel({ setToast }) {
     { value: 'data_pokja2', label: 'Pokja II' },
     { value: 'data_pokja3', label: 'Pokja III' },
     { value: 'data_pokja4', label: 'Pokja IV' },
-    { value: 'data_kegiatan_warga', label: 'Kegiatan Warga' },
+    { value: 'data_rekap_dawis', label: 'Rekap Dawis' },
     { value: 'data_bumil', label: 'Data Bumil' },
   ];
 
@@ -1028,7 +1056,7 @@ function DynamicColumnsPanel({ setToast }) {
     { value: 'data_pokja2', label: 'Pokja II' },
     { value: 'data_pokja3', label: 'Pokja III' },
     { value: 'data_pokja4', label: 'Pokja IV' },
-    { value: 'data_kegiatan_warga', label: 'Kegiatan Warga' },
+    { value: 'data_rekap_dawis', label: 'Rekap Dawis' },
     { value: 'data_bumil', label: 'Data Ibu Hamil' },
   ];
 

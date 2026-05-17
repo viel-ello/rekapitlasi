@@ -15,16 +15,23 @@ import { requireAuth, requireAdmin } from '@/lib/auth';
 import { writeLog } from '@/lib/audit';
 import { DATA_PAGES } from '@/lib/dataPages';
 
-// Whitelist semua tabel yang valid
+// Whitelist semua tabel yang valid (Object.values(DATA_PAGES) sudah skip
+// `kegiatanWarga` alias karena non-enumerable)
 const VALID_TABLES = new Set(
   Object.values(DATA_PAGES).map((page) => page.tableName)
 );
+// Backward-compat: terima nama lama supaya UI/admin lama tidak break.
+VALID_TABLES.add('data_kegiatan_warga');
 
 // Whitelist semua kolom standar per tabel
 const VALID_KEYS_PER_TABLE = Object.values(DATA_PAGES).reduce((acc, page) => {
   acc[page.tableName] = new Set(page.columns.map((c) => c.key));
   return acc;
 }, {});
+// Backward-compat alias
+if (VALID_KEYS_PER_TABLE.data_rekap_dawis) {
+  VALID_KEYS_PER_TABLE.data_kegiatan_warga = VALID_KEYS_PER_TABLE.data_rekap_dawis;
+}
 
 export async function GET(request) {
   try {

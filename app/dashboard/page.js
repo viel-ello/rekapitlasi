@@ -21,7 +21,7 @@ const TABLE_FILTERS = [
   { value: 'data_pokja2', label: 'Pokja II', short: 'P2' },
   { value: 'data_pokja3', label: 'Pokja III', short: 'P3' },
   { value: 'data_pokja4', label: 'Pokja IV', short: 'P4' },
-  { value: 'data_kegiatan_warga', label: 'Kegiatan Warga', short: 'Warga' },
+  { value: 'data_rekap_dawis', label: 'Rekap Dawis', short: 'Dawis' },
   { value: 'data_bumil', label: 'Bumil', short: 'Bumil' },
 ];
 
@@ -158,7 +158,7 @@ export default function DashboardPage() {
         bulan: String(bulan),
       });
       const trendUrl = compareDesaIds.length > 0
-        ? `/api/rekap/trend?desa_ids=${compareDesaIds.join(',')}`
+        ? `/api/rekap/trend?dusun_ids=${compareDesaIds.join(',')}`
         : '/api/rekap/trend';
       const [resRekap, resTrend] = await Promise.all([
         fetch(`/api/rekap?${params.toString()}`),
@@ -303,7 +303,7 @@ export default function DashboardPage() {
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-dashboard font-mono">Dashboard Operasional</h1>
-          <p className="text-sm text-primary-600 mt-0.5">TP PKK Kecamatan Baturetno — Tahun {tahun}</p>
+          <p className="text-sm text-primary-600 mt-0.5">TP PKK Desa Belikurip — Tahun {tahun}</p>
         </div>
         <div className="md:max-w-2xl w-full md:w-auto">
           <DashboardToolbar

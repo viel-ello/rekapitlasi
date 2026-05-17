@@ -1,8 +1,9 @@
-'use client';
+import { redirect } from 'next/navigation';
 
-import DataStatsPage from '@/components/DataStatsPage';
-import { DATA_PAGES } from '@/lib/dataPages';
-
-export default function KegiatanWargaPage() {
-  return <DataStatsPage config={DATA_PAGES.kegiatanWarga} />;
+/**
+ * Backward-compat: route lama /dashboard/kegiatan-warga di-redirect ke
+ * canonical /dashboard/rekap-dawis.
+ */
+export default function KegiatanWargaRedirect() {
+  redirect('/dashboard/rekap-dawis');
 }

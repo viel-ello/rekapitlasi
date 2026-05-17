@@ -19,7 +19,7 @@ const TEMPLATES = [
   { key: 'data_pokja2', label: 'Pokja II' },
   { key: 'data_pokja3', label: 'Pokja III' },
   { key: 'data_pokja4', label: 'Pokja IV' },
-  { key: 'data_kegiatan_warga', label: 'Kegiatan Warga' },
+  { key: 'data_rekap_dawis', label: 'Rekap Dawis' },
   { key: 'data_bumil', label: 'Data Bumil' },
 ];
 

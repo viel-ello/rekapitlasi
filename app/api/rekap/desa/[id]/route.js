@@ -1,6 +1,10 @@
 /**
- * @file GET /api/rekap/desa/[id]?tahun=&bulan=
- * Internal desa drill-down — butuh login. Kembalikan ALL kolom (tidak filter PUBLIC_COLUMNS).
+ * @file GET /api/rekap/desa/[id]?tahun=&bulan= — Internal drill-down per dusun.
+ * Butuh login. Kembalikan ALL kolom (tidak filter PUBLIC_COLUMNS).
+ *
+ * Migration v5: parameter `[id]` sekarang merujuk ke `dusun.id` (sebelumnya
+ * `desa.id`). URL path dipertahankan supaya tidak break link lama.
+ * Response shape backward-compat: field `desa` aliasing `dusun`.
  */
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
@@ -8,17 +12,15 @@ import { requireAuth } from '@/lib/auth';
 import {
   evaluateRecordCompleteness,
   getTableKeys,
-  isKnownOperationalTable,
   mergeStatus,
   STATUS_LABELS,
   OPERATIONAL_TABLES,
 } from '@/lib/dataQuality';
 import { validateRow, countIssues } from '@/lib/validation';
-import { DATA_PAGES } from '@/lib/dataPages';
 
 export const dynamic = 'force-dynamic';
 
-const TABLES = OPERATIONAL_TABLES.map((t) => t.table);
+const TABLES = OPERATIONAL_TABLES.filter((t) => !t.aliasOf).map((t) => t.table);
 
 export async function GET(request, ctx) {
   try {
@@ -26,24 +28,24 @@ export async function GET(request, ctx) {
     if (!user) return requireAuth.deny();
 
     const { id } = await ctx.params;
-    const desaId = Number(id);
-    if (!Number.isInteger(desaId) || desaId < 1) {
-      return NextResponse.json({ error: 'ID desa tidak valid' }, { status: 400 });
+    const dusunId = Number(id);
+    if (!Number.isInteger(dusunId) || dusunId < 1) {
+      return NextResponse.json({ error: 'ID dusun tidak valid' }, { status: 400 });
     }
 
     const { searchParams } = new URL(request.url);
     const tahun = Number(searchParams.get('tahun')) || new Date().getFullYear();
     const bulan = Number(searchParams.get('bulan')) || 12;
 
-    const { data: desa } = await supabase
-      .from('desa')
-      .select('*')
-      .eq('id', desaId)
+    const { data: dusun } = await supabase
+      .from('dusun')
+      .select('id, nama, nomor_urut, is_active')
+      .eq('id', dusunId)
       .maybeSingle();
 
-    if (!desa) return NextResponse.json({ error: 'Desa tidak ditemukan' }, { status: 404 });
+    if (!dusun) return NextResponse.json({ error: 'Dusun tidak ditemukan' }, { status: 404 });
 
-    // Fetch hidden columns supaya tidak ikut di completeness
+    // Hidden columns untuk completeness filter
     const { data: overrideRows } = await supabase
       .from('table_column_overrides')
       .select('table_name, column_key, is_hidden')
@@ -54,16 +56,19 @@ export async function GET(request, ctx) {
       hiddenMap[o.table_name].add(o.column_key);
     });
 
-    // Fetch current + prev year per tabel
+    // Fetch current + prev year per tabel. Kolom dusun_id (canonical) atau
+    // desa_id (legacy) — pakai .or() supaya jalan sebelum & sesudah migration v5.
     const tablesData = {};
     const prevTablesData = {};
     const validation = {};
     const tableStatuses = {};
-    let issueTotal = { errors: 0, warnings: 0, infos: 0 };
+    const issueTotal = { errors: 0, warnings: 0, infos: 0 };
+
+    const idFilter = `dusun_id.eq.${dusunId},desa_id.eq.${dusunId}`;
 
     for (const t of TABLES) {
-      let q = supabase.from(t).select('*').eq('desa_id', desaId).eq('tahun', tahun);
-      let qp = supabase.from(t).select('*').eq('desa_id', desaId).eq('tahun', tahun - 1);
+      let q = supabase.from(t).select('*').or(idFilter).eq('tahun', tahun);
+      let qp = supabase.from(t).select('*').or(idFilter).eq('tahun', tahun - 1);
       if (t === 'data_bumil') {
         q = q.eq('bulan', bulan);
         qp = qp.eq('bulan', bulan);
@@ -72,14 +77,12 @@ export async function GET(request, ctx) {
       tablesData[t] = curRes.data || null;
       prevTablesData[t] = prevRes.data || null;
 
-      // Completeness — filter hidden
       const allKeys = getTableKeys(t);
       const hidden = hiddenMap[t] || new Set();
       const visibleKeys = allKeys.filter((k) => !hidden.has(k));
       const result = evaluateRecordCompleteness(curRes.data, visibleKeys, prevRes.data);
       tableStatuses[t] = { status: result.status, label: STATUS_LABELS[result.status], issueCount: result.issueCount };
 
-      // Validation per kolom (visible only) untuk panel "Validasi"
       if (curRes.data) {
         const cols = visibleKeys.map((k) => ({ key: k, label: k }));
         const v = validateRow(curRes.data, cols, prevRes.data);
@@ -97,10 +100,10 @@ export async function GET(request, ctx) {
     const trendYears = Array.from({ length: 5 }, (_, i) => tahun - 4 + i);
     const { data: trendUmum } = await supabase
       .from('data_umum').select('tahun, jml_kk, jml_jiwa_l, jml_jiwa_p, jml_dasa_wisma')
-      .eq('desa_id', desaId).in('tahun', trendYears).order('tahun');
+      .or(idFilter).in('tahun', trendYears).order('tahun');
     const { data: trendP4 } = await supabase
       .from('data_pokja4').select('tahun, posyandu_jumlah')
-      .eq('desa_id', desaId).in('tahun', trendYears).order('tahun');
+      .or(idFilter).in('tahun', trendYears).order('tahun');
 
     const trend = trendYears.map((y) => {
       const u = (trendUmum || []).find((r) => r.tahun === y) || {};
@@ -114,16 +117,17 @@ export async function GET(request, ctx) {
       };
     });
 
-    // Last activity untuk desa ini
+    // Last activity untuk dusun ini (matching dusun_nama atau desa_nama legacy)
     const { data: lastActivity } = await supabase
       .from('audit_logs')
       .select('username, action, table_name, detail, created_at')
-      .eq('desa_nama', desa.nama)
+      .or(`dusun_nama.eq.${dusun.nama},desa_nama.eq.${dusun.nama}`)
       .order('created_at', { ascending: false })
       .limit(5);
 
     return NextResponse.json({
-      desa,
+      dusun,
+      desa: dusun, // alias backward-compat
       tahun,
       bulan,
       status,
@@ -137,7 +141,7 @@ export async function GET(request, ctx) {
       lastActivity: lastActivity || [],
     });
   } catch (error) {
-    console.error('Internal desa detail error:', error);
-    return NextResponse.json({ error: 'Gagal memuat detail desa' }, { status: 500 });
+    console.error('Internal dusun detail error:', error);
+    return NextResponse.json({ error: 'Gagal memuat detail dusun' }, { status: 500 });
   }
 }

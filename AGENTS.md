@@ -108,3 +108,92 @@ Konvensi paling penting di versi ini:
 - Sebelum membiarkan AI memutasi tabel baru: tambahkan ke `VALID_TABLES` + `VALID_COLUMNS` di `app/api/chat/route.js` DAN `ROLE_PERMISSIONS` di `lib/auth.js`.
 - Jangan menaruh password/rahasia di log. Audit log menyimpan detail aksi dan opsional JSON before/after.
 - Default admin `admin/admin123`: ganti di produksi. Belum ada paksa ganti di first-login; lakukan manual.
+
+
+# Migrasi v5 — Level Kecamatan → Level Desa Belikurip (9 dusun)
+
+Spec lengkap: `.kiro/specs/migrasi-level-desa/{requirements,design,tasks}.md`.
+
+## Cakupan
+
+Aplikasi pindah dari scope **TP PKK Kecamatan Baturetno (13 desa)** ke **TP PKK Desa Belikurip (9 dusun)**:
+Soko, Melikan, Jamprit Wetan, Jamprit Kulon, Belikurip, Pagersari, Klerong, Tanjung, Banyuripan.
+
+## Schema baru
+
+Migration script: `supabase_schema_updates_v5.sql` (jalankan setelah v1-v4).
+
+- Tabel **`dusun`** baru (id, nama, nomor_urut, is_active) dengan seed 9 dusun.
+- Semua tabel data dapat kolom **`dusun_id`** (canonical) ber-FK ke `dusun(id)`. Kolom lama `desa_id` dipertahankan sementara untuk safe rollback.
+- Tabel `data_kegiatan_warga` di-rename → **`data_rekap_dawis`** (idempotent). Sheet Excel "KEGIATAN WARGA" tetap diterima sebagai alias.
+- Tabel `audit_logs` dapat kolom `dusun_nama` (kolom lama `desa_nama` dipertahankan untuk history).
+- Tabel `users` dapat kolom `dusun_id` + extended CHECK constraint role untuk include 9 role kader-dusun (`dusun_soko`..`dusun_banyuripan`).
+- Pokja II dapat 13 kolom baru sesuai laporan resmi: `jml_warga_3_buta`, `kf_klp`/`kf_wrg`, `paud_sejenis`, `bkb_klp`, `bkb_ape_set_a`/`b`, `kader_tutor_kf`/`paud`, `kader_bkb`, `yg_dilatih_lp3pkk`/`tp3pkk`/`damaspkk`, `keterangan`. Sekaligus drop 6 kolom legacy: `rumah_dilan`, `kampung_mandiri`, `usaha_mikro`, `toko_pkk`, `koperasi_belum_bh_kop`, `koperasi_belum_bh_angg`. **Hard delete — pastikan backup Supabase dulu.**
+- Pokja I/III/IV dapat kolom `keterangan TEXT`.
+- Bumil dapat `akte_l`, `akte_p`, `keterangan` (kolom `akte_ada`/`akte_tidak` lama tetap di DB tapi tidak di-render di UI/export).
+- Rekap Dawis: drop `jml_dusun`/`tiga_buta_l`/`tiga_buta_p`/`ikut_industri`. Tambah `tiga_buta`, `berkebutuhan_khusus`.
+
+Data lama 13 desa di production: SQL block opsional A (archive) atau B (drop dengan `pg_dump`) di-comment dalam v5. Jalankan manual sesuai pilihan.
+
+## Role permission row-level
+
+`lib/auth.js`:
+- `ROLE_PERMISSIONS` extended dengan 9 role kader-dusun (`dusun_*`), masing-masing scope `data_rekap_dawis` saja.
+- `ROLE_SCOPE`: `'all'` untuk admin/pokja/sekretaris, `'own_dusun'` untuk kader-dusun, `'none'` untuk user.
+- Helper baru `canWriteRow(user, table, row)` — table-level + row-level check. Dipakai di `lib/api-handler.js`.
+- JWT payload include `dusun_id` (set saat login dari `users.dusun_id`).
+- API handler otomatis paksa `payload.dusun_id = user.dusun_id` untuk role kader-dusun (anti-tamper). Reject 403 + audit log "permission_denied" kalau coba edit dusun lain.
+- AI chat (`/api/chat`) juga enforce row-level untuk kader-dusun di function call `update_dusun_data` (alias `update_desa_data` masih diterima).
+
+## Helper baru
+
+- `lib/dusun.js` — `DUSUN_LIST` (9 nama statis), `getDusunList()`, `ROLE_TO_DUSUN_NAME`, `DUSUN_ROLES`.
+- `lib/branding.js` — `BRAND` object: `organization`, `region`, `regency`, `fullTitle`, `unit`, `unitPlural`, `unitCount`. Single source of truth untuk identitas aplikasi.
+- `lib/auth.normalizeTableName(t)` — normalize alias `data_kegiatan_warga` → `data_rekap_dawis`.
+
+## API endpoint
+
+- `/api/dusun` (canonical) menggantikan `/api/desa` (sekarang alias dengan deprecation header, masih jalan).
+- `/api/admin/dusun` (canonical) menggantikan `/api/admin/desa`.
+- `/api/rekap-dawis` (canonical) menggantikan `/api/kegiatan-warga`.
+- Body POST/PATCH terima `dusun_id` (canonical) ATAU `desa_id` (legacy alias) selama 1 release transisi.
+- Query param `dusun_ids` di `/api/rekap/trend` (alias `desa_ids`).
+- Response shape backward-compat: field `desa_*` tetap ada sebagai alias dari `dusun_*`.
+
+## UI
+
+- Sidebar nav: "Kegiatan Warga" → "Rekapitulasi Dawis" (`/dashboard/rekap-dawis`).
+- Route lama `/dashboard/kegiatan-warga[/edit]` di-redirect ke canonical.
+- Komponen `PokjaDataPage`/`BumilDataPage`: rename internal var `desa` → `dusun`, label "Nama Desa" → "Nama Dusun", endpoint `/api/dusun`, scope row-level visual indicator untuk role kader-dusun.
+- Komponen `DataStatsPage`: rename `desa` → `dusunList`, KPI label "Desa Aktif" → "Dusun Aktif".
+- Welcome page (`/`), login page, footer, header, layout metadata: ganti "Kecamatan Baturetno" → "Desa Belikurip" (kecamatan tetap muncul sebagai konteks geografis).
+
+## Export pixel-perfect
+
+`/api/export/excel` di-rewrite untuk implement Annex A-F dari `design.md`:
+- **Annex A (Bumil)**: header 3-row title + BULAN/TAHUN, multi-row header 18 kolom, RT/RW/Dawis derive dari `data_rekap_dawis`, A4 landscape.
+- **Annex B (Pokja I)**: latar header **hijau muda** `#D4EDDA`, 19 kolom 3-level header.
+- **Annex C (Pokja II)**: 36 kolom 4-level header (dengan TUTOR sub-sub-grup), A3 landscape.
+- **Annex D (Pokja III)**: latar header **biru muda** `#CCE5FF`, 19 kolom.
+- **Annex E (Pokja IV)**: latar header **kuning muda** `#FFFF99`, 26 kolom 4-level header.
+- **Annex F (Rekap Dawis)**: 34 kolom 4-level header dengan vertical text untuk label panjang, A3 landscape.
+- Data Umum: layout single-row header dengan branding "TP PKK Desa Belikurip".
+
+`/api/export/word` & `/api/export/template`: branding di-update ke "TP PKK Desa Belikurip · Kecamatan Baturetno".
+
+## Testing
+
+`npm test` → **9 suites, 73 tests passing** (sebelumnya 7 suites, 49 tests):
+- `__tests__/server/dusun-permissions.test.js` — 14 tests untuk row-level permission (canWriteRow + scope `own_dusun` + ROLE_TO_DUSUN_NAME mapping).
+- `__tests__/server/schema-mapping.test.js` — 10 tests untuk DATA_PAGES & SHEET_MAP konsistensi (kolom baru hadir, legacy hilang, alias non-enumerable).
+
+`npm run build` → clean di Next.js 16.2.5 (Turbopack).
+
+## Backward compatibility
+
+Selama 1 release transition, semua aliasing dipertahankan:
+- API: `desa_id` ↔ `dusun_id`, `desa_nama` ↔ `dusun_nama`, `data_kegiatan_warga` ↔ `data_rekap_dawis`.
+- URL: `/api/desa` deprecated, redirect-equivalent ke `/api/dusun`. `/dashboard/kegiatan-warga` redirect ke `/dashboard/rekap-dawis`.
+- Function call AI: `update_desa_data` accepted sebagai alias dari `update_dusun_data`.
+
+Setelah confirm production stable, jalankan migration v6 (deferred) untuk drop kolom `desa_id` dan hapus alias.

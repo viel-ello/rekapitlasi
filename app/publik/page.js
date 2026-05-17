@@ -195,7 +195,7 @@ export default function PublikPage() {
 
       <footer className="border-t border-gray-100 bg-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5 text-xs text-gray-500 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <div>© {new Date().getFullYear()} TP PKK Kecamatan Baturetno · Wonogiri</div>
+          <div>© {new Date().getFullYear()} TP PKK Desa Belikurip · Kecamatan Baturetno · Wonogiri</div>
           <Link href="/login" className="hover:text-primary-700">Masuk Aplikasi</Link>
         </div>
       </footer>

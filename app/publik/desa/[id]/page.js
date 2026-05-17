@@ -16,7 +16,7 @@ const TABLE_LABEL = {
   data_pokja2: 'Pokja II',
   data_pokja3: 'Pokja III',
   data_pokja4: 'Pokja IV',
-  data_kegiatan_warga: 'Kegiatan Warga',
+  data_rekap_dawis: 'Rekapitulasi Dawis',
   data_bumil: 'Data Bumil',
 };
 

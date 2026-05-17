@@ -9,30 +9,34 @@ import { useKeyboardShortcut } from '@/lib/useKeyboardShortcut';
 import PeriodWorkflowBadge from '@/components/PeriodWorkflowBadge';
 
 /**
- * Reusable Pokja data table component with role-based access control and inline validation
+ * Reusable data table component dengan role-based access + inline validation.
+ *
+ * Migration v5: unit data dusun (sebelumnya desa). Endpoint baru `/api/dusun`,
+ * label UI "Dusun".
  */
 export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, columns, tableName }) {
-  const [desa, setDesa] = useState([]);
+  const [dusun, setDusun] = useState([]);
   const [data, setData] = useState({});
   const [prevYearData, setPrevYearData] = useState({});
   const [tahun, setTahun] = useState(new Date().getFullYear());
-  
-  const [saving, setSaving] = useState(null); // 'all' or desaId
-  const [saveStatus, setSaveStatus] = useState({}); // { [desaId]: 'dirty' | 'saved' | 'error' }
+
+  const [saving, setSaving] = useState(null); // 'all' or dusunId
+  const [saveStatus, setSaveStatus] = useState({}); // { [dusunId]: 'dirty' | 'saved' | 'error' }
   const [toast, setToast] = useState(null);
-  
+
   const [canEdit, setCanEdit] = useState(false);
   const [userRole, setUserRole] = useState('');
+  const [userDusunId, setUserDusunId] = useState(null);
   const [dynamicColumns, setDynamicColumns] = useState([]);
   const [overrides, setOverrides] = useState([]);
-  
+
   const [searchQuery, setSearchQuery] = useState('');
 
   const { years } = useYears();
 
   useEffect(() => {
     if (years.length > 0 && !years.includes(tahun)) setTahun(years[0]);
-  }, [years]);
+  }, [years]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const effectiveColumns = useMemo(
     () => applyColumnOverrides(columns, overrides).filter((c) => !c.hidden),
@@ -40,18 +44,18 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
   );
 
   useEffect(() => {
-    fetchDesa();
+    fetchDusun();
     checkPermission();
     fetchDynamicColumns();
     fetchOverrides();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (desa.length > 0) {
+    if (dusun.length > 0) {
       fetchData(tahun);
       fetchData(tahun - 1, true); // fetch prev year for validation
     }
-  }, [tahun, desa]);
+  }, [tahun, dusun]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const checkPermission = async () => {
     try {
@@ -60,16 +64,17 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
         const me = await res.json();
         setUserRole(me.role);
         setCanEdit(me.permissions.includes(tableName));
+        setUserDusunId(me.dusun_id ?? null);
       }
     } catch {
       setCanEdit(false);
     }
   };
 
-  const fetchDesa = async () => {
-    const res = await fetch('/api/desa');
+  const fetchDusun = async () => {
+    const res = await fetch('/api/dusun');
     const list = await res.json();
-    setDesa(list);
+    setDusun(list);
   };
 
   const fetchDynamicColumns = async () => {
@@ -77,8 +82,8 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
     try {
       const res = await fetch(`/api/admin/columns?table_name=${tableName}`);
       if (res.ok) setDynamicColumns(await res.json());
-    } catch (error) {
-      console.error('Failed to fetch dynamic columns');
+    } catch {
+      // silent
     }
   };
 
@@ -87,8 +92,8 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
     try {
       const res = await fetch(`/api/admin/column-overrides?table_name=${tableName}`);
       if (res.ok) setOverrides(await res.json());
-    } catch (error) {
-      console.error('Failed to fetch column overrides');
+    } catch {
+      // silent
     }
   };
 
@@ -96,61 +101,70 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
     const res = await fetch(`${apiEndpoint}?tahun=${targetYear}`);
     const rows = await res.json();
     const map = {};
-    rows.forEach(r => { map[r.desa_id] = r; });
-    
-    if (isPrev) {
-      setPrevYearData(map);
-    } else {
+    (rows || []).forEach((r) => {
+      const id = r.dusun_id ?? r.desa_id;
+      if (id != null) map[id] = r;
+    });
+
+    if (isPrev) setPrevYearData(map);
+    else {
       setData(map);
-      setSaveStatus({}); // reset save status when year changes
+      setSaveStatus({});
     }
   };
 
-  const handleChange = (desaId, key, value, isDynamic = false, type = 'number') => {
+  const handleChange = (dusunId, key, value, isDynamic = false, type = 'number') => {
     if (!canEdit) return;
-    
+    // Row-level: kalau role kader-dusun, hanya boleh edit dusunnya sendiri
+    if (userDusunId != null && Number(dusunId) !== Number(userDusunId)) return;
+
     let parsedValue = value;
     if (type === 'number') {
-      parsedValue = value === '' ? '' : Number(value); // Allow empty string temporarily while typing
+      parsedValue = value === '' ? '' : Number(value);
     }
 
-    setData(prev => {
-      const row = prev[desaId] || {};
+    setData((prev) => {
+      const row = prev[dusunId] || {};
       if (isDynamic) {
         return {
           ...prev,
-          [desaId]: { 
-            ...row, 
-            desa_id: desaId, 
-            custom_columns: { ...(row.custom_columns || {}), [key]: parsedValue } 
-          }
+          [dusunId]: {
+            ...row,
+            dusun_id: dusunId,
+            custom_columns: { ...(row.custom_columns || {}), [key]: parsedValue },
+          },
         };
       }
       return {
         ...prev,
-        [desaId]: { ...row, desa_id: desaId, [key]: parsedValue },
+        [dusunId]: { ...row, dusun_id: dusunId, [key]: parsedValue },
       };
     });
-    
-    setSaveStatus(prev => ({ ...prev, [desaId]: 'dirty' }));
+
+    setSaveStatus((prev) => ({ ...prev, [dusunId]: 'dirty' }));
   };
 
-  const getRowIssueCount = (desaId) => {
-    const validation = validateRow(data[desaId] || {}, effectiveColumns, prevYearData[desaId] || null);
+  const getRowIssueCount = (dusunId) => {
+    const validation = validateRow(data[dusunId] || {}, effectiveColumns, prevYearData[dusunId] || null);
     const issues = countIssues(validation);
     return issues.errors + issues.warnings;
   };
 
-  const _doSaveRow = async (desaId) => {
-    const rowData = data[desaId] || {};
-    const payload = { desa_id: desaId, tahun, custom_columns: {} };
-    
-    // Kirim SEMUA kolom standar (termasuk yang hidden) supaya data di DB tetap konsisten
-    columns.forEach(col => { payload[col.key] = rowData[col.key] || 0; });
-    
-    dynamicColumns.forEach(col => {
+  const _doSaveRow = async (dusunId) => {
+    const rowData = data[dusunId] || {};
+    const payload = { dusun_id: dusunId, tahun, custom_columns: {} };
+
+    columns.forEach((col) => {
+      if (col.type === 'text') {
+        payload[col.key] = String(rowData[col.key] ?? '');
+      } else {
+        payload[col.key] = Number(rowData[col.key] || 0);
+      }
+    });
+
+    dynamicColumns.forEach((col) => {
       const val = rowData.custom_columns?.[col.column_key];
-      payload.custom_columns[col.column_key] = col.column_type === 'number' ? (val || 0) : (val || '');
+      payload.custom_columns[col.column_key] = col.column_type === 'number' ? Number(val || 0) : (val || '');
     });
 
     const res = await fetch(apiEndpoint, {
@@ -165,82 +179,89 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
     }
   };
 
-  const saveRow = useCallback(async (desaId) => {
+  const saveRow = useCallback(async (dusunId) => {
     if (!canEdit) return;
-
-    setSaving(desaId);
+    setSaving(dusunId);
     try {
-      await _doSaveRow(desaId);
-      setSaveStatus(prev => ({ ...prev, [desaId]: 'saved' }));
-      const issueCount = getRowIssueCount(desaId);
+      await _doSaveRow(dusunId);
+      setSaveStatus((prev) => ({ ...prev, [dusunId]: 'saved' }));
+      const issueCount = getRowIssueCount(dusunId);
       setToast({
         type: issueCount > 0 ? 'warning' : 'success',
         message: issueCount > 0 ? `Data disimpan dengan ${issueCount} peringatan` : 'Data berhasil disimpan',
       });
     } catch (err) {
-      setSaveStatus(prev => ({ ...prev, [desaId]: 'error' }));
+      setSaveStatus((prev) => ({ ...prev, [dusunId]: 'error' }));
       setToast({ type: 'error', message: err.message });
     }
     setSaving(null);
     setTimeout(() => setToast(null), 3000);
-    setTimeout(() => setSaveStatus(prev => ({ ...prev, [desaId]: null })), 5000); // clear checkmark after 5s
-  }, [data, prevYearData, tahun, apiEndpoint, columns, effectiveColumns, canEdit, dynamicColumns]);
+    setTimeout(() => setSaveStatus((prev) => ({ ...prev, [dusunId]: null })), 5000);
+  }, [data, prevYearData, tahun, apiEndpoint, columns, effectiveColumns, canEdit, dynamicColumns]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveAll = async () => {
     if (!canEdit) return;
-
-    const warningCount = desa.reduce((sum, d) => sum + getRowIssueCount(d.id), 0);
+    const targets = userDusunId != null ? dusun.filter((d) => d.id === Number(userDusunId)) : dusun;
+    const warningCount = targets.reduce((sum, d) => sum + getRowIssueCount(d.id), 0);
     if (warningCount > 0 && !window.confirm(`Ada ${warningCount} peringatan validasi. Tetap simpan semua perubahan?`)) {
       return;
     }
-    
+
     setSaving('all');
     let successCount = 0;
     let failCount = 0;
 
-    for (const d of desa) {
+    for (const d of targets) {
       try {
         await _doSaveRow(d.id);
-        setSaveStatus(prev => ({ ...prev, [d.id]: 'saved' }));
+        setSaveStatus((prev) => ({ ...prev, [d.id]: 'saved' }));
         successCount++;
-      } catch (e) {
-        setSaveStatus(prev => ({ ...prev, [d.id]: 'error' }));
+      } catch {
+        setSaveStatus((prev) => ({ ...prev, [d.id]: 'error' }));
         failCount++;
       }
     }
 
     setSaving(null);
     if (failCount === 0) {
-      setToast({ type: 'success', message: `Berhasil menyimpan semua data (${successCount} desa)` });
+      setToast({ type: 'success', message: `Berhasil menyimpan semua data (${successCount} dusun)` });
     } else {
       setToast({ type: 'error', message: `Berhasil ${successCount}, Gagal ${failCount}` });
     }
     setTimeout(() => setToast(null), 4000);
   };
 
-  // Keyboard shortcut: Ctrl+S → simpan semua
   useKeyboardShortcut({ 'ctrl+s': saveAll }, { enabled: canEdit });
 
   const getTotal = (key, isDynamic = false, type = 'number') => {
     if (type !== 'number') return '-';
     if (isDynamic) {
-      return desa.reduce((sum, d) => sum + (Number(data[d.id]?.custom_columns?.[key]) || 0), 0);
+      return dusun.reduce((sum, d) => sum + (Number(data[d.id]?.custom_columns?.[key]) || 0), 0);
     }
-    return desa.reduce((sum, d) => sum + (Number(data[d.id]?.[key]) || 0), 0);
+    return dusun.reduce((sum, d) => sum + (Number(data[d.id]?.[key]) || 0), 0);
   };
 
-  const filteredDesa = desa.filter(d => d.nama.toLowerCase().includes(searchQuery.toLowerCase()));
-  const dirtyCount = Object.values(saveStatus).filter(s => s === 'dirty').length;
-  const validationSummary = filteredDesa.reduce((acc, d) => {
-    const validation = validateRow(data[d.id] || {}, effectiveColumns, prevYearData[d.id] || null);
-    const issues = countIssues(validation);
-    acc.errors += issues.errors;
-    acc.warnings += issues.warnings;
-    acc.infos += issues.infos;
-    return acc;
-  }, { errors: 0, warnings: 0, infos: 0 });
+  const filteredDusun = dusun.filter((d) => d.nama.toLowerCase().includes(searchQuery.toLowerCase()));
+  const dirtyCount = Object.values(saveStatus).filter((s) => s === 'dirty').length;
+  const validationSummary = filteredDusun.reduce(
+    (acc, d) => {
+      const validation = validateRow(data[d.id] || {}, effectiveColumns, prevYearData[d.id] || null);
+      const issues = countIssues(validation);
+      acc.errors += issues.errors;
+      acc.warnings += issues.warnings;
+      acc.infos += issues.infos;
+      return acc;
+    },
+    { errors: 0, warnings: 0, infos: 0 }
+  );
 
-  // Mobile card view renderer — accordion: default tertutup, expand untuk edit
+  const isDusunEditable = (dusunId) => {
+    if (!canEdit) return false;
+    if (userDusunId == null) return true;
+    return Number(dusunId) === Number(userDusunId);
+  };
+
+  // Mobile card view
   const MobileCard = ({ d, i }) => {
     const [expanded, setExpanded] = useState(false);
     const rowData = data[d.id] || {};
@@ -252,6 +273,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
     const isDirty = saveStatus[d.id] === 'dirty';
     const isError = saveStatus[d.id] === 'error';
     const filledCount = effectiveColumns.filter((c) => Number(rowData[c.key] || 0) > 0).length;
+    const dusunEditable = isDusunEditable(d.id);
 
     return (
       <div className={`bg-white rounded-xl border ${isDirty ? 'border-amber-200' : 'border-gray-200'} mb-3 shadow-sm overflow-hidden`}>
@@ -270,6 +292,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
                 {isDirty && <span className="text-amber-600 font-semibold">• Belum disimpan</span>}
                 {isSaved && <span className="text-green-600 font-semibold">• Tersimpan</span>}
                 {isError && <span className="text-red-600 font-semibold">• Gagal simpan</span>}
+                {!dusunEditable && canEdit && <span className="text-gray-400">• Hanya lihat</span>}
               </div>
             </div>
           </div>
@@ -292,43 +315,53 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
                 const valObj = validation[col.key] || { valid: true };
                 const hasError = valObj.severity === 'error';
                 const hasWarning = valObj.severity === 'warning';
+                const isText = col.type === 'text';
                 return (
-                  <div key={col.key} className="flex flex-col">
+                  <div key={col.key} className={`flex flex-col ${isText ? 'col-span-2' : ''}`}>
                     <label htmlFor={`${d.id}-${col.key}`} className="text-[10px] uppercase font-semibold text-gray-500 mb-1">
                       {col.label}
                     </label>
-                    {canEdit ? (
-                      <input
-                        id={`${d.id}-${col.key}`}
-                        type="number"
-                        inputMode="numeric"
-                        className={`w-full text-base py-2.5 px-3 rounded-lg border outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${
-                          hasError ? 'border-red-300 bg-red-50 text-red-900' :
-                          hasWarning ? 'border-amber-300 bg-amber-50 text-amber-900' :
-                          'border-gray-200 bg-gray-50 focus:bg-white'
-                        }`}
-                        style={{ minHeight: 44 }}
-                        value={rowData[col.key] ?? ''}
-                        onChange={(e) => handleChange(d.id, col.key, e.target.value)}
-                        onBlur={() => saveRow(d.id)}
-                        min="0"
-                      />
+                    {dusunEditable ? (
+                      isText ? (
+                        <textarea
+                          id={`${d.id}-${col.key}`}
+                          rows={2}
+                          className="w-full text-base py-2.5 px-3 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white outline-none focus:ring-2 focus:ring-primary-500"
+                          value={rowData[col.key] ?? ''}
+                          onChange={(e) => handleChange(d.id, col.key, e.target.value, false, 'text')}
+                          onBlur={() => saveRow(d.id)}
+                        />
+                      ) : (
+                        <input
+                          id={`${d.id}-${col.key}`}
+                          type="number"
+                          inputMode="numeric"
+                          className={`w-full text-base py-2.5 px-3 rounded-lg border outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${
+                            hasError ? 'border-red-300 bg-red-50 text-red-900' :
+                            hasWarning ? 'border-amber-300 bg-amber-50 text-amber-900' :
+                            'border-gray-200 bg-gray-50 focus:bg-white'
+                          }`}
+                          style={{ minHeight: 44 }}
+                          value={rowData[col.key] ?? ''}
+                          onChange={(e) => handleChange(d.id, col.key, e.target.value)}
+                          onBlur={() => saveRow(d.id)}
+                          min="0"
+                        />
+                      )
                     ) : (
                       <div className="text-base font-medium text-gray-800 py-2.5 px-3">
-                        {(rowData[col.key] || 0).toLocaleString('id-ID')}
+                        {isText ? (rowData[col.key] || '-') : (rowData[col.key] || 0).toLocaleString('id-ID')}
                       </div>
                     )}
                     {(hasError || hasWarning) && (
-                      <span className={`text-[10px] mt-1 ${hasError ? 'text-red-500' : 'text-amber-600'}`}>
-                        {valObj.warning}
-                      </span>
+                      <span className={`text-[10px] mt-1 ${hasError ? 'text-red-500' : 'text-amber-600'}`}>{valObj.warning}</span>
                     )}
                   </div>
                 );
               })}
             </div>
 
-            {canEdit && (
+            {dusunEditable && (
               <button
                 onClick={() => saveRow(d.id)}
                 disabled={isSaving}
@@ -379,6 +412,11 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
                 <Lock className="w-3 h-3" /> Hanya Lihat
               </span>
             )}
+            {userDusunId != null && canEdit && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary-50 text-primary-700 text-xs font-medium rounded-full border border-primary-200">
+                Scope: {dusun.find((d) => d.id === Number(userDusunId))?.nama || `Dusun #${userDusunId}`}
+              </span>
+            )}
           </p>
           <div className="mt-2">
             <PeriodWorkflowBadge
@@ -390,7 +428,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
             />
           </div>
         </div>
-        
+
         <div className="flex flex-wrap items-center gap-3">
           {canEdit && (
             <button
@@ -407,7 +445,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
             onChange={(e) => setTahun(Number(e.target.value))}
             className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none shadow-sm"
           >
-            {years.map(y => <option key={y} value={y}>{y}</option>)}
+            {years.map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
         </div>
       </div>
@@ -419,7 +457,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
         </div>
         <input
           type="text"
-          placeholder="Cari desa..."
+          placeholder="Cari dusun..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none shadow-sm"
@@ -436,12 +474,11 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
         </div>
       )}
 
-      {/* Sticky banner: perubahan belum tersimpan */}
       {canEdit && dirtyCount > 0 && (
         <div className="sticky top-16 z-30 mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 shadow-md">
           <div className="flex items-center gap-2 text-sm font-medium text-amber-800">
             <ExclamationCircle className="w-4 h-4" />
-            <span>{dirtyCount} desa memiliki perubahan belum tersimpan</span>
+            <span>{dirtyCount} dusun memiliki perubahan belum tersimpan</span>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -463,9 +500,9 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
 
       {/* Mobile View (<768px) */}
       <div className="md:hidden">
-        {filteredDesa.map((d, i) => <MobileCard key={d.id} d={d} i={i} />)}
-        {filteredDesa.length === 0 && (
-          <div className="text-center py-8 text-gray-500 bg-white rounded-xl border border-gray-100">Desa tidak ditemukan</div>
+        {filteredDusun.map((d, i) => <MobileCard key={d.id} d={d} i={i} />)}
+        {filteredDusun.length === 0 && (
+          <div className="text-center py-8 text-gray-500 bg-white rounded-xl border border-gray-100">Dusun tidak ditemukan</div>
         )}
       </div>
 
@@ -476,61 +513,74 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
             <thead className="sticky top-0 z-20">
               <tr>
                 <th rowSpan={2} style={{ position: 'sticky', left: 0, zIndex: 30, background: '#f9fafb', minWidth: 40 }}>No</th>
-                <th rowSpan={2} style={{ position: 'sticky', left: 40, zIndex: 30, background: '#f9fafb', minWidth: 130 }}>Nama Desa</th>
+                <th rowSpan={2} style={{ position: 'sticky', left: 40, zIndex: 30, background: '#f9fafb', minWidth: 130 }}>Nama Dusun</th>
                 <th colSpan={effectiveColumns.length} className="text-center bg-gray-50">Kolom Standar</th>
                 {dynamicColumns.length > 0 && <th colSpan={dynamicColumns.length} className="text-center text-primary-700 bg-primary-50/40">Kolom Dinamis</th>}
                 {canEdit && <th rowSpan={2} className="text-center sticky right-0 z-30" style={{ minWidth: 60, background: '#f9fafb' }}>Aksi</th>}
               </tr>
               <tr>
-                {effectiveColumns.map(col => (
+                {effectiveColumns.map((col) => (
                   <th key={col.key} className="text-center" style={{ minWidth: 80 }} title={col.renamed ? `Asli: ${col.originalLabel}` : undefined}>
                     {col.label}
                     {col.renamed && <span className="ml-1 text-[9px] text-amber-500" aria-hidden="true">*</span>}
                   </th>
                 ))}
-                {dynamicColumns.map(col => <th key={`dyn-${col.column_key}`} className="text-center text-primary-700 bg-primary-50/30" style={{ minWidth: 100 }}>{col.column_label}</th>)}
+                {dynamicColumns.map((col) => <th key={`dyn-${col.column_key}`} className="text-center text-primary-700 bg-primary-50/30" style={{ minWidth: 100 }}>{col.column_label}</th>)}
               </tr>
             </thead>
             <tbody>
-              {filteredDesa.map((d, i) => {
+              {filteredDusun.map((d, i) => {
                 const rowData = data[d.id] || {};
                 const prevRowData = prevYearData[d.id] || null;
                 const validation = validateRow(rowData, effectiveColumns, prevRowData);
+                const dusunEditable = isDusunEditable(d.id);
 
                 return (
                   <tr key={d.id} className="group">
                     <td style={{ position: 'sticky', left: 0, background: '#fff', zIndex: 10, textAlign: 'center' }} className="group-hover:bg-primary-50/50 transition-colors">{i + 1}</td>
                     <td className="col-desa group-hover:bg-primary-50/50 transition-colors" style={{ left: 40 }}>{d.nama}</td>
-                    {effectiveColumns.map(col => {
+                    {effectiveColumns.map((col) => {
                       const valObj = validation[col.key] || { valid: true };
                       const hasError = valObj.severity === 'error';
                       const hasWarning = valObj.severity === 'warning';
+                      const isText = col.type === 'text';
                       const inputClass = `cell-input ${hasError ? '!bg-red-50 !border-red-300 !text-red-900 focus:!ring-red-500' : hasWarning ? '!bg-amber-50 !border-amber-300 !text-amber-900 focus:!ring-amber-500' : ''}`;
 
                       return (
                         <td key={col.key} className="relative">
-                          {canEdit ? (
-                            <input
-                              type="number"
-                              className={inputClass}
-                              value={rowData[col.key] ?? ''}
-                              onChange={(e) => handleChange(d.id, col.key, e.target.value)}
-                              onBlur={() => saveRow(d.id)}
-                              min="0"
-                              title={valObj.warning || ''}
-                            />
+                          {dusunEditable ? (
+                            isText ? (
+                              <input
+                                type="text"
+                                className={inputClass}
+                                value={rowData[col.key] ?? ''}
+                                onChange={(e) => handleChange(d.id, col.key, e.target.value, false, 'text')}
+                                onBlur={() => saveRow(d.id)}
+                                title={valObj.warning || ''}
+                              />
+                            ) : (
+                              <input
+                                type="number"
+                                className={inputClass}
+                                value={rowData[col.key] ?? ''}
+                                onChange={(e) => handleChange(d.id, col.key, e.target.value)}
+                                onBlur={() => saveRow(d.id)}
+                                min="0"
+                                title={valObj.warning || ''}
+                              />
+                            )
                           ) : (
                             <span className="block text-center px-2 py-1 text-gray-500" title={valObj.warning || ''}>
-                              {(rowData[col.key] || 0).toLocaleString('id-ID')}
+                              {isText ? (rowData[col.key] || '-') : (rowData[col.key] || 0).toLocaleString('id-ID')}
                               {hasWarning && <ExclamationCircle className="w-3 h-3 text-amber-500 inline ml-1" />}
                             </span>
                           )}
                         </td>
                       );
                     })}
-                    {dynamicColumns.map(col => (
+                    {dynamicColumns.map((col) => (
                       <td key={`dyn-${col.column_key}`} className="bg-primary-50/10">
-                        {canEdit ? (
+                        {dusunEditable ? (
                           <input
                             type={col.column_type === 'number' ? 'number' : 'text'}
                             className="cell-input !text-primary-800"
@@ -540,8 +590,8 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
                             min={col.column_type === 'number' ? "0" : undefined}
                           />
                         ) : (
-                          <span className={`block px-2 py-1 text-gray-500 text-center`}>
-                            {col.column_type === 'number' 
+                          <span className="block px-2 py-1 text-gray-500 text-center">
+                            {col.column_type === 'number'
                               ? (Number(data[d.id]?.custom_columns?.[col.column_key]) || 0).toLocaleString('id-ID')
                               : (data[d.id]?.custom_columns?.[col.column_key] || '-')}
                           </span>
@@ -550,41 +600,45 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
                     ))}
                     {canEdit && (
                       <td className="text-center sticky right-0 bg-white z-10 group-hover:bg-primary-50/50 transition-colors border-l border-gray-100">
-                        <button
-                          className={`inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors disabled:opacity-50 ${
-                            saveStatus[d.id] === 'saved' ? 'bg-green-100 text-green-600' :
-                            saveStatus[d.id] === 'dirty' ? 'bg-amber-100 text-amber-700' :
-                            saveStatus[d.id] === 'error' ? 'bg-red-100 text-red-600' :
-                            'bg-gray-50 hover:bg-primary-100 text-gray-500 hover:text-primary-600'
-                          }`}
-                          onClick={() => saveRow(d.id)}
-                          disabled={saving === d.id}
-                          aria-label={`Simpan data ${d.nama}`}
-                        >
-                          {saving === d.id ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : 
-                           saveStatus[d.id] === 'saved' ? <CheckCircle className="w-4 h-4" /> :
-                           <FloppyDisk className="w-4 h-4" />}
-                        </button>
+                        {dusunEditable ? (
+                          <button
+                            className={`inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors disabled:opacity-50 ${
+                              saveStatus[d.id] === 'saved' ? 'bg-green-100 text-green-600' :
+                              saveStatus[d.id] === 'dirty' ? 'bg-amber-100 text-amber-700' :
+                              saveStatus[d.id] === 'error' ? 'bg-red-100 text-red-600' :
+                              'bg-gray-50 hover:bg-primary-100 text-gray-500 hover:text-primary-600'
+                            }`}
+                            onClick={() => saveRow(d.id)}
+                            disabled={saving === d.id}
+                            aria-label={`Simpan data ${d.nama}`}
+                          >
+                            {saving === d.id ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> :
+                             saveStatus[d.id] === 'saved' ? <CheckCircle className="w-4 h-4" /> :
+                             <FloppyDisk className="w-4 h-4" />}
+                          </button>
+                        ) : (
+                          <Lock className="w-4 h-4 text-gray-300 inline-block" />
+                        )}
                       </td>
                     )}
                   </tr>
                 );
               })}
-              {filteredDesa.length === 0 && (
+              {filteredDusun.length === 0 && (
                 <tr>
-                  <td colSpan={100} className="text-center py-8 text-gray-500">Desa tidak ditemukan</td>
+                  <td colSpan={100} className="text-center py-8 text-gray-500">Dusun tidak ditemukan</td>
                 </tr>
               )}
-              {filteredDesa.length > 0 && (
+              {filteredDusun.length > 0 && (
                 <tr className="row-total sticky bottom-0 z-20 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
                   <td style={{ position: 'sticky', left: 0, background: '#f0fdf4', zIndex: 30 }}></td>
                   <td className="col-desa" style={{ left: 40, background: '#f0fdf4', zIndex: 30 }}>JUMLAH</td>
-                  {effectiveColumns.map(col => (
+                  {effectiveColumns.map((col) => (
                     <td key={col.key} className="text-center font-bold">
-                      {getTotal(col.key).toLocaleString('id-ID')}
+                      {col.type === 'text' ? '-' : getTotal(col.key).toLocaleString('id-ID')}
                     </td>
                   ))}
-                  {dynamicColumns.map(col => (
+                  {dynamicColumns.map((col) => (
                     <td key={`dyn-${col.column_key}`} className="text-center font-bold text-primary-700 bg-primary-50/30">
                       {getTotal(col.column_key, true, col.column_type).toLocaleString('id-ID')}
                     </td>

@@ -53,7 +53,7 @@ export default function ReportsPage() {
 
     (async () => {
       try {
-        const res = await fetch('/api/desa');
+        const res = await fetch('/api/dusun');
         if (res.ok) setDesaList(await res.json());
       } catch { /* silent */ }
     })();

@@ -1,10 +1,11 @@
 /**
  * @file GET /api/public/desa/[id]?tahun=&bulan=
- * Public desa detail. Hanya mengembalikan kolom di allowlist + nama/nomor desa.
+ * Public dusun detail (URL path tetap `/desa/[id]` untuk backward-compat).
+ * Hanya mengembalikan kolom di allowlist + nama/nomor unit.
  */
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { PUBLIC_DESA_FIELDS, PUBLIC_COLUMNS, PUBLIC_TABLES } from '@/lib/publicData';
+import { PUBLIC_DUSUN_FIELDS, PUBLIC_COLUMNS, PUBLIC_TABLES } from '@/lib/publicData';
 import {
   evaluateRecordCompleteness,
   getTableKeys,
@@ -30,30 +31,32 @@ function clampMonth(input) {
 export async function GET(request, ctx) {
   try {
     const { id } = await ctx.params;
-    const desaId = Number(id);
-    if (!Number.isInteger(desaId) || desaId < 1) {
-      return NextResponse.json({ error: 'ID desa tidak valid' }, { status: 400 });
+    const dusunId = Number(id);
+    if (!Number.isInteger(dusunId) || dusunId < 1) {
+      return NextResponse.json({ error: 'ID dusun tidak valid' }, { status: 400 });
     }
 
     const { searchParams } = new URL(request.url);
     const tahun = clampYear(searchParams.get('tahun') || new Date().getFullYear());
     const bulan = clampMonth(searchParams.get('bulan') || 12);
 
-    const { data: desa } = await supabase
-      .from('desa')
-      .select(PUBLIC_DESA_FIELDS.join(','))
-      .eq('id', desaId)
+    const { data: dusun } = await supabase
+      .from('dusun')
+      .select(PUBLIC_DUSUN_FIELDS.join(','))
+      .eq('id', dusunId)
       .eq('is_active', 1)
       .maybeSingle();
 
-    if (!desa) {
-      return NextResponse.json({ error: 'Desa tidak ditemukan' }, { status: 404 });
+    if (!dusun) {
+      return NextResponse.json({ error: 'Dusun tidak ditemukan' }, { status: 404 });
     }
 
-    // Fetch tiap tabel dengan kolom-kolom dari allowlist saja
+    // Filter pakai dusun_id (canonical) atau desa_id (legacy)
+    const idFilter = `dusun_id.eq.${dusunId},desa_id.eq.${dusunId}`;
+
     const fetchOne = async (table, fields) => {
-      const cols = ['desa_id', 'tahun', ...fields];
-      let query = supabase.from(table).select(cols.join(',')).eq('desa_id', desaId).eq('tahun', tahun);
+      const cols = ['dusun_id', 'desa_id', 'tahun', ...fields].join(',');
+      let query = supabase.from(table).select(cols).or(idFilter).eq('tahun', tahun);
       if (table === 'data_bumil') query = query.eq('bulan', bulan);
       const { data } = await query.maybeSingle();
       return data || null;
@@ -64,21 +67,20 @@ export async function GET(request, ctx) {
       tables[t] = await fetchOne(t, PUBLIC_COLUMNS[t]);
     }
 
-    // Trend 5 tahun untuk indikator agregat
-    const currentYear = tahun;
-    const trendYears = [currentYear - 4, currentYear - 3, currentYear - 2, currentYear - 1, currentYear];
+    // Trend 5 tahun
+    const trendYears = [tahun - 4, tahun - 3, tahun - 2, tahun - 1, tahun];
 
     const { data: trendUmum } = await supabase
       .from('data_umum')
       .select('tahun, jml_kk, jml_jiwa_l, jml_jiwa_p, jml_dasa_wisma')
-      .eq('desa_id', desaId)
+      .or(idFilter)
       .in('tahun', trendYears)
       .order('tahun');
 
     const { data: trendP4 } = await supabase
       .from('data_pokja4')
       .select('tahun, posyandu_jumlah')
-      .eq('desa_id', desaId)
+      .or(idFilter)
       .in('tahun', trendYears)
       .order('tahun');
 
@@ -94,7 +96,6 @@ export async function GET(request, ctx) {
       };
     });
 
-    // Completeness — gabungkan semua tabel
     const tableStatuses = {};
     for (const t of PUBLIC_TABLES) {
       const keys = getTableKeys(t);
@@ -104,7 +105,8 @@ export async function GET(request, ctx) {
     const overall = mergeStatus(Object.values(tableStatuses).map((s) => s.status));
 
     return NextResponse.json({
-      desa,
+      dusun,
+      desa: dusun, // alias backward-compat
       tahun,
       bulan,
       tables,
@@ -114,7 +116,7 @@ export async function GET(request, ctx) {
       statusLabel: STATUS_LABELS[overall] || STATUS_LABELS[COMPLETENESS_STATUS.INCOMPLETE],
     });
   } catch (error) {
-    console.error('Public desa detail error:', error);
-    return NextResponse.json({ error: 'Gagal memuat data publik desa' }, { status: 500 });
+    console.error('Public dusun detail error:', error);
+    return NextResponse.json({ error: 'Gagal memuat data publik dusun' }, { status: 500 });
   }
 }
