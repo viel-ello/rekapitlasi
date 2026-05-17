@@ -10,176 +10,183 @@ import { useKeyboardShortcut } from '@/lib/useKeyboardShortcut';
 import PeriodWorkflowBadge from '@/components/PeriodWorkflowBadge';
 
 /**
- * Rekapitulasi Dawis — layout pixel-perfect sesuai Annex F.
- * 34 kolom, 4-level header dengan grup besar:
- *   Identitas (kolom 3-7) flat
- *   Jml Angg keluarga (kolom 8-18): Total L/P, Balita L/P, PUS, WUS, Ibu Hamil, Ibu menyusui, Lansia, 3 Buta, Berkebutuhan khusus
- *   Jumlah Rumah (kolom 19-24): Sehat, Tidak sehat, Memiliki tempt sampah, Memiliki spal, Memiliki jamban, Menempel stiker
- *   Sumber Air Keluarga (kolom 25-28): PDAM, Sumber, Sungai, Dll
- *   Makanan (kolom 29-30): Beras, Non Beras
- *   Wrg yg mengikuti (kolom 31-33): UP2K, Pemanfaatan lahan, Kes lngk
- *   KET (JKN/BPJS) (kolom 34) flat
+ * Rekapitulasi Dawis — layout sesuai Annex F (gambar referensi).
+ *
+ * Struktur header 3 baris:
+ *  Row 1: NO | Nama Dusun | Jml RW | Jml RT | Jml dawis | Jml KRT | Jml KK | <group titles> | KET
+ *  Row 2: <sub-titles inside group>
+ *  Row 3: <leaf labels: L/P>
+ *  Row 4: column numbers 1..34
+ *
+ * Total kolom = 34. Setiap leaf jadi kolom data.
  */
 
 const REKAP_DAWIS_TITLE = 'CATATAN DATA DAN KEGIATAN WARGA';
 const REKAP_DAWIS_ORG = 'TP PKK DESA BELIKURIP KECAMATAN BATURETNO';
 
-const REKAP_DAWIS_GROUPS = [
-  // Single-cell columns (di-render dengan rowSpan=3 di header)
+// Layout struktural (kunci ke key DB). label=teks tampilan; vertical=true → label di-rotate 90°.
+const LAYOUT = [
+  // Kolom 3-7: leaf langsung di bawah Row 1
   { kind: 'leaf', key: 'jml_rw', label: 'Jml RW' },
   { kind: 'leaf', key: 'jml_rt', label: 'Jml RT' },
   { kind: 'leaf', key: 'jml_dawis', label: 'Jml dawis' },
   { kind: 'leaf', key: 'jml_krt', label: 'Jml KRT' },
   { kind: 'leaf', key: 'jml_kk', label: 'Jml KK' },
-  // Group: Jml Angg keluarga
+  // Kolom 8-18: Jml Angg keluarga (11 kolom)
   {
     kind: 'group',
     title: 'Jml Angg keluarga',
     children: [
-      {
-        title: 'Total',
-        children: [
-          { key: 'jml_anggota_l', label: 'L' },
-          { key: 'jml_anggota_p', label: 'P' },
-        ],
-      },
-      {
-        title: 'Balita',
-        children: [
-          { key: 'balita_l', label: 'L' },
-          { key: 'balita_p', label: 'P' },
-        ],
-      },
-      { key: 'pus', label: 'PUS' },
-      { key: 'wus', label: 'WUS' },
-      { key: 'ibu_hamil', label: 'Ibu Hamil' },
-      { key: 'ibu_menyusui', label: 'Ibu menyusui' },
-      { key: 'lansia', label: 'Lansia' },
-      { key: 'tiga_buta', label: '3 Buta' },
-      { key: 'berkebutuhan_khusus', label: 'Berkebutuhan khusus' },
+      { kind: 'sub', title: 'Total', leaves: [
+        { key: 'jml_anggota_l', label: 'L' },
+        { key: 'jml_anggota_p', label: 'P' },
+      ]},
+      { kind: 'sub', title: 'Balita', leaves: [
+        { key: 'balita_l', label: 'L' },
+        { key: 'balita_p', label: 'P' },
+      ]},
+      { kind: 'leaf', key: 'pus', label: 'PUS' },
+      { kind: 'leaf', key: 'wus', label: 'WUS' },
+      { kind: 'leaf', key: 'ibu_hamil', label: 'Ibu Hamil', vertical: true },
+      { kind: 'leaf', key: 'ibu_menyusui', label: 'Ibu menyusui', vertical: true },
+      { kind: 'leaf', key: 'lansia', label: 'Lansia' },
+      { kind: 'leaf', key: 'tiga_buta', label: '3 Buta' },
+      { kind: 'leaf', key: 'berkebutuhan_khusus', label: 'Berkebutuhan khusus', vertical: true },
     ],
   },
-  // Group: Jumlah Rumah
+  // Kolom 19-24: Jumlah Rumah (6 kolom, kebanyakan vertical)
   {
     kind: 'group',
     title: 'Jumlah Rumah',
     children: [
-      { key: 'rumah_sehat', label: 'Sehat' },
-      { key: 'rumah_kurang_sehat', label: 'Tidak sehat' },
-      { key: 'punya_tempat_sampah', label: 'Memiliki tempt sampah' },
-      { key: 'punya_spal', label: 'Memiliki spal' },
-      { key: 'jamban', label: 'Memiliki jamban' },
-      { key: 'stiker_p4k', label: 'Menempel stiker' },
+      { kind: 'leaf', key: 'rumah_sehat', label: 'Sehat', vertical: true },
+      { kind: 'leaf', key: 'rumah_kurang_sehat', label: 'Tidak sehat', vertical: true },
+      { kind: 'leaf', key: 'punya_tempat_sampah', label: 'Memiliki tempt sampah', vertical: true },
+      { kind: 'leaf', key: 'punya_spal', label: 'Memiliki spal', vertical: true },
+      { kind: 'leaf', key: 'jamban', label: 'Memiliki jamban', vertical: true },
+      { kind: 'leaf', key: 'stiker_p4k', label: 'Menempel stiker', vertical: true },
     ],
   },
-  // Group: Sumber Air Keluarga
+  // Kolom 25-28: Sumber Air Keluarga
   {
     kind: 'group',
     title: 'Sumber Air Keluarga',
     children: [
-      { key: 'air_pdam', label: 'PDAM' },
-      { key: 'air_sumur', label: 'Sumber' },
-      { key: 'air_sungai', label: 'Sungai' },
-      { key: 'air_dll', label: 'Dll' },
+      { kind: 'leaf', key: 'air_pdam', label: 'PDAM' },
+      { kind: 'leaf', key: 'air_sumur', label: 'Sumber' },
+      { kind: 'leaf', key: 'air_sungai', label: 'Sungai' },
+      { kind: 'leaf', key: 'air_dll', label: 'Dll' },
     ],
   },
-  // Group: Makanan
+  // Kolom 29-30: Makanan
   {
     kind: 'group',
     title: 'Makanan',
     children: [
-      { key: 'makan_beras', label: 'Beras' },
-      { key: 'makan_non_beras', label: 'Non Beras' },
+      { kind: 'leaf', key: 'makan_beras', label: 'Beras' },
+      { kind: 'leaf', key: 'makan_non_beras', label: 'Non Beras' },
     ],
   },
-  // Group: Wrg yg mengikuti
+  // Kolom 31-33: Wrg yg mengikuti
   {
     kind: 'group',
     title: 'Wrg yg mengikuti',
     children: [
-      { key: 'ikut_up2k', label: 'UP2K' },
-      { key: 'ikut_pekarangan', label: 'Pemanfaatan lahan' },
-      { key: 'ikut_kesling', label: 'Kes lngk' },
+      { kind: 'leaf', key: 'ikut_up2k', label: 'UP2K' },
+      { kind: 'leaf', key: 'ikut_pekarangan', label: 'Pemanfaatan lahan', vertical: true },
+      { kind: 'leaf', key: 'ikut_kesling', label: 'Kes lngk' },
     ],
   },
-  // KET single-cell
+  // Kolom 34: KET (JKN/BPJS) flat
   { kind: 'leaf', key: 'jkn_bpjs', label: 'KET (JKN/BPJS)' },
 ];
 
-/** Resolve groups dengan applied column overrides; skip kolom hidden. */
-function resolveGroups(columns) {
+// Resolve LAYOUT dengan applied column overrides; skip kolom hidden
+function resolveLayout(columns) {
   const byKey = new Map(columns.map((c) => [c.key, c]));
-  const out = [];
+  const apply = (def) => {
+    const col = byKey.get(def.key);
+    if (!col || col.hidden) return null;
+    return {
+      ...def,
+      ...col,
+      label: col.renamed ? col.label : def.label,
+      fullLabel: col.label,
+    };
+  };
 
-  for (const g of REKAP_DAWIS_GROUPS) {
-    if (g.kind === 'leaf') {
-      const col = byKey.get(g.key);
-      if (!col || col.hidden) continue;
-      out.push({
-        kind: 'leaf',
-        ...col,
-        label: col.renamed ? col.label : g.label,
-        fullLabel: col.label,
-      });
+  const resolved = [];
+  for (const item of LAYOUT) {
+    if (item.kind === 'leaf') {
+      const r = apply(item);
+      if (r) resolved.push(r);
       continue;
     }
-
     // group
     const children = [];
-    for (const child of g.children) {
-      if (child.key) {
-        const col = byKey.get(child.key);
-        if (!col || col.hidden) continue;
-        children.push({
-          kind: 'leaf-in-group',
-          ...col,
-          label: col.renamed ? col.label : child.label,
-          fullLabel: col.label,
-        });
-      } else {
-        // sub-group (Total/Balita)
-        const subChildren = [];
-        for (const leaf of child.children) {
-          const col = byKey.get(leaf.key);
-          if (!col || col.hidden) continue;
-          subChildren.push({
-            ...col,
-            label: col.renamed ? col.label : leaf.label,
-            fullLabel: col.label,
-          });
+    for (const c of item.children) {
+      if (c.kind === 'leaf') {
+        const r = apply(c);
+        if (r) children.push(r);
+      } else if (c.kind === 'sub') {
+        const subLeaves = c.leaves.map(apply).filter(Boolean);
+        if (subLeaves.length > 0) {
+          children.push({ kind: 'sub', title: c.title, leaves: subLeaves });
         }
-        if (subChildren.length === 0) continue;
-        children.push({
-          kind: 'sub-group',
-          title: child.title,
-          children: subChildren,
-          colSpan: subChildren.length,
-        });
       }
     }
-    if (children.length === 0) continue;
-    const colSpan = children.reduce((sum, c) => sum + (c.kind === 'sub-group' ? c.colSpan : 1), 0);
-    out.push({ kind: 'group', title: g.title, children, colSpan });
+    if (children.length > 0) {
+      const colSpan = children.reduce((s, c) => s + (c.kind === 'sub' ? c.leaves.length : 1), 0);
+      resolved.push({ kind: 'group', title: item.title, children, colSpan });
+    }
   }
-  return out;
+  return resolved;
 }
 
-function flattenLeaves(groups) {
+function flattenLeaves(layout) {
   const leaves = [];
-  for (const g of groups) {
-    if (g.kind === 'leaf') {
-      leaves.push(g);
-    } else {
-      for (const child of g.children) {
-        if (child.kind === 'sub-group') {
-          for (const leaf of child.children) leaves.push(leaf);
-        } else {
-          leaves.push(child);
-        }
-      }
+  for (const item of layout) {
+    if (item.kind === 'leaf') leaves.push(item);
+    else for (const c of item.children) {
+      if (c.kind === 'sub') for (const l of c.leaves) leaves.push(l);
+      else leaves.push(c);
     }
   }
   return leaves;
+}
+
+// Hitung berapa "level" header diperlukan (3 kalau ada sub-group, 2 kalau cuma group)
+function maxHeaderDepth(layout) {
+  let depth = 1;
+  for (const item of layout) {
+    if (item.kind === 'group') {
+      depth = Math.max(depth, 2);
+      for (const c of item.children) {
+        if (c.kind === 'sub') depth = Math.max(depth, 3);
+      }
+    }
+  }
+  return depth;
+}
+
+// Tampilkan label vertical (di-rotate 90° via CSS transform pada inner span — robust di table)
+function VerticalLabel({ children, height = 110 }) {
+  return (
+    <div style={{ height, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '4px 0' }}>
+      <div
+        style={{
+          transform: 'rotate(-90deg)',
+          transformOrigin: 'center',
+          whiteSpace: 'nowrap',
+          fontSize: '11px',
+          fontWeight: 600,
+          letterSpacing: '0.02em',
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
 }
 
 export default function RekapDawisDataPage({ config }) {
@@ -187,11 +194,9 @@ export default function RekapDawisDataPage({ config }) {
   const [data, setData] = useState({});
   const [prevYearData, setPrevYearData] = useState({});
   const [tahun, setTahun] = useState(new Date().getFullYear());
-
   const [saving, setSaving] = useState(null);
   const [saveStatus, setSaveStatus] = useState({});
   const [toast, setToast] = useState(null);
-
   const [canEdit, setCanEdit] = useState(false);
   const [userRole, setUserRole] = useState('');
   const [userDusunId, setUserDusunId] = useState(null);
@@ -208,8 +213,9 @@ export default function RekapDawisDataPage({ config }) {
     () => applyColumnOverrides(config.columns, overrides).filter((c) => !c.hidden),
     [config.columns, overrides]
   );
-  const groups = useMemo(() => resolveGroups(effectiveColumns), [effectiveColumns]);
-  const leaves = useMemo(() => flattenLeaves(groups), [groups]);
+  const layout = useMemo(() => resolveLayout(effectiveColumns), [effectiveColumns]);
+  const leaves = useMemo(() => flattenLeaves(layout), [layout]);
+  const headerDepth = useMemo(() => maxHeaderDepth(layout), [layout]);
 
   useEffect(() => { fetchDusun(); checkPermission(); fetchOverrides(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -329,52 +335,61 @@ export default function RekapDawisDataPage({ config }) {
   const getTotal = (key) => dusun.reduce((sum, d) => sum + (Number(data[d.id]?.[key]) || 0), 0);
   const isDusunEditable = (id) => canEdit && (userDusunId == null || Number(id) === Number(userDusunId));
 
-  // Header rendering ───────────────────────────────────────────────────────
-  // Total kolom di tabel = 2 (NO + Nama Dusun) + sum(leaves) + 0 (KET sudah di-leaf)
-  const dataColCount = leaves.length;
-  const totalCols = 2 + dataColCount;
-
-  // Row 1: NO + Nama Dusun (rowSpan=3) + group titles + leaf top-level
-  // Row 2: sub-groups (Total/Balita) + rowspan=2 untuk leaf di bawah group
-  // Row 3: leaf labels (L/P)
-
-  const renderHeaderRow1 = () => {
-    const cells = [];
-    cells.push(<th key="no" rowSpan={3} className="sticky left-0 z-30 bg-gray-50" style={{ minWidth: 36 }}>NO</th>);
-    cells.push(<th key="nama" rowSpan={3} className="sticky bg-gray-50" style={{ left: 36, minWidth: 130, zIndex: 30 }}>Nama Dusun</th>);
-
-    for (const g of groups) {
-      if (g.kind === 'leaf') {
-        cells.push(
-          <th key={g.key} rowSpan={3} className="text-center" style={{ minWidth: 70 }} title={g.fullLabel || g.label}>
-            {g.label}
-            {g.renamed && <span className="ml-1 text-[9px] text-amber-500">*</span>}
-          </th>
-        );
-      } else {
-        cells.push(
-          <th key={g.title} colSpan={g.colSpan} className="text-center">
-            {g.title}
-          </th>
-        );
-      }
+  // Render label leaf — rotated kalau vertical=true
+  const LeafLabel = ({ leaf, height }) => {
+    if (leaf.vertical) {
+      return <VerticalLabel height={height || 110}>{leaf.label}{leaf.renamed && <span className="ml-1 text-amber-500">*</span>}</VerticalLabel>;
     }
-    return <tr>{cells}</tr>;
+    return (
+      <span style={{ fontSize: 11, fontWeight: 600 }}>
+        {leaf.label}{leaf.renamed && <span className="ml-1 text-[9px] text-amber-500">*</span>}
+      </span>
+    );
   };
 
+  // Total kolom = 2 (NO+Nama) + leaves.length
+  const totalCols = 2 + leaves.length;
+  const verticalRowHeight = 130;
+
+  // Build header row 1: NO(rowSpan=depth), Nama(rowSpan=depth), then layout items
+  const renderHeaderRow1 = () => (
+    <tr>
+      <th rowSpan={headerDepth + 1} className="bg-gray-50 sticky left-0" style={{ minWidth: 36, zIndex: 30, padding: 6 }}>NO</th>
+      <th rowSpan={headerDepth + 1} className="bg-gray-50 sticky" style={{ left: 36, minWidth: 130, zIndex: 30, padding: 6 }}>Nama Dusun</th>
+      {layout.map((item) => {
+        if (item.kind === 'leaf') {
+          return (
+            <th key={item.key} rowSpan={headerDepth + 1} className="text-center" style={{ minWidth: item.vertical ? 36 : 70, padding: 4 }} title={item.fullLabel || item.label}>
+              <LeafLabel leaf={item} height={item.vertical ? verticalRowHeight + 60 : undefined} />
+            </th>
+          );
+        }
+        return (
+          <th key={item.title} colSpan={item.colSpan} className="text-center" style={{ padding: 6 }}>
+            <span style={{ fontSize: 12, fontWeight: 700 }}>{item.title}</span>
+          </th>
+        );
+      })}
+    </tr>
+  );
+
+  // Row 2: sub-titles for groups, OR rowSpan=2 for direct leaves under group
   const renderHeaderRow2 = () => {
     const cells = [];
-    for (const g of groups) {
-      if (g.kind === 'leaf') continue; // sudah rowSpan=3
-      for (const child of g.children) {
-        if (child.kind === 'sub-group') {
-          cells.push(<th key={`${g.title}-${child.title}`} colSpan={child.colSpan} className="text-center" style={{ minWidth: 60 }}>{child.title}</th>);
-        } else {
-          // leaf in group → rowSpan=2 (turun ke baris 3 juga)
+    for (const item of layout) {
+      if (item.kind === 'leaf') continue;
+      for (const child of item.children) {
+        if (child.kind === 'sub') {
           cells.push(
-            <th key={child.key} rowSpan={2} className="text-center align-bottom" style={{ minWidth: 64, writingMode: child.label.length > 10 ? 'vertical-rl' : 'horizontal-tb', transform: child.label.length > 10 ? 'rotate(180deg)' : 'none', height: child.label.length > 10 ? 80 : 'auto' }} title={child.fullLabel || child.label}>
-              {child.label}
-              {child.renamed && <span className="ml-1 text-[9px] text-amber-500">*</span>}
+            <th key={`${item.title}-${child.title}`} colSpan={child.leaves.length} className="text-center" style={{ minWidth: 50, padding: 4 }}>
+              <span style={{ fontSize: 11, fontWeight: 600 }}>{child.title}</span>
+            </th>
+          );
+        } else {
+          // leaf in group → rowSpan=2 (turun ke row 3 juga)
+          cells.push(
+            <th key={child.key} rowSpan={2} className="text-center align-bottom" style={{ minWidth: child.vertical ? 36 : 60, padding: 2, height: child.vertical ? verticalRowHeight : 'auto' }} title={child.fullLabel || child.label}>
+              <LeafLabel leaf={child} height={child.vertical ? verticalRowHeight - 10 : undefined} />
             </th>
           );
         }
@@ -383,16 +398,17 @@ export default function RekapDawisDataPage({ config }) {
     return <tr>{cells}</tr>;
   };
 
+  // Row 3: leaf labels under sub-groups (e.g., L/P)
   const renderHeaderRow3 = () => {
     const cells = [];
-    for (const g of groups) {
-      if (g.kind === 'leaf') continue;
-      for (const child of g.children) {
-        if (child.kind === 'sub-group') {
-          for (const leaf of child.children) {
+    for (const item of layout) {
+      if (item.kind === 'leaf') continue;
+      for (const child of item.children) {
+        if (child.kind === 'sub') {
+          for (const leaf of child.leaves) {
             cells.push(
-              <th key={leaf.key} className="text-center" style={{ minWidth: 50 }} title={leaf.fullLabel || leaf.label}>
-                {leaf.label}
+              <th key={leaf.key} className="text-center" style={{ minWidth: 44, padding: 4 }} title={leaf.fullLabel || leaf.label}>
+                <LeafLabel leaf={leaf} />
               </th>
             );
           }
@@ -403,23 +419,22 @@ export default function RekapDawisDataPage({ config }) {
     return <tr>{cells}</tr>;
   };
 
-  // Row 4: column number reference (1, 2, 3, ...)
+  // Row 4: column number reference
   const renderHeaderRow4 = () => {
     const cells = [];
     for (let i = 1; i <= totalCols; i++) {
-      const stickyStyle = i === 1
-        ? { position: 'sticky', left: 0, zIndex: 30, background: '#f9fafb', minWidth: 36 }
-        : i === 2
-          ? { position: 'sticky', left: 36, zIndex: 30, background: '#f9fafb', minWidth: 130 }
-          : undefined;
+      const sticky =
+        i === 1 ? { position: 'sticky', left: 0, zIndex: 30, background: '#f9fafb', minWidth: 36 } :
+        i === 2 ? { position: 'sticky', left: 36, zIndex: 30, background: '#f9fafb', minWidth: 130 } :
+        undefined;
       cells.push(
-        <th key={i} className="text-center text-[10px] text-gray-500 font-medium" style={stickyStyle}>{i}</th>
+        <th key={`num-${i}`} className="text-center" style={{ ...sticky, fontSize: 10, color: '#6b7280', fontWeight: 500, padding: '2px 0' }}>{i}</th>
       );
     }
     return <tr>{cells}</tr>;
   };
 
-  // Mobile card — accordion dengan group as section
+  // Mobile card render
   const MobileCard = ({ d, i }) => {
     const [expanded, setExpanded] = useState(false);
     const rowData = data[d.id] || {};
@@ -435,13 +450,9 @@ export default function RekapDawisDataPage({ config }) {
 
     return (
       <div className={`bg-white rounded-xl border ${isDirty ? 'border-amber-200' : 'border-gray-200'} mb-3 shadow-sm overflow-hidden`}>
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-gray-50 active:bg-gray-100 transition-colors text-left"
-          style={{ minHeight: 56 }}
-        >
+        <button onClick={() => setExpanded(!expanded)} className="w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-gray-50 active:bg-gray-100 transition-colors text-left" style={{ minHeight: 56 }}>
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md flex-shrink-0">{i + 1}</span>
+            <span className="text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md">{i + 1}</span>
             <div className="min-w-0">
               <div className="font-bold text-gray-800 truncate">{d.nama}</div>
               <div className="text-[10px] text-gray-500 mt-0.5 flex items-center gap-2 flex-wrap">
@@ -467,32 +478,29 @@ export default function RekapDawisDataPage({ config }) {
 
         {expanded && (
           <div className="px-4 pb-4 pt-1 border-t border-gray-100 space-y-4">
-            {groups.map((g) => {
-              if (g.kind === 'leaf') {
-                const valObj = validation[g.key] || { valid: true };
+            {layout.map((item) => {
+              if (item.kind === 'leaf') {
+                const valObj = validation[item.key] || { valid: true };
                 const hasError = valObj.severity === 'error';
                 const hasWarning = valObj.severity === 'warning';
                 return (
-                  <div key={g.key} className="grid grid-cols-2 gap-3 mt-3">
-                    <div className="flex flex-col col-span-2">
-                      <label className="text-[10px] uppercase font-semibold text-gray-500 mb-1">{g.label}</label>
-                      {dusunEditable ? (
-                        <input type="number" inputMode="numeric"
-                          className={`w-full text-base py-2.5 px-3 rounded-lg border outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${hasError ? 'border-red-300 bg-red-50' : hasWarning ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50 focus:bg-white'}`}
-                          style={{ minHeight: 44 }}
-                          value={rowData[g.key] ?? ''} onChange={(e) => handleChange(d.id, g.key, e.target.value)} onBlur={() => saveRow(d.id)} min="0" />
-                      ) : (
-                        <div className="text-base font-medium text-gray-800 py-2.5 px-3">{(rowData[g.key] || 0).toLocaleString('id-ID')}</div>
-                      )}
-                    </div>
+                  <div key={item.key} className="flex flex-col">
+                    <label className="text-[10px] uppercase font-semibold text-gray-500 mb-1">{item.label}</label>
+                    {dusunEditable ? (
+                      <input type="number" inputMode="numeric"
+                        className={`w-full text-base py-2.5 px-3 rounded-lg border outline-none focus:ring-2 focus:ring-primary-500 ${hasError ? 'border-red-300 bg-red-50' : hasWarning ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50 focus:bg-white'}`}
+                        style={{ minHeight: 44 }}
+                        value={rowData[item.key] ?? ''} onChange={(e) => handleChange(d.id, item.key, e.target.value)} onBlur={() => saveRow(d.id)} min="0" />
+                    ) : (
+                      <div className="text-base font-medium text-gray-800 py-2.5 px-3">{(rowData[item.key] || 0).toLocaleString('id-ID')}</div>
+                    )}
                   </div>
                 );
               }
-              // group
-              const childLeaves = g.children.flatMap((c) => c.kind === 'sub-group' ? c.children : [c]);
+              const childLeaves = item.children.flatMap((c) => c.kind === 'sub' ? c.leaves : [c]);
               return (
-                <div key={g.title}>
-                  <div className="mb-2 text-[10px] font-bold uppercase tracking-wide text-gray-500">{g.title}</div>
+                <div key={item.title}>
+                  <div className="mb-2 text-[10px] font-bold uppercase tracking-wide text-gray-500">{item.title}</div>
                   <div className="grid grid-cols-2 gap-3">
                     {childLeaves.map((leaf) => {
                       const valObj = validation[leaf.key] || { valid: true };
@@ -518,12 +526,9 @@ export default function RekapDawisDataPage({ config }) {
             })}
 
             {dusunEditable && (
-              <button
-                onClick={() => saveRow(d.id)}
-                disabled={isSaving}
-                className={`w-full mt-2 inline-flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-colors ${isSaved ? 'bg-green-100 text-green-700' : isError ? 'bg-red-100 text-red-700' : isDirty ? 'bg-primary-600 hover:bg-primary-700 text-white' : 'bg-gray-100 text-gray-600'}`}
-              >
-                {isSaving ? <>Menyimpan...</> : isSaved ? <><CheckCircle className="w-4 h-4" /> Tersimpan</> : <><FloppyDisk className="w-4 h-4" /> Simpan Perubahan</>}
+              <button onClick={() => saveRow(d.id)} disabled={isSaving}
+                className={`w-full mt-2 inline-flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-colors ${isSaved ? 'bg-green-100 text-green-700' : isError ? 'bg-red-100 text-red-700' : isDirty ? 'bg-primary-600 hover:bg-primary-700 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                {isSaving ? 'Menyimpan...' : isSaved ? <><CheckCircle className="w-4 h-4" /> Tersimpan</> : <><FloppyDisk className="w-4 h-4" /> Simpan Perubahan</>}
               </button>
             )}
           </div>
@@ -545,7 +550,6 @@ export default function RekapDawisDataPage({ config }) {
         </div>
       )}
 
-      {/* Header sesuai gambar */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-gray-800 flex items-center gap-2">
@@ -581,7 +585,6 @@ export default function RekapDawisDataPage({ config }) {
         </div>
       </div>
 
-      {/* Title block sesuai gambar */}
       <div className="mb-4 rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm">
         <div className="text-center text-sm font-bold uppercase leading-snug text-gray-900">
           <div>{REKAP_DAWIS_TITLE}</div>
@@ -611,20 +614,18 @@ export default function RekapDawisDataPage({ config }) {
         </div>
       )}
 
-      {/* Mobile */}
       <div className="md:hidden">
         {filteredDusun.map((d, i) => <MobileCard key={d.id} d={d} i={i} />)}
         {filteredDusun.length === 0 && <div className="text-center py-8 text-gray-500 bg-white rounded-xl border border-gray-100">Dusun tidak ditemukan</div>}
       </div>
 
-      {/* Desktop */}
-      <div className="hidden md:block bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-        <div className="data-table-wrapper" style={{ maxHeight: '78vh' }}>
-          <table className="data-table">
+      <div className="hidden md:block bg-white rounded-2xl border border-gray-100 p-3 shadow-sm">
+        <div style={{ overflow: 'auto', maxHeight: '78vh' }}>
+          <table className="data-table" style={{ borderCollapse: 'collapse', minWidth: '100%' }}>
             <thead>
               {renderHeaderRow1()}
-              {renderHeaderRow2()}
-              {renderHeaderRow3()}
+              {headerDepth >= 2 && renderHeaderRow2()}
+              {headerDepth >= 3 && renderHeaderRow3()}
               {renderHeaderRow4()}
             </thead>
             <tbody>
@@ -635,19 +636,20 @@ export default function RekapDawisDataPage({ config }) {
                 const dusunEditable = isDusunEditable(d.id);
                 return (
                   <tr key={d.id} className="group">
-                    <td style={{ position: 'sticky', left: 0, background: '#fff', zIndex: 1, textAlign: 'center' }} className="group-hover:bg-primary-50/50">{i + 1}</td>
-                    <td className="col-desa group-hover:bg-primary-50/50" style={{ left: 36 }}>{d.nama}</td>
+                    <td style={{ position: 'sticky', left: 0, background: '#fff', zIndex: 1, textAlign: 'center', padding: 4 }} className="group-hover:bg-primary-50/50">{i + 1}</td>
+                    <td className="col-desa group-hover:bg-primary-50/50" style={{ left: 36, padding: '4px 8px' }}>{d.nama}</td>
                     {leaves.map((col) => {
                       const valObj = validation[col.key] || { valid: true };
                       const hasError = valObj.severity === 'error';
                       const hasWarning = valObj.severity === 'warning';
                       const inputClass = `cell-input ${hasError ? '!bg-red-50 !border-red-300' : hasWarning ? '!bg-amber-50 !border-amber-300' : ''}`;
                       return (
-                        <td key={col.key} className="relative">
+                        <td key={col.key} className="relative" style={{ padding: 2, minWidth: col.vertical ? 36 : 50 }}>
                           {dusunEditable ? (
-                            <input type="number" className={inputClass} value={rowData[col.key] ?? ''} onChange={(e) => handleChange(d.id, col.key, e.target.value)} onBlur={() => saveRow(d.id)} min="0" title={valObj.warning || col.fullLabel || col.label} aria-label={`${d.nama} ${col.fullLabel || col.label}`} />
+                            <input type="number" className={inputClass} style={{ width: '100%', padding: '2px 4px', fontSize: 12, textAlign: 'center' }}
+                              value={rowData[col.key] ?? ''} onChange={(e) => handleChange(d.id, col.key, e.target.value)} onBlur={() => saveRow(d.id)} min="0" title={valObj.warning || col.fullLabel || col.label} />
                           ) : (
-                            <span className="block text-center px-2 py-1 text-gray-500" title={valObj.warning || ''}>
+                            <span className="block text-center" style={{ fontSize: 12, color: '#6b7280' }} title={valObj.warning || ''}>
                               {(rowData[col.key] || 0).toLocaleString('id-ID')}
                               {hasWarning && <ExclamationCircle className="w-3 h-3 text-amber-500 inline ml-1" />}
                             </span>
@@ -664,8 +666,8 @@ export default function RekapDawisDataPage({ config }) {
               {filteredDusun.length > 0 && (
                 <tr className="row-total">
                   <td style={{ position: 'sticky', left: 0, background: '#f0fdf4', zIndex: 1 }}></td>
-                  <td className="col-desa" style={{ left: 36, background: '#f0fdf4' }}>Jumlah</td>
-                  {leaves.map((col) => <td key={col.key} className="text-center font-bold">{getTotal(col.key).toLocaleString('id-ID')}</td>)}
+                  <td className="col-desa" style={{ left: 36, background: '#f0fdf4', padding: '6px 8px' }}>Jumlah</td>
+                  {leaves.map((col) => <td key={col.key} className="text-center font-bold" style={{ fontSize: 12, padding: 4 }}>{getTotal(col.key).toLocaleString('id-ID')}</td>)}
                 </tr>
               )}
             </tbody>
