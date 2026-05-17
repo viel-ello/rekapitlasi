@@ -60,6 +60,16 @@ export default function OnboardingTour() {
   const [active, setActive] = useState(false);
   const [step, setStep] = useState(0);
   const [rect, setRect] = useState(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Track viewport size — sinkronkan isMobile saat resize/orientation change
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const sync = () => setIsMobile(window.innerWidth < 640);
+    sync();
+    window.addEventListener('resize', sync);
+    return () => window.removeEventListener('resize', sync);
+  }, []);
 
   // Cek localStorage di mount
   useEffect(() => {
@@ -128,7 +138,7 @@ export default function OnboardingTour() {
 
   const cur = STEPS[step];
   const isLast = step === STEPS.length - 1;
-  const tooltipPos = computeTooltipPosition(rect, cur?.placement || 'bottom');
+  const tooltipPos = computeTooltipPosition(rect, cur?.placement || 'bottom', isMobile);
 
   return (
     <AnimatePresence>
@@ -143,7 +153,7 @@ export default function OnboardingTour() {
         aria-labelledby="tour-title"
       >
         {/* Backdrop with cutout */}
-        {rect ? (
+        {rect && !isMobile ? (
           <svg className="absolute inset-0 w-full h-full pointer-events-auto" aria-hidden="true">
             <defs>
               <mask id="tour-mask">
@@ -178,58 +188,63 @@ export default function OnboardingTour() {
         {/* Tooltip / center modal */}
         <motion.div
           key={`tour-step-${step}`}
-          initial={{ opacity: 0, y: 8 }}
+          initial={{ opacity: 0, y: isMobile ? 20 : 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2 }}
-          className="absolute bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 p-5 max-w-sm w-[calc(100%-2rem)] pointer-events-auto"
-          style={tooltipPos}
+          transition={{ duration: 0.25 }}
+          className={`bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 p-5 pointer-events-auto ${
+            isMobile
+              ? 'fixed left-3 right-3 bottom-4 max-h-[80vh] overflow-y-auto'
+              : 'absolute max-w-sm w-[calc(100%-2rem)]'
+          }`}
+          style={isMobile ? undefined : tooltipPos}
         >
           <div className="flex items-start justify-between gap-2 mb-2">
-            <div>
+            <div className="min-w-0 flex-1">
               <div className="text-[10px] font-semibold uppercase tracking-wider text-primary-700">
                 Langkah {step + 1} dari {STEPS.length}
               </div>
-              <h3 id="tour-title" className="text-base font-bold text-gray-900 dark:text-gray-100 mt-0.5">
+              <h3 id="tour-title" className="text-base font-bold text-gray-900 dark:text-gray-100 mt-0.5 break-words">
                 {cur.title}
               </h3>
             </div>
             <button
               onClick={() => finish(true)}
-              className="p-1 text-gray-400 hover:text-gray-600 rounded"
+              className="p-1.5 -m-1 text-gray-400 hover:text-gray-600 rounded flex-shrink-0"
               aria-label="Tutup tour"
+              style={{ minWidth: 32, minHeight: 32 }}
             >
               <Close className="w-4 h-4" />
             </button>
           </div>
-          <p className="text-sm text-gray-600 dark:text-gray-400">{cur.body}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 break-words">{cur.body}</p>
 
-          <div className="flex items-center justify-between mt-4 gap-3">
+          <div className={`flex items-center justify-between mt-4 gap-3 ${isMobile ? 'flex-wrap' : ''}`}>
             <button
               onClick={() => finish(true)}
-              className="text-xs text-gray-500 hover:text-gray-700 underline-offset-2 hover:underline"
+              className="text-xs text-gray-500 hover:text-gray-700 underline-offset-2 hover:underline py-1"
             >
               Jangan tampilkan lagi
             </button>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 ml-auto">
               {step > 0 && (
                 <button
                   onClick={() => setStep((s) => Math.max(0, s - 1))}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 text-xs font-semibold rounded-lg"
+                  className="inline-flex items-center gap-1 px-3 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 text-xs font-semibold rounded-lg"
                 >
-                  <ArrowLeft className="w-3 h-3" /> Sebelumnya
+                  <ArrowLeft className="w-3 h-3" /> {isMobile ? '' : 'Sebelumnya'}
                 </button>
               )}
               {!isLast ? (
                 <button
                   onClick={() => setStep((s) => Math.min(s + 1, STEPS.length - 1))}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold rounded-lg"
+                  className="inline-flex items-center gap-1 px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold rounded-lg"
                 >
                   Selanjutnya <ArrowRight className="w-3 h-3" />
                 </button>
               ) : (
                 <button
                   onClick={() => finish(false)}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold rounded-lg"
+                  className="inline-flex items-center gap-1 px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold rounded-lg"
                 >
                   Selesai
                 </button>
@@ -254,12 +269,16 @@ export default function OnboardingTour() {
 
 /**
  * Hitung posisi tooltip relatif ke target rect.
- * Kalau target null, render di tengah viewport.
+ * Kalau target null atau mobile, render di tengah/bawah viewport.
  * Auto-flip ke center kalau tooltip tidak muat di sisi yang diminta.
  */
-function computeTooltipPosition(rect, placement) {
+function computeTooltipPosition(rect, placement, isMobile = false) {
   if (typeof window === 'undefined') {
     return { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' };
+  }
+  // Mobile pakai fixed bottom layout (di-handle di JSX), helper tidak relevan
+  if (isMobile) {
+    return undefined;
   }
   const vw = window.innerWidth;
   const vh = window.innerHeight;
