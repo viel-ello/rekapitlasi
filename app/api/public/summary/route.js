@@ -33,7 +33,9 @@ function clampMonth(input) {
 }
 
 function unitIdOf(row) {
-  return row?.dusun_id ?? row?.desa_id;
+  // Fresh schema hanya punya dusun_id. Fallback ke desa_id hanya untuk
+  // mendukung row dari archive table yang masih memiliki kolom legacy.
+  return row?.dusun_id ?? row?.desa_id ?? null;
 }
 
 function indexByUnit(rows) {
@@ -61,8 +63,8 @@ export async function GET(request) {
     const totalDusun = (dusunList || []).length;
 
     const fetchTable = async (table, fields) => {
-      // Select dusun_id (canonical) plus desa_id (legacy) untuk safety
-      const cols = ['dusun_id', 'desa_id', ...fields].join(',');
+      // Select hanya dusun_id (canonical). Schema baru tidak punya desa_id.
+      const cols = ['dusun_id', ...fields].join(',');
       let query = supabase.from(table).select(cols).eq('tahun', tahun);
       if (table === 'data_bumil') query = query.eq('bulan', bulan);
       const { data } = await query;

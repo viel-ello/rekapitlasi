@@ -12,7 +12,7 @@ import { notifyYearsUpdated, useYears } from '@/lib/useYears';
 
 const TABS = [
   { id: 'users', label: 'Pengguna', icon: User },
-  { id: 'desa', label: 'Desa', icon: MapPin },
+  { id: 'desa', label: 'Dusun', icon: MapPin },
   { id: 'years', label: 'Tahun', icon: Clock },
   { id: 'columns', label: 'Kolom', icon: List },
   { id: 'logs', label: 'Log Aktivitas', icon: ClipboardList },
@@ -62,7 +62,7 @@ export default function AdminPage() {
         <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
           <Cog className="w-7 h-7" /> Panel Admin
         </h1>
-        <p className="text-sm text-gray-500 mt-0.5">Kelola pengguna, desa, dan pengaturan sistem</p>
+        <p className="text-sm text-gray-500 mt-0.5">Kelola pengguna, dusun, dan pengaturan sistem</p>
       </div>
 
       {/* Tabs */}
@@ -345,7 +345,7 @@ function LogsTab() {
 
   const TABLE_OPTIONS = [
     '', 'data_umum', 'data_pokja1', 'data_pokja2', 'data_pokja3', 'data_pokja4',
-    'data_rekap_dawis', 'data_bumil', 'users', 'desa', 'table_schemas',
+    'data_rekap_dawis', 'data_bumil', 'users', 'dusun', 'table_schemas',
     'table_column_overrides', 'report_periods', 'report_years',
   ];
   const ACTION_OPTIONS = [
@@ -424,9 +424,9 @@ function LogsTab() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Desa</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Dusun</label>
             <select value={filters.desa} onChange={(e) => setFilters({ ...filters, desa: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none">
-              <option value="">Semua desa</option>
+              <option value="">Semua dusun</option>
               {desaList.map(d => <option key={d.id} value={d.nama}>{d.nama}</option>)}
             </select>
           </div>
@@ -469,7 +469,7 @@ function LogsTab() {
                     <th>Waktu</th>
                     <th>User</th>
                     <th>Tabel</th>
-                    <th>Desa</th>
+                    <th>Dusun</th>
                     <th>Aksi</th>
                     <th>Detail</th>
                   </tr>
@@ -480,7 +480,7 @@ function LogsTab() {
                       <td className="text-xs whitespace-nowrap">{new Date(l.created_at).toLocaleString('id-ID')}</td>
                       <td><span className="font-medium">{l.username}</span></td>
                       <td><span className="inline-flex px-1.5 py-0.5 bg-blue-50 text-blue-600 text-xs rounded">{l.table_name}</span></td>
-                      <td className="text-xs">{l.desa_nama || '-'}</td>
+                      <td className="text-xs">{l.dusun_nama || l.desa_nama || '-'}</td>
                       <td><span className="inline-flex px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">{l.action}</span></td>
                       <td className="text-xs text-gray-500 max-w-xs truncate" title={l.detail}>{l.detail || '-'}</td>
                     </tr>
@@ -516,7 +516,7 @@ function LogsTab() {
               <Field label="User" value={selectedLog.username} />
               <Field label="Action" value={selectedLog.action} />
               <Field label="Tabel" value={selectedLog.table_name} />
-              <Field label="Desa" value={selectedLog.desa_nama || '-'} />
+              <Field label="Dusun" value={selectedLog.dusun_nama || selectedLog.desa_nama || '-'} />
               <Field label="Detail" value={selectedLog.detail || '-'} />
               {selectedLog.ip && <Field label="IP" value={selectedLog.ip} />}
               {selectedLog.before_json && (
@@ -665,10 +665,26 @@ function ImportTab({ toast, setToast }) {
         </div>
 
         <div className="md:col-span-2 bg-amber-50 rounded-2xl border border-amber-100 p-4">
-          <h4 className="text-sm font-semibold text-amber-800 mb-1">Catatan</h4>
-          <p className="text-xs text-amber-700">
-            Database utama disimpan di Supabase. Untuk backup penuh, gunakan fitur backup bawaan Supabase Dashboard.
-            Fitur import/export Excel di sini hanya untuk pertukaran data periodik per tabel.
+          <h4 className="text-sm font-semibold text-amber-800 mb-1">Catatan Backup (Supabase Free Plan)</h4>
+          <p className="text-xs text-amber-700 mb-2">
+            Supabase Free Plan TIDAK menyediakan automated backup harian. Lakukan backup manual berkala salah satu cara di bawah:
+          </p>
+          <ul className="text-xs text-amber-700 list-disc pl-5 space-y-0.5">
+            <li>
+              <strong>pg_dump</strong> dari mesin lokal (paling lengkap):{' '}
+              <code className="px-1 py-0.5 bg-amber-100 rounded">
+                pg_dump &quot;postgres://USER:PASS@db.HOST.supabase.co:5432/postgres&quot; --data-only &gt; backup.sql
+              </code>
+            </li>
+            <li>
+              <strong>Export CSV per tabel</strong> via Supabase SQL Editor &rarr; pilih tabel &rarr; Export.
+            </li>
+            <li>
+              <strong>Export Excel</strong> dari panel ini (tab &quot;Database&quot;) — backup parsial per tabel.
+            </li>
+          </ul>
+          <p className="text-xs text-amber-700 mt-2">
+            Direkomendasikan backup minimal sebelum migration SQL atau perubahan schema besar.
           </p>
         </div>
       </div>
@@ -732,7 +748,7 @@ function ImportPreviewModal({ preview, tahun, setTahun, yearOptions, confirming,
                   <thead className="sticky top-0 bg-gray-50 text-xs text-gray-500 uppercase">
                     <tr>
                       <th className="px-3 py-2 text-left">Aksi</th>
-                      <th className="px-3 py-2 text-left">Desa</th>
+                      <th className="px-3 py-2 text-left">Dusun</th>
                       <th className="px-3 py-2 text-left">Detail</th>
                     </tr>
                   </thead>
@@ -747,7 +763,7 @@ function ImportPreviewModal({ preview, tahun, setTahun, yearOptions, confirming,
                             'bg-gray-100 text-gray-600'
                           }`}>{row.action}</span>
                         </td>
-                        <td className="px-3 py-2 font-medium text-gray-800">{row.desaName}</td>
+                        <td className="px-3 py-2 font-medium text-gray-800">{row.dusunName || row.desaName}</td>
                         <td className="px-3 py-2 font-mono text-xs text-gray-600">
                           {row.reason || `${Object.keys(row.incoming || {}).length} kolom terbaca`}
                           {row.issueCount > 0 && row.action !== 'error' && (

@@ -85,13 +85,13 @@ async function gatherReport(config) {
     let q = supabase.from(t).select('*').in('tahun', years);
     if (meta.hasMonth && config.bulan) q = q.eq('bulan', config.bulan);
     if (requestedIds.length > 0) {
-      q = q.or(`dusun_id.in.(${requestedIds.join(',')}),desa_id.in.(${requestedIds.join(',')})`);
+      q = q.in('dusun_id', requestedIds);
     }
     const { data: rows } = await q;
 
     const merged = (rows || [])
       .map((r) => {
-        const unitId = r.dusun_id ?? r.desa_id;
+        const unitId = r.dusun_id;
         const d = (dusunList || []).find((x) => x.id === unitId);
         return d ? { ...r, _dusun_nama: d.nama, _desa_nama: d.nama, _nomor_urut: d.nomor_urut } : null;
       })

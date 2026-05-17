@@ -49,8 +49,8 @@ export default function PublikPage() {
   const completeness = summary?.completeness || { complete: 0, needsCheck: 0, incomplete: 0 };
 
   const kpi = useMemo(() => ([
-    { label: 'Total Desa', value: summary?.totalDesa, sub: 'desa aktif', tone: 'primary' },
-    { label: 'Desa Lengkap', value: completeness.complete, sub: `dari ${summary?.totalDesa || 0}`, tone: 'green' },
+    { label: 'Total Dusun', value: summary?.totalDusun ?? summary?.totalDesa, sub: 'dusun aktif', tone: 'primary' },
+    { label: 'Dusun Lengkap', value: completeness.complete, sub: `dari ${summary?.totalDusun ?? summary?.totalDesa ?? 0}`, tone: 'green' },
     { label: 'Perlu Dicek', value: completeness.needsCheck, sub: 'ada warning', tone: 'amber' },
     { label: 'Belum Lengkap', value: completeness.incomplete, sub: 'data minimal', tone: 'red' },
   ]), [summary, completeness]);
@@ -79,10 +79,10 @@ export default function PublikPage() {
             <span className="font-medium text-gray-700">Data Publik</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <Globe className="w-7 h-7 text-primary-600" /> Data Publik PKK Baturetno
+            <Globe className="w-7 h-7 text-primary-600" /> Data Publik PKK Desa Belikurip
           </h1>
           <p className="text-sm text-gray-600 mt-1">
-            Ringkasan agregat per desa. Data pribadi/individu tidak ditampilkan.
+            Ringkasan agregat per dusun. Data pribadi/individu tidak ditampilkan.
           </p>
         </div>
 
@@ -140,17 +140,17 @@ export default function PublikPage() {
           </div>
         </div>
 
-        {/* Tabel desa */}
+        {/* Tabel dusun */}
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
           <div className="px-4 sm:px-5 py-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
-            <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide">Per Desa</h2>
-            <span className="text-xs text-gray-500">Klik desa untuk detail publik</span>
+            <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide">Per Dusun</h2>
+            <span className="text-xs text-gray-500">Klik dusun untuk detail publik</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-xs text-gray-600 uppercase tracking-wide">
                 <tr>
-                  <th className="px-4 py-2 text-left">Desa</th>
+                  <th className="px-4 py-2 text-left">Dusun</th>
                   <th className="px-4 py-2 text-center">Status Kelengkapan</th>
                   <th className="px-4 py-2 text-right">Aksi</th>
                 </tr>
@@ -158,10 +158,10 @@ export default function PublikPage() {
               <tbody className="divide-y divide-gray-50">
                 {loading ? (
                   <tr><td colSpan="3" className="px-4 py-8 text-center text-gray-400">Memuat...</td></tr>
-                ) : (summary?.desa || []).length === 0 ? (
+                ) : ((summary?.dusun || summary?.desa) || []).length === 0 ? (
                   <tr><td colSpan="3" className="px-4 py-8 text-center text-gray-400">Belum ada data</td></tr>
                 ) : (
-                  summary.desa.map((d) => (
+                  (summary.dusun || summary.desa).map((d) => (
                     <tr key={d.id} className="hover:bg-gray-50">
                       <td className="px-4 py-2.5 font-medium text-gray-800">{d.nama}</td>
                       <td className="px-4 py-2.5 text-center">
@@ -172,7 +172,7 @@ export default function PublikPage() {
                       </td>
                       <td className="px-4 py-2.5 text-right">
                         <Link
-                          href={`/publik/desa/${d.id}?tahun=${tahun}&bulan=${bulan}`}
+                          href={`/publik/dusun/${d.id}?tahun=${tahun}&bulan=${bulan}`}
                           className="inline-flex items-center gap-1 text-xs font-semibold text-primary-700 hover:text-primary-800"
                         >
                           Lihat detail <ArrowRight className="w-3 h-3" />
@@ -188,7 +188,7 @@ export default function PublikPage() {
 
         {/* Note */}
         <div className="mt-6 rounded-2xl border border-blue-100 bg-blue-50 p-3 text-xs text-blue-800">
-          <strong>Catatan:</strong> Data yang ditampilkan adalah agregat (jumlah/total) per desa.
+          <strong>Catatan:</strong> Data yang ditampilkan adalah agregat (jumlah/total) per dusun.
           Data perorangan, identitas warga, log aktivitas, dan dokumen internal tidak diakses dari halaman ini.
         </div>
       </main>

@@ -1,7 +1,11 @@
 /**
  * @file Audit log CSV export.
- * GET /api/admin/logs/export?user_id=&table_name=&action=&desa=&from=&to=
+ * GET /api/admin/logs/export?user_id=&table_name=&action=&dusun=&from=&to=
+ *
  * Default cap 5000 rows per request untuk mencegah OOM.
+ *
+ * Migration v5: filter unit data sekarang `dusun` (kolom `dusun_nama`). Param
+ * lama `?desa=...` masih diterima sebagai alias.
  */
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
@@ -25,27 +29,29 @@ export async function GET(request) {
     const userId = searchParams.get('user_id');
     const tableName = searchParams.get('table_name');
     const action = searchParams.get('action');
-    const desa = searchParams.get('desa');
+    const unitNama = searchParams.get('dusun') || searchParams.get('desa');
     const from = searchParams.get('from');
     const to = searchParams.get('to');
 
     let query = supabase
       .from('audit_logs')
-      .select('created_at, username, action, table_name, desa_nama, detail, ip')
+      .select('created_at, username, action, table_name, dusun_nama, desa_nama, detail, ip')
       .order('created_at', { ascending: false })
       .limit(CSV_MAX_ROWS);
 
     if (userId) query = query.eq('user_id', Number(userId));
     if (tableName) query = query.eq('table_name', tableName);
     if (action) query = query.eq('action', action);
-    if (desa) query = query.eq('desa_nama', desa);
+    if (unitNama) {
+      query = query.or(`dusun_nama.eq.${unitNama},desa_nama.eq.${unitNama}`);
+    }
     if (from) query = query.gte('created_at', from);
     if (to) query = query.lte('created_at', to);
 
     const { data, error } = await query;
     if (error) throw error;
 
-    const header = ['Waktu', 'User', 'Action', 'Tabel', 'Desa', 'Detail', 'IP'];
+    const header = ['Waktu', 'User', 'Action', 'Tabel', 'Dusun', 'Detail', 'IP'];
     const lines = [header.join(',')];
     for (const r of data || []) {
       lines.push([
@@ -53,7 +59,8 @@ export async function GET(request) {
         csvEscape(r.username),
         csvEscape(r.action),
         csvEscape(r.table_name),
-        csvEscape(r.desa_nama),
+        // Canonical dusun_nama dengan fallback ke desa_nama (history lama)
+        csvEscape(r.dusun_nama || r.desa_nama),
         csvEscape(r.detail),
         csvEscape(r.ip),
       ].join(','));

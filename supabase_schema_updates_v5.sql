@@ -4,18 +4,35 @@
 -- PREREQUISITE: jalankan v1 (supabase_schema.sql), v2, v3, v4 terlebih dahulu.
 -- Script ini IDEMPOTENT: aman dijalankan ulang.
 --
--- Yang dilakukan:
+-- ⚠️  PENTING — BACKUP DULU SEBELUM JALANKAN.
+--
+-- Supabase Free Plan TIDAK menyediakan automated backup. Lakukan salah satu:
+--   1. pg_dump dari mesin lokal (lihat blok komentar di akhir file ini).
+--   2. Export CSV per tabel via Supabase SQL Editor → Export.
+--   3. Export Excel per tabel dari panel admin aplikasi.
+--   Backup minimal direkomendasikan untuk: dusun (atau desa lama), data_umum,
+--   data_pokja1-4, data_kegiatan_warga (atau data_rekap_dawis), data_bumil,
+--   audit_logs, users.
+--
+-- Yang dilakukan default v5 (NON-DESTRUKTIF):
 --   1. Verifikasi prerequisite (table report_periods harus sudah ada dari v4).
 --   2. Buat tabel `dusun` + seed 9 dusun Belikurip.
 --   3. Tambah kolom `dusun_id` ke semua tabel data.
---   4. Rename `data_kegiatan_warga` → `data_rekap_dawis`.
+--   4. Rename `data_kegiatan_warga` → `data_rekap_dawis` (kalau ada).
 --   5. Tambah kolom `dusun_nama` di `audit_logs`.
 --   6. Tambah kolom `dusun_id` di `users` + extend CHECK constraint role.
 --   7. Tambah kolom `keterangan` ke pokja1-4 + bumil; `akte_l`/`akte_p` ke bumil.
---   8. Tambah kolom Pokja II baru sesuai layout resmi.
---   9. DROP PERMANEN kolom legacy Pokja II yang tidak dipakai.
+--   8. Tambah kolom Pokja II baru sesuai layout resmi (ADD ONLY, TIDAK drop legacy).
+--   9. Tambah kolom Rekap Dawis baru (`tiga_buta`, `berkebutuhan_khusus`).
+--   10. Tambah kolom Data Umum baru (Tenaga Honorer/Bantuan + Keterangan).
 --
--- BACKUP DULU SEBELUM JALANKAN: Supabase Dashboard → Database → Backups.
+-- Yang TIDAK dilakukan default (HARUS dijalankan manual via file v5_destructive.sql):
+--   - DROP COLUMN legacy Pokja II (`rumah_dilan`, `kampung_mandiri`, `usaha_mikro`,
+--     `toko_pkk`, `koperasi_belum_bh_kop`, `koperasi_belum_bh_angg`).
+--   - DROP COLUMN legacy Rekap Dawis (`jml_dusun`, `tiga_buta_l`, `tiga_buta_p`,
+--     `ikut_industri`).
+--   Aplikasi sudah aman tanpa drop ini — kolom legacy diabaikan oleh UI dan API.
+--   Drop hanya disarankan setelah verifikasi 1 release stable.
 -- ==========================================================================
 
 -- 1. Verifikasi prerequisite -----------------------------------------------------
@@ -160,68 +177,31 @@ ALTER TABLE data_pokja2 ADD COLUMN IF NOT EXISTS yg_dilatih_lp3pkk   INTEGER DEF
 ALTER TABLE data_pokja2 ADD COLUMN IF NOT EXISTS yg_dilatih_tp3pkk   INTEGER DEFAULT 0;
 ALTER TABLE data_pokja2 ADD COLUMN IF NOT EXISTS yg_dilatih_damaspkk INTEGER DEFAULT 0;
 
--- 9. DROP PERMANEN kolom legacy Pokja II ----------------------------------------
--- ⚠️ HARD DELETE — pastikan backup sudah dibuat sebelum jalankan.
-ALTER TABLE data_pokja2 DROP COLUMN IF EXISTS rumah_dilan;
-ALTER TABLE data_pokja2 DROP COLUMN IF EXISTS kampung_mandiri;
-ALTER TABLE data_pokja2 DROP COLUMN IF EXISTS usaha_mikro;
-ALTER TABLE data_pokja2 DROP COLUMN IF EXISTS toko_pkk;
-ALTER TABLE data_pokja2 DROP COLUMN IF EXISTS koperasi_belum_bh_kop;
-ALTER TABLE data_pokja2 DROP COLUMN IF EXISTS koperasi_belum_bh_angg;
-
--- 9b. Rekap Dawis: drop kolom yang tidak ada di laporan resmi --------------------
--- ⚠️ HARD DELETE — pastikan backup sudah dibuat sebelum jalankan.
-ALTER TABLE data_rekap_dawis DROP COLUMN IF EXISTS jml_dusun;
-ALTER TABLE data_rekap_dawis DROP COLUMN IF EXISTS tiga_buta_l;
-ALTER TABLE data_rekap_dawis DROP COLUMN IF EXISTS tiga_buta_p;
-ALTER TABLE data_rekap_dawis DROP COLUMN IF EXISTS ikut_industri;
-
--- Tambah kolom baru sesuai layout resmi (col 17 & 18 di Annex F)
+-- 9. Tambah kolom Rekap Dawis baru (`tiga_buta`, `berkebutuhan_khusus`) ----------
 ALTER TABLE data_rekap_dawis ADD COLUMN IF NOT EXISTS tiga_buta           INTEGER DEFAULT 0;
 ALTER TABLE data_rekap_dawis ADD COLUMN IF NOT EXISTS berkebutuhan_khusus INTEGER DEFAULT 0;
 
 -- ==========================================================================
--- 10. (OPSIONAL) Migrasi data lama 13 desa
--- ==========================================================================
--- Default v5 TIDAK menyentuh data lama. Pilih SALAH SATU opsi di bawah, jalankan manual.
---
--- ─── OPSI A — ARCHIVE (recommended) ─────────────────────────────────────────
--- Rename tabel data lama ke *_archive_kecamatan_2026 supaya tidak diakses aplikasi
--- tapi tetap bisa di-read manual via SQL Editor:
---
---   ALTER TABLE desa RENAME TO desa_archive_kecamatan;
---   -- Catatan: tabel data_* sudah punya FK ke desa(id), constraint akan break.
---   -- Solusi: drop FK constraint dulu, lalu archive desa terpisah dari data_*.
---
--- Atau archive tabel data_* yang masih punya baris desa_id != NULL:
---
---   CREATE TABLE data_umum_archive_kecamatan AS SELECT * FROM data_umum WHERE desa_id IS NOT NULL;
---   DELETE FROM data_umum WHERE desa_id IS NOT NULL;
---   -- ulangi untuk data_pokja1-4, data_rekap_dawis, data_bumil
---
--- ─── OPSI B — DROP PERMANEN ────────────────────────────────────────────────
--- 1. Backup dulu di terminal lokal:
---      pg_dump postgres://USER:PASS@db.HOST.supabase.co:5432/postgres \
---        -t data_umum -t data_pokja1 -t data_pokja2 -t data_pokja3 -t data_pokja4 \
---        -t data_kegiatan_warga -t data_bumil -t desa \
---        --data-only > backup_kecamatan_2026.sql
---
--- 2. Drop FK & data:
---      DELETE FROM data_umum WHERE desa_id IS NOT NULL;
---      -- ulangi untuk semua tabel data_*
---      ALTER TABLE data_umum DROP COLUMN desa_id;
---      -- ulangi untuk semua tabel data_*
---      DROP TABLE desa CASCADE;
---
--- ─── OPSI C — RE-SEED CEPAT (untuk staging/testing) ────────────────────────
---   TRUNCATE TABLE data_umum, data_pokja1, data_pokja2, data_pokja3, data_pokja4,
---                  data_rekap_dawis, data_bumil RESTART IDENTITY CASCADE;
---   -- dusun + 9 row sudah ter-seed di langkah 2 di atas.
---
--- ==========================================================================
--- v5 SELESAI. Verifikasi:
+-- v5 SELESAI (NON-DESTRUKTIF). Verifikasi:
 --   SELECT COUNT(*) FROM dusun WHERE is_active = 1;     -- harus 9
 --   SELECT column_name FROM information_schema.columns
 --     WHERE table_name = 'data_pokja2' ORDER BY column_name;  -- cek kolom baru
---   \d audit_logs                                       -- harus ada kolom dusun_nama
+-- ==========================================================================
+--
+-- Untuk OPSIONAL drop kolom legacy & migrasi data 13 desa lama:
+-- jalankan `supabase_schema_updates_v5_destructive.sql` (manual) setelah backup
+-- dan setelah verifikasi aplikasi production stable.
+-- ==========================================================================
+
+-- ─── BACKUP MANUAL — Supabase Free Plan ───────────────────────────────────
+-- Free Plan TIDAK menyediakan automated backup. Jalankan manual sebelum drop:
+--
+--   pg_dump "postgres://USER:PASS@db.HOST.supabase.co:5432/postgres" \
+--     -t dusun -t users -t audit_logs \
+--     -t data_umum -t data_pokja1 -t data_pokja2 -t data_pokja3 -t data_pokja4 \
+--     -t data_kegiatan_warga -t data_rekap_dawis -t data_bumil \
+--     --data-only > backup_pre_v5_$(date +%Y%m%d).sql
+--
+-- Atau export CSV per tabel via Supabase SQL Editor → klik tabel → Export.
+-- Atau export Excel per tabel dari panel admin aplikasi (tab "Database").
 -- ==========================================================================

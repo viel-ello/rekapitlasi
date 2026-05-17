@@ -534,24 +534,14 @@ Tahun yang sedang dipilih user di dashboard: ${currentYear}
                   }
 
                   if (!apiResponse) {
-                    // Try update first using dusun_id, fallback to desa_id (legacy data row)
-                    let { data: updatedRows, error } = await supabase
+                    // Schema baru hanya pakai dusun_id (kolom desa_id sudah dihapus
+                    // atau di-archive). Tidak ada fallback desa_id di endpoint canonical.
+                    const { data: updatedRows, error } = await supabase
                       .from(tableName)
                       .update(sanitizedUpdates)
                       .eq('dusun_id', targetDusunId)
                       .eq('tahun', currentYear)
                       .select('id');
-
-                    if (!error && (!updatedRows || updatedRows.length === 0)) {
-                      const fallback = await supabase
-                        .from(tableName)
-                        .update(sanitizedUpdates)
-                        .eq('desa_id', targetDusunId)
-                        .eq('tahun', currentYear)
-                        .select('id');
-                      updatedRows = fallback.data;
-                      error = fallback.error;
-                    }
 
                     if (error) {
                       apiResponse = { error: `Gagal menyimpan ke database: ${error.message}` };

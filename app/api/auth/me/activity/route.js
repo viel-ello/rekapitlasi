@@ -15,7 +15,7 @@ export async function GET(request) {
 
     const { data, error } = await supabase
       .from('audit_logs')
-      .select('id, action, table_name, desa_nama, detail, created_at')
+      .select('id, action, table_name, dusun_nama, desa_nama, detail, created_at')
       .eq('user_id', user.userId)
       .gte('created_at', cutoff)
       .order('created_at', { ascending: false })
@@ -24,7 +24,13 @@ export async function GET(request) {
     if (error) {
       return NextResponse.json({ items: [] });
     }
-    return NextResponse.json({ items: data || [] });
+    // Normalisasi nama unit ke field canonical `dusun_nama`. Fallback ke
+    // legacy `desa_nama` supaya history audit log lama tetap tampil.
+    const items = (data || []).map((row) => ({
+      ...row,
+      dusun_nama: row.dusun_nama || row.desa_nama || null,
+    }));
+    return NextResponse.json({ items });
   } catch (err) {
     console.error('Profile activity error:', err);
     return NextResponse.json({ items: [] });

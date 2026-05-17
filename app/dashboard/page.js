@@ -186,7 +186,7 @@ export default function DashboardPage() {
   const handleDownload = async (type) => {
     const needsCheck = rekap?.completeness?.needsCheck || 0;
     const incomplete = rekap?.completeness?.incomplete || 0;
-    if ((needsCheck > 0 || incomplete > 0) && !window.confirm(`Masih ada ${needsCheck} desa perlu dicek dan ${incomplete} desa belum lengkap. Tetap export laporan?`)) {
+    if ((needsCheck > 0 || incomplete > 0) && !window.confirm(`Masih ada ${needsCheck} dusun perlu dicek dan ${incomplete} dusun belum lengkap. Tetap export laporan?`)) {
       return;
     }
 
@@ -259,10 +259,10 @@ export default function DashboardPage() {
 
   const kpiCards = [
     {
-      label: 'Desa Lengkap',
+      label: 'Dusun Lengkap',
       value: completeness.complete,
-      sub: <>dari <AnimatedCounter value={completeness.total} duration={1.2} /> desa</>,
-      subTitle: `dari ${completeness.total} desa`,
+      sub: <>dari <AnimatedCounter value={completeness.total} duration={1.2} /> dusun</>,
+      subTitle: `dari ${completeness.total} dusun`,
       icon: CheckCircle,
       color: 'text-green-600',
       bg: 'bg-green-50',
@@ -365,8 +365,8 @@ export default function DashboardPage() {
                 value={item.value}
                 max={maxStatus}
                 tone={item.tone}
-                sub={<><AnimatedCounter value={completeness.total} duration={1.1} /> desa aktif</>}
-                subTitle={`${completeness.total} desa aktif`}
+                sub={<><AnimatedCounter value={completeness.total} duration={1.1} /> dusun aktif</>}
+                subTitle={`${completeness.total} dusun aktif`}
               />
             ))}
           </div>
@@ -460,7 +460,7 @@ export default function DashboardPage() {
             <table className="w-full text-sm text-left">
               <thead className="bg-white border-b border-gray-100 text-xs text-gray-500 uppercase">
                 <tr>
-                  <th className="px-4 py-3 font-semibold">Desa</th>
+                  <th className="px-4 py-3 font-semibold">Dusun</th>
                   {activeTables.map(t => (
                     <th key={t} className="px-2 py-3 text-center font-semibold" title={tableLabel[t]?.label || t}>
                       {tableLabel[t]?.short || t}
@@ -474,13 +474,13 @@ export default function DashboardPage() {
                   <tr
                     key={d.id}
                     className="hover:bg-primary-50/40 cursor-pointer transition-colors"
-                    onClick={() => router.push(`/dashboard/desa/${d.id}?tahun=${tahun}&bulan=${bulan}`)}
+                    onClick={() => router.push(`/dashboard/dusun/${d.id}?tahun=${tahun}&bulan=${bulan}`)}
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
-                        router.push(`/dashboard/desa/${d.id}?tahun=${tahun}&bulan=${bulan}`);
+                        router.push(`/dashboard/dusun/${d.id}?tahun=${tahun}&bulan=${bulan}`);
                       }
                     }}
                     aria-label={`Lihat detail ${d.nama}`}
@@ -583,7 +583,7 @@ export default function DashboardPage() {
                 {compareDesaIds.map((id, idx) => {
                   const colors = ['#059669', '#3B82F6', '#F59E0B', '#EF4444', '#A855F7'];
                   const c = colors[idx % colors.length];
-                  const nama = compareData.byDesa[id]?.nama || `Desa ${id}`;
+                  const nama = compareData.byDesa[id]?.nama || `Dusun ${id}`;
                   return (
                     <span key={id} className="inline-flex items-center gap-1.5 text-xs">
                       <span className="w-3 h-1 rounded-sm" style={{ background: c }} />
@@ -619,10 +619,10 @@ function DesaCompareSelector({ desaList, selected, onChange }) {
   };
 
   const label = selected.length === 0
-    ? 'Total kecamatan'
+    ? 'Total desa'
     : selected.length === 1
-      ? (desaList.find((d) => d.id === selected[0])?.nama || 'Desa')
-      : `${selected.length} desa terpilih`;
+      ? (desaList.find((d) => d.id === selected[0])?.nama || 'Dusun')
+      : `${selected.length} dusun terpilih`;
 
   return (
     <div className="relative">
@@ -643,7 +643,7 @@ function DesaCompareSelector({ desaList, selected, onChange }) {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Cari desa..."
+                placeholder="Cari dusun..."
                 className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:ring-2 focus:ring-primary-500 outline-none"
               />
             </div>
@@ -652,7 +652,7 @@ function DesaCompareSelector({ desaList, selected, onChange }) {
                 onClick={() => { onChange([]); setOpen(false); }}
                 className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 font-medium text-primary-700"
               >
-                Total kecamatan
+                Total desa (semua dusun)
               </button>
               <div className="border-t border-gray-50 my-1" />
               {filtered.map((d) => (
@@ -663,7 +663,7 @@ function DesaCompareSelector({ desaList, selected, onChange }) {
               ))}
               {filtered.length === 0 && <div className="px-3 py-2 text-xs text-gray-400">Tidak ditemukan</div>}
             </div>
-            <div className="px-3 py-1.5 border-t border-gray-50 text-[10px] text-gray-400">Maksimal 5 desa untuk perbandingan</div>
+            <div className="px-3 py-1.5 border-t border-gray-50 text-[10px] text-gray-400">Maksimal 5 dusun untuk perbandingan</div>
           </div>
         </>
       )}

@@ -171,7 +171,9 @@ export default function ProfilePage() {
                       {ACTION_LABEL[a.action] || a.action}
                     </span>
                     <span className="text-sm font-medium text-gray-700">{a.table_name}</span>
-                    {a.desa_nama && <span className="text-xs text-gray-500">• {a.desa_nama}</span>}
+                    {(a.dusun_nama || a.desa_nama) && (
+                      <span className="text-xs text-gray-500">• {a.dusun_nama || a.desa_nama}</span>
+                    )}
                   </div>
                   {a.detail && <div className="text-xs text-gray-500 mt-0.5 truncate">{a.detail}</div>}
                   <div className="text-[10px] text-gray-400 mt-0.5">{timeAgo(a.created_at)}</div>

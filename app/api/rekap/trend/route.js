@@ -5,15 +5,14 @@
  * - Tanpa dusun_ids: aggregate semua dusun, return array {tahun, total_*}.
  * - Dengan 1+ dusun_ids: return { aggregate: [...], byDusun: { [dusunId]: { nama, rows: [...] } }, byDesa: alias }.
  *
- * Backward-compat: query param `desa_ids` masih diterima sebagai alias.
+ * Backward-compat: query param `desa_ids` masih diterima sebagai alias dari
+ * `dusun_ids`. Schema baru pakai dusun_id only — kolom desa_id tidak ada di
+ * tabel data_*, jadi query tidak boleh select/filter desa_id.
  */
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { requireAuth } from '@/lib/auth';
-
-function unitIdOf(row) {
-  return row?.dusun_id ?? row?.desa_id;
-}
+import { toNumericValue } from '@/lib/chartStats';
 
 export async function GET(request) {
   try {
@@ -29,15 +28,23 @@ export async function GET(request) {
     const currentYear = new Date().getFullYear();
     const years = Array.from({ length: 5 }, (_, index) => currentYear - 4 + index);
 
-    let duQ = supabase.from('data_umum').select('tahun, dusun_id, desa_id, jml_kk, jml_jiwa_l, jml_jiwa_p, jml_dasa_wisma').in('tahun', years);
-    let p4Q = supabase.from('data_pokja4').select('tahun, dusun_id, desa_id, posyandu_jumlah').in('tahun', years);
-    let bumilQ = supabase.from('data_bumil').select('tahun, dusun_id, desa_id, ibu_hamil, bayi_lahir_l, bayi_lahir_p').in('tahun', years);
+    let duQ = supabase
+      .from('data_umum')
+      .select('tahun, dusun_id, jml_kk, jml_jiwa_l, jml_jiwa_p, jml_dasa_wisma')
+      .in('tahun', years);
+    let p4Q = supabase
+      .from('data_pokja4')
+      .select('tahun, dusun_id, posyandu_jumlah')
+      .in('tahun', years);
+    let bumilQ = supabase
+      .from('data_bumil')
+      .select('tahun, dusun_id, ibu_hamil, bayi_lahir_l, bayi_lahir_p')
+      .in('tahun', years);
 
     if (dusunIds.length > 0) {
-      // PostgREST: filter via OR (dusun_id.in atau desa_id.in)
-      duQ = duQ.or(`dusun_id.in.(${dusunIds.join(',')}),desa_id.in.(${dusunIds.join(',')})`);
-      p4Q = p4Q.or(`dusun_id.in.(${dusunIds.join(',')}),desa_id.in.(${dusunIds.join(',')})`);
-      bumilQ = bumilQ.or(`dusun_id.in.(${dusunIds.join(',')}),desa_id.in.(${dusunIds.join(',')})`);
+      duQ = duQ.in('dusun_id', dusunIds);
+      p4Q = p4Q.in('dusun_id', dusunIds);
+      bumilQ = bumilQ.in('dusun_id', dusunIds);
     }
 
     const [{ data: duAll }, { data: p4All }, { data: bumilAll }] = await Promise.all([duQ, p4Q, bumilQ]);
@@ -45,19 +52,19 @@ export async function GET(request) {
     const buildRow = (tahun, duRows, p4Rows, bumilRows) => {
       const du = (duRows || []).reduce(
         (acc, curr) => {
-          acc.total_kk += curr.jml_kk || 0;
-          acc.total_jiwa_l += curr.jml_jiwa_l || 0;
-          acc.total_jiwa_p += curr.jml_jiwa_p || 0;
-          acc.total_dasa_wisma += curr.jml_dasa_wisma || 0;
+          acc.total_kk += toNumericValue(curr.jml_kk);
+          acc.total_jiwa_l += toNumericValue(curr.jml_jiwa_l);
+          acc.total_jiwa_p += toNumericValue(curr.jml_jiwa_p);
+          acc.total_dasa_wisma += toNumericValue(curr.jml_dasa_wisma);
           return acc;
         },
         { total_kk: 0, total_jiwa_l: 0, total_jiwa_p: 0, total_dasa_wisma: 0 }
       );
-      const p4 = (p4Rows || []).reduce((sum, curr) => sum + (curr.posyandu_jumlah || 0), 0);
+      const p4 = (p4Rows || []).reduce((sum, curr) => sum + toNumericValue(curr.posyandu_jumlah), 0);
       const bumil = (bumilRows || []).reduce(
         (acc, curr) => {
-          acc.total_bumil += curr.ibu_hamil || 0;
-          acc.total_kelahiran += (curr.bayi_lahir_l || 0) + (curr.bayi_lahir_p || 0);
+          acc.total_bumil += toNumericValue(curr.ibu_hamil);
+          acc.total_kelahiran += toNumericValue(curr.bayi_lahir_l) + toNumericValue(curr.bayi_lahir_p);
           return acc;
         },
         { total_bumil: 0, total_kelahiran: 0 }
@@ -93,9 +100,9 @@ export async function GET(request) {
       const rows = years.map((tahun) =>
         buildRow(
           tahun,
-          (duAll || []).filter((r) => r.tahun === tahun && unitIdOf(r) === d.id),
-          (p4All || []).filter((r) => r.tahun === tahun && unitIdOf(r) === d.id),
-          (bumilAll || []).filter((r) => r.tahun === tahun && unitIdOf(r) === d.id)
+          (duAll || []).filter((r) => r.tahun === tahun && r.dusun_id === d.id),
+          (p4All || []).filter((r) => r.tahun === tahun && r.dusun_id === d.id),
+          (bumilAll || []).filter((r) => r.tahun === tahun && r.dusun_id === d.id)
         )
       );
       byDusun[d.id] = { nama: d.nama, rows };
@@ -104,7 +111,7 @@ export async function GET(request) {
     return NextResponse.json({
       aggregate,
       byDusun,
-      byDesa: byDusun, // alias backward-compat
+      byDesa: byDusun, // alias backward-compat (response shape only)
       dusunIds,
       desaIds: dusunIds,
     });

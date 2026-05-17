@@ -1,7 +1,13 @@
 /**
  * @file Admin Audit Logs API
- * GET /api/admin/logs?user_id=&table_name=&action=&desa=&from=&to=&limit=&offset=
+ * GET /api/admin/logs?user_id=&table_name=&action=&dusun=&from=&to=&limit=&offset=
+ *
  * Requires admin role.
+ *
+ * Migration v5: filter unit data sekarang `dusun` (kolom `dusun_nama`). Param
+ * lama `?desa=...` masih diterima sebagai alias supaya tooling lama tidak break.
+ * Filter akan match `dusun_nama` (canonical) dengan fallback ke `desa_nama`
+ * supaya history audit log lama tetap bisa dicari.
  */
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
@@ -16,7 +22,8 @@ export async function GET(request) {
     const userId = searchParams.get('user_id');
     const tableName = searchParams.get('table_name');
     const action = searchParams.get('action');
-    const desa = searchParams.get('desa');
+    // Param canonical `dusun`, alias lama `desa`.
+    const unitNama = searchParams.get('dusun') || searchParams.get('desa');
     const from = searchParams.get('from');
     const to = searchParams.get('to');
     const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 500);
@@ -30,7 +37,10 @@ export async function GET(request) {
     if (userId) query = query.eq('user_id', Number(userId));
     if (tableName) query = query.eq('table_name', tableName);
     if (action) query = query.eq('action', action);
-    if (desa) query = query.eq('desa_nama', desa);
+    if (unitNama) {
+      // Match canonical dusun_nama OR legacy desa_nama (history lama).
+      query = query.or(`dusun_nama.eq.${unitNama},desa_nama.eq.${unitNama}`);
+    }
     if (from) query = query.gte('created_at', from);
     if (to) query = query.lte('created_at', to);
 

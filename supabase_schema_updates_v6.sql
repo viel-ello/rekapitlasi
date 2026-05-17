@@ -1,8 +1,17 @@
 -- ==========================================================================
--- SCRIPT UPDATE v6 — Kolom data fleksibel (angka + huruf) + Reset Data
+-- SCRIPT UPDATE v6 — Kolom data fleksibel (angka + huruf)
 -- ==========================================================================
 -- PREREQUISITE: jalankan v1 (supabase_schema.sql), v2, v3, v4, v5.
 -- Script ini IDEMPOTENT: aman dijalankan ulang.
+--
+-- ⚠️  NON-DESTRUKTIF — Tidak ada TRUNCATE atau DROP di file ini.
+--   Untuk reset data ke 0 baris (mis. staging/testing), pakai
+--   `supabase_schema_updates_v6_reset.sql` (manual).
+--
+-- ⚠️  BACKUP DULU — Konversi kolom INTEGER → TEXT mengubah tipe data.
+--   Walaupun nilai numerik bisa di-cast aman ke TEXT, lakukan backup pg_dump
+--   atau export Excel/CSV per tabel sebelum jalankan (Free Plan tidak punya
+--   automated backup).
 --
 -- Tujuan:
 --   1. Pastikan semua kolom baru sudah ada (Data Umum tenaga, Pokja2 bkb,
@@ -11,10 +20,10 @@
 --      angka ATAU teks (mis. "—", "tidak ada", "5 KK", "lansia 12").
 --   3. Default kolom diubah dari `0` → `''` agar konsisten.
 --   4. Aggregasi di dashboard tetap aman: helper `toNumericValue()` di
---      lib/chartStats.js mengembalikan 0 untuk string non-numerik.
---   5. RESET semua data ke 0 baris — block TRUNCATE di akhir.
+--      `lib/chartStats.js` mengembalikan 0 untuk string non-numerik.
 --
--- BACKUP DULU sebelum jalankan: Supabase Dashboard → Database → Backups.
+-- Setelah v6 jalan, fresh `supabase_schema.sql` juga harus konsisten
+-- (lihat update di file utama): kolom data CREATE TABLE pakai TEXT.
 -- ==========================================================================
 
 -- 0. Pastikan semua kolom baru ada (idempotent ADD COLUMN) -------------------
@@ -184,36 +193,12 @@ BEGIN
 END $$;
 
 -- ==========================================================================
--- 2. RESET SEMUA DATA → 0 BARIS
--- ==========================================================================
--- ⚠️ TRUNCATE permanen — semua data tabel ini akan hilang.
--- Tabel master (dusun, users, report_years, table_schemas, table_column_overrides,
--- report_periods) TIDAK di-truncate.
---
--- Aman dijalankan ulang. Audit log juga di-reset agar dashboard mulai bersih.
--- ==========================================================================
-
-TRUNCATE TABLE
-  data_umum,
-  data_pokja1,
-  data_pokja2,
-  data_pokja3,
-  data_pokja4,
-  data_rekap_dawis,
-  data_bumil,
-  audit_logs,
-  notifications,
-  rate_limits
-RESTART IDENTITY CASCADE;
-
--- ==========================================================================
--- v6 SELESAI. Verifikasi:
+-- v6 SELESAI (NON-DESTRUKTIF). Verifikasi:
 --   SELECT data_type FROM information_schema.columns
 --     WHERE table_name = 'data_umum' AND column_name = 'jml_kk';
 --   -- harus 'text'
+-- ==========================================================================
 --
---   SELECT COUNT(*) FROM data_umum;        -- 0
---   SELECT COUNT(*) FROM data_pokja1;      -- 0
---   SELECT COUNT(*) FROM dusun;            -- 9 (tidak di-truncate)
---   SELECT COUNT(*) FROM users WHERE role='admin';  -- ≥ 1 (tidak di-truncate)
+-- Untuk RESET data ke 0 baris (TRUNCATE) — staging/testing only:
+-- jalankan `supabase_schema_updates_v6_reset.sql` (manual).
 -- ==========================================================================
