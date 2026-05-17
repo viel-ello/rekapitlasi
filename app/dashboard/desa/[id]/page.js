@@ -9,6 +9,7 @@ import {
 import { useYears } from '@/lib/useYears';
 import { DATA_PAGES } from '@/lib/dataPages';
 import AnimatedCounter from '@/components/AnimatedCounter';
+import EditModeModal from '@/components/EditModeModal';
 import { timeAgo } from '@/lib/time';
 
 const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
@@ -255,6 +256,7 @@ function Ringkasan({ data, trend }) {
 
 function PerTablePanel({ tableName, tableData, tableStatus, editPath, canEdit }) {
   const cols = getColumnsForTable(tableName);
+  const [modeOpen, setModeOpen] = useState(false);
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5">
@@ -272,14 +274,16 @@ function PerTablePanel({ tableName, tableData, tableStatus, editPath, canEdit })
           )}
         </div>
         {canEdit && editPath && (
-          <Link
-            href={editPath}
+          <button
+            type="button"
+            onClick={() => setModeOpen(true)}
             className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold rounded-lg"
           >
             <Pen className="w-3 h-3" /> Edit Data
-          </Link>
+          </button>
         )}
       </div>
+      <EditModeModal open={modeOpen} onClose={() => setModeOpen(false)} editPath={editPath} />
       {!tableData ? (
         <div className="text-xs text-gray-400 py-4 text-center">Belum ada data untuk periode ini.</div>
       ) : (

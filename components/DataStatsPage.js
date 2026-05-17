@@ -18,6 +18,7 @@ import { applyColumnOverrides } from '@/lib/columnOverrides';
 import { useYears } from '@/lib/useYears';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import { DataPageIcon } from '@/components/DataPageIcon';
+import EditModeModal from '@/components/EditModeModal';
 
 function AnimatedBar({ percent, className = 'bg-primary-600' }) {
   return (
@@ -64,6 +65,7 @@ function KpiCard({ label, value, sub, icon: Icon, tone = 'primary' }) {
 export default function DataStatsPage({ config }) {
   const currentYear = new Date().getFullYear();
   const [tahun, setTahun] = useState(currentYear);
+  const [editModeOpen, setEditModeOpen] = useState(false);
   const [bulan, setBulan] = useState(new Date().getMonth() + 1);
   const [rows, setRows] = useState([]);
   const [prevRows, setPrevRows] = useState([]);
@@ -220,14 +222,21 @@ export default function DataStatsPage({ config }) {
           >
             {years.map(year => <option key={year} value={year}>{year}</option>)}
           </select>
-          <Link
-            href={config.editPath}
+          <button
+            type="button"
+            onClick={() => setEditModeOpen(true)}
             className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
           >
             <Pen className="w-4 h-4" /> Edit Data
-          </Link>
+          </button>
         </div>
       </div>
+
+      <EditModeModal
+        open={editModeOpen}
+        onClose={() => setEditModeOpen(false)}
+        editPath={config.editPath}
+      />
 
       {error && (
         <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
@@ -326,12 +335,13 @@ export default function DataStatsPage({ config }) {
         </div>
       </div>
 
-      <Link
-        href={config.editPath}
+      <button
+        type="button"
+        onClick={() => setEditModeOpen(true)}
         className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary-700 hover:text-primary-800"
       >
         Buka tabel input dan validasi <ArrowRight className="w-4 h-4" />
-      </Link>
+      </button>
     </motion.div>
   );
 }

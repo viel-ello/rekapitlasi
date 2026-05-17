@@ -9,6 +9,9 @@ import { useYears } from '@/lib/useYears';
 import { validateRow, countIssues } from '@/lib/validation';
 import { useKeyboardShortcut } from '@/lib/useKeyboardShortcut';
 import PeriodWorkflowBadge from '@/components/PeriodWorkflowBadge';
+import EditModeSwitcher from '@/components/EditModeSwitcher';
+import AutoGrowTextarea from '@/components/AutoGrowTextarea';
+import { useEditMode } from '@/lib/useEditMode';
 
 const BUMIL_FORM_TITLE = 'REKAPITULASI DATA/BUKU CATATAN IBU HAMIL,MELAHIRKAN,NIFAS,IBU MENINGGAL,KELAHIRAN BAYI,BAYI MENINGGAL DAN KEMATIAN BALITA';
 const BUMIL_ORG_TITLE = 'TP PKK DESA BELIKURIP';
@@ -120,6 +123,7 @@ function flattenBumilGroups(groups) {
 }
 
 export default function BumilDataPage({ config }) {
+  const { mode, setMode, isWord } = useEditMode();
   const [dusun, setDusun] = useState([]);
   const [data, setData] = useState({});
   const [prevData, setPrevData] = useState({});
@@ -208,15 +212,16 @@ export default function BumilDataPage({ config }) {
     } catch { /* silent */ }
   };
 
-  const handleChange = (dusunId, key, value, type = 'number') => {
+  const handleChange = (dusunId, key, value, type = 'text') => {
     if (!canEdit) return;
     if (userDusunId != null && Number(dusunId) !== Number(userDusunId)) return;
+    // v6: simpan as-is (string), supaya kolom angka boleh diisi huruf juga.
     setData((prev) => ({
       ...prev,
       [dusunId]: {
         ...(prev[dusunId] || {}),
         dusun_id: dusunId,
-        [key]: type === 'text' ? value : (value === '' ? '' : Number(value)),
+        [key]: value,
       },
     }));
     setSaveStatus((prev) => ({ ...prev, [dusunId]: 'dirty' }));
@@ -232,11 +237,8 @@ export default function BumilDataPage({ config }) {
     const rowData = data[dusunId] || {};
     const payload = { dusun_id: dusunId, tahun, bulan };
     config.columns.forEach((col) => {
-      if (col.type === 'text') {
-        payload[col.key] = String(rowData[col.key] ?? '');
-      } else {
-        payload[col.key] = Number(rowData[col.key] || 0);
-      }
+      // v6: kirim semua sebagai string. Server simpan as-is.
+      payload[col.key] = String(rowData[col.key] ?? '');
     });
     const res = await fetch(config.apiEndpoint, {
       method: 'POST',
@@ -295,7 +297,10 @@ export default function BumilDataPage({ config }) {
 
   const filteredDusun = dusun.filter((d) => d.nama.toLowerCase().includes(searchQuery.toLowerCase()));
   const dirtyCount = Object.values(saveStatus).filter((s) => s === 'dirty').length;
-  const getTotal = (key) => dusun.reduce((sum, d) => sum + (Number(data[d.id]?.[key]) || 0), 0);
+  const getTotal = (key) => dusun.reduce((sum, d) => {
+    const num = Number(data[d.id]?.[key]);
+    return sum + (Number.isFinite(num) ? num : 0);
+  }, 0);
   const isDusunEditable = (id) => canEdit && (userDusunId == null || Number(id) === Number(userDusunId));
 
   const MobileCard = ({ d, i }) => {
@@ -350,12 +355,12 @@ export default function BumilDataPage({ config }) {
                             className="w-full text-sm py-1.5 px-2 rounded-md border border-gray-200 bg-gray-50 outline-none focus:ring-2 focus:ring-primary-500"
                             value={rowData[col.key] ?? ''} onChange={(e) => handleChange(d.id, col.key, e.target.value, 'text')} onBlur={() => saveRow(d.id)} />
                         ) : (
-                          <input type="number" min="0"
+                          <input type="text" inputMode="decimal" placeholder="0"
                             className={`w-full text-sm py-1.5 px-2 rounded-md border outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${hasError ? 'border-red-300 bg-red-50' : hasWarning ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50 hover:bg-white'}`}
                             value={rowData[col.key] ?? ''} onChange={(e) => handleChange(d.id, col.key, e.target.value)} onBlur={() => saveRow(d.id)} />
                         )
                       ) : (
-                        <div className="text-sm font-medium text-gray-800">{isText ? (rowData[col.key] || '-') : (rowData[col.key] || 0).toLocaleString('id-ID')}</div>
+                        <div className="text-sm font-medium text-gray-800">{isText ? (rowData[col.key] || '-') : (rowData[col.key] ?? '-')}</div>
                       )}
                       {(hasError || hasWarning) && <span className={`text-[10px] mt-0.5 ${hasError ? 'text-red-500' : 'text-amber-500'}`}>{valObj.warning}</span>}
                     </div>
@@ -412,6 +417,7 @@ export default function BumilDataPage({ config }) {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <EditModeSwitcher mode={mode} onChange={setMode} />
           {canEdit && (
             <button onClick={saveAll} disabled={saving === 'all'}
               className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors disabled:opacity-50">
@@ -471,7 +477,7 @@ export default function BumilDataPage({ config }) {
 
       <div className="hidden md:block bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
         <div className="data-table-wrapper" style={{ maxHeight: '75vh' }}>
-          <table className="data-table">
+          <table className={`data-table ${isWord ? 'mode-word' : ''}`}>
             <thead>
               <tr>
                 <th rowSpan={3} style={{ position: 'sticky', left: 0, zIndex: 4, background: '#f9fafb', minWidth: 40 }}>NO</th>
@@ -540,14 +546,25 @@ export default function BumilDataPage({ config }) {
                       return (
                         <td key={col.key} className="relative">
                           {dusunEditable ? (
-                            isText ? (
+                            isWord ? (
+                              <AutoGrowTextarea
+                                className={inputClass}
+                                value={rowData[col.key] ?? ''}
+                                onChange={(e) => handleChange(d.id, col.key, e.target.value)}
+                                onBlur={() => saveRow(d.id)}
+                                placeholder={isText ? '' : '0'}
+                                title={valObj.warning || ''}
+                                style={{ textAlign: isText ? 'left' : 'center' }}
+                                aria-label={`${d.nama} ${col.fullLabel || col.label}`}
+                              />
+                            ) : isText ? (
                               <input type="text" className={inputClass} value={rowData[col.key] ?? ''} onChange={(e) => handleChange(d.id, col.key, e.target.value, 'text')} onBlur={() => saveRow(d.id)} aria-label={`${d.nama} ${col.fullLabel || col.label}`} />
                             ) : (
-                              <input type="number" className={inputClass} value={rowData[col.key] ?? ''} onChange={(e) => handleChange(d.id, col.key, e.target.value)} onBlur={() => saveRow(d.id)} min="0" title={valObj.warning || ''} aria-label={`${d.nama} ${col.fullLabel || col.label}`} />
+                              <input type="text" inputMode="decimal" placeholder="0" className={inputClass} value={rowData[col.key] ?? ''} onChange={(e) => handleChange(d.id, col.key, e.target.value)} onBlur={() => saveRow(d.id)} title={valObj.warning || ''} aria-label={`${d.nama} ${col.fullLabel || col.label}`} />
                             )
                           ) : (
                             <span className="block text-center px-2 py-1 text-gray-500" title={valObj.warning || ''}>
-                              {isText ? (rowData[col.key] || '-') : (rowData[col.key] || 0).toLocaleString('id-ID')}
+                              {isText ? (rowData[col.key] || '-') : (rowData[col.key] ?? '-')}
                               {hasWarning && <ExclamationCircle className="w-3 h-3 text-amber-500 inline ml-1" />}
                             </span>
                           )}

@@ -8,6 +8,9 @@ import { useYears } from '@/lib/useYears';
 import { validateRow, countIssues } from '@/lib/validation';
 import { useKeyboardShortcut } from '@/lib/useKeyboardShortcut';
 import PeriodWorkflowBadge from '@/components/PeriodWorkflowBadge';
+import EditModeSwitcher from '@/components/EditModeSwitcher';
+import AutoGrowTextarea from '@/components/AutoGrowTextarea';
+import { useEditMode } from '@/lib/useEditMode';
 
 /**
  * Komponen generic untuk tabel dengan multi-row header arbitrary depth.
@@ -150,6 +153,7 @@ export default function NestedDataPage({
   unitLabel = 'Nama Dusun', unitColumnLabel,
   headerTheme,
 }) {
+  const { mode, setMode, isWord } = useEditMode();
   const theme = {
     bg: headerTheme?.bg || '#f9fafb',
     fg: headerTheme?.fg || '#111827',
@@ -234,15 +238,16 @@ export default function NestedDataPage({
     else { setData(map); setSaveStatus({}); }
   };
 
-  const handleChange = (dusunId, key, value, type = 'number') => {
+  const handleChange = (dusunId, key, value, type = 'text') => {
     if (!canEdit) return;
     if (userDusunId != null && Number(dusunId) !== Number(userDusunId)) return;
+    // v6: semua kolom data flexible — simpan as string.
     setData((prev) => ({
       ...prev,
       [dusunId]: {
         ...(prev[dusunId] || {}),
         dusun_id: dusunId,
-        [key]: type === 'text' ? value : (value === '' ? '' : Number(value)),
+        [key]: value,
       },
     }));
     setSaveStatus((prev) => ({ ...prev, [dusunId]: 'dirty' }));
@@ -258,8 +263,8 @@ export default function NestedDataPage({
     const rowData = data[dusunId] || {};
     const payload = { dusun_id: dusunId, tahun };
     config.columns.forEach((col) => {
-      if (col.type === 'text') payload[col.key] = String(rowData[col.key] ?? '');
-      else payload[col.key] = Number(rowData[col.key] || 0);
+      // v6: semua kolom kirim sebagai string. Server simpan as-is.
+      payload[col.key] = String(rowData[col.key] ?? '');
     });
     const res = await fetch(config.apiEndpoint, {
       method: 'POST',
@@ -309,7 +314,11 @@ export default function NestedDataPage({
 
   const filteredDusun = dusun.filter((d) => d.nama.toLowerCase().includes(searchQuery.toLowerCase()));
   const dirtyCount = Object.values(saveStatus).filter((s) => s === 'dirty').length;
-  const getTotal = (key) => dusun.reduce((sum, d) => sum + (Number(data[d.id]?.[key]) || 0), 0);
+  const getTotal = (key) => dusun.reduce((sum, d) => {
+    const raw = data[d.id]?.[key];
+    const num = Number(raw);
+    return sum + (Number.isFinite(num) ? num : 0);
+  }, 0);
   const isDusunEditable = (id) => canEdit && (userDusunId == null || Number(id) === Number(userDusunId));
 
   const totalCols = 2 + leaves.length;
@@ -372,12 +381,12 @@ export default function NestedDataPage({
                         className="w-full text-base py-2.5 px-3 rounded-lg border border-gray-200 bg-gray-50 outline-none focus:ring-2 focus:ring-primary-500"
                         value={rowData[leaf.key] ?? ''} onChange={(e) => handleChange(d.id, leaf.key, e.target.value, 'text')} onBlur={() => saveRow(d.id)} />
                     ) : (
-                      <input type="number" min="0"
+                      <input type="text" inputMode="decimal"
                         className={`w-full text-sm py-1.5 px-2 rounded-md border outline-none focus:ring-2 focus:ring-primary-500 ${hasError ? 'border-red-300 bg-red-50' : hasWarning ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'}`}
-                        value={rowData[leaf.key] ?? ''} onChange={(e) => handleChange(d.id, leaf.key, e.target.value)} onBlur={() => saveRow(d.id)} />
+                        value={rowData[leaf.key] ?? ''} onChange={(e) => handleChange(d.id, leaf.key, e.target.value)} onBlur={() => saveRow(d.id)} placeholder="0" />
                     )
                   ) : (
-                    <div className="text-sm font-medium text-gray-800">{isText ? (rowData[leaf.key] || '-') : (rowData[leaf.key] || 0).toLocaleString('id-ID')}</div>
+                    <div className="text-sm font-medium text-gray-800">{isText ? (rowData[leaf.key] || '-') : (rowData[leaf.key] ?? '-')}</div>
                   )}
                   {(hasError || hasWarning) && <span className={`text-[10px] mt-0.5 ${hasError ? 'text-red-500' : 'text-amber-500'}`}>{valObj.warning}</span>}
                 </div>
@@ -434,6 +443,7 @@ export default function NestedDataPage({
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <EditModeSwitcher mode={mode} onChange={setMode} />
           {canEdit && (
             <button onClick={saveAll} disabled={saving === 'all'} className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors disabled:opacity-50">
               {saving === 'all' ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <FloppyDisk className="w-4 h-4" />}
@@ -477,7 +487,12 @@ export default function NestedDataPage({
 
       <div className="hidden md:block bg-white rounded-2xl border border-gray-100 p-3 shadow-sm">
         <div style={{ overflow: 'auto', maxHeight: '78vh' }}>
-          <table style={{ borderCollapse: 'collapse', tableLayout: 'auto', width: 'max-content', minWidth: '100%' }}>
+          <table style={{
+            borderCollapse: 'collapse',
+            tableLayout: isWord ? 'auto' : 'fixed',
+            width: 'max-content',
+            minWidth: '100%',
+          }}>
             <thead>
               {/* Row 1 — termasuk No + Nama dengan rowSpan = totalDepth */}
               <tr style={{ background: theme.bg, color: theme.fg }}>
@@ -562,16 +577,46 @@ export default function NestedDataPage({
                       const hasError = valObj.severity === 'error';
                       const hasWarning = valObj.severity === 'warning';
                       const isText = col.type === 'text';
+                      // Word mode: cell lebih lega, textarea auto-grow.
+                      const cellMinWidth = isWord
+                        ? (isText ? 220 : 120)
+                        : (col.vertical ? 32 : 50);
                       return (
-                        <td key={col.key} style={{ padding: 2, minWidth: col.vertical ? 32 : 50, border: '1px solid #e5e7eb' }}>
+                        <td
+                          key={col.key}
+                          style={{
+                            padding: 2,
+                            minWidth: cellMinWidth,
+                            border: '1px solid #e5e7eb',
+                            verticalAlign: 'top',
+                            whiteSpace: isWord ? 'normal' : 'nowrap',
+                          }}
+                        >
                           {dusunEditable ? (
-                            isText ? (
+                            isWord ? (
+                              <AutoGrowTextarea
+                                value={rowData[col.key] ?? ''}
+                                onChange={(e) => handleChange(d.id, col.key, e.target.value, isText ? 'text' : 'mixed')}
+                                onBlur={() => saveRow(d.id)}
+                                placeholder={isText ? '' : '0'}
+                                className="w-full text-[13px] py-1.5 px-2 rounded-md border outline-none focus:ring-2 focus:ring-primary-500"
+                                style={{
+                                  border: hasError ? '1px solid #fca5a5' : hasWarning ? '1px solid #fcd34d' : '1px solid #e5e7eb',
+                                  background: hasError ? '#fef2f2' : hasWarning ? '#fffbeb' : '#fff',
+                                  textAlign: isText ? 'left' : 'center',
+                                  fontFamily: 'inherit',
+                                  lineHeight: 1.4,
+                                }}
+                                title={valObj.warning || col.fullLabel || col.label}
+                              />
+                            ) : isText ? (
                               <input type="text"
                                 style={{ width: '100%', padding: '2px 4px', fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 4, outline: 'none' }}
                                 value={rowData[col.key] ?? ''} onChange={(e) => handleChange(d.id, col.key, e.target.value, 'text')} onBlur={() => saveRow(d.id)} />
                             ) : (
                               <input
-                                type="number"
+                                type="text"
+                                inputMode="decimal"
                                 style={{
                                   width: '100%', padding: '2px 4px', fontSize: 12, textAlign: 'center',
                                   border: hasError ? '1px solid #fca5a5' : hasWarning ? '1px solid #fcd34d' : '1px solid #e5e7eb',
@@ -582,13 +627,20 @@ export default function NestedDataPage({
                                 value={rowData[col.key] ?? ''}
                                 onChange={(e) => handleChange(d.id, col.key, e.target.value)}
                                 onBlur={() => saveRow(d.id)}
-                                min="0"
+                                placeholder="0"
                                 title={valObj.warning || col.fullLabel || col.label}
                               />
                             )
                           ) : (
-                            <span style={{ display: 'block', textAlign: 'center', fontSize: 12, color: '#6b7280' }} title={valObj.warning || ''}>
-                              {isText ? (rowData[col.key] || '-') : (rowData[col.key] || 0).toLocaleString('id-ID')}
+                            <span style={{
+                              display: 'block',
+                              textAlign: isText ? 'left' : 'center',
+                              fontSize: 12,
+                              color: '#6b7280',
+                              whiteSpace: isWord ? 'normal' : 'nowrap',
+                              padding: isWord ? '4px 6px' : 0,
+                            }} title={valObj.warning || ''}>
+                              {isText ? (rowData[col.key] || '-') : (rowData[col.key] ?? '-')}
                               {hasWarning && <ExclamationCircle className="w-3 h-3 text-amber-500 inline ml-1" />}
                             </span>
                           )}

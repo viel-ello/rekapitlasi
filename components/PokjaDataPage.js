@@ -7,6 +7,9 @@ import { applyColumnOverrides } from '@/lib/columnOverrides';
 import { useYears } from '@/lib/useYears';
 import { useKeyboardShortcut } from '@/lib/useKeyboardShortcut';
 import PeriodWorkflowBadge from '@/components/PeriodWorkflowBadge';
+import EditModeSwitcher from '@/components/EditModeSwitcher';
+import AutoGrowTextarea from '@/components/AutoGrowTextarea';
+import { useEditMode } from '@/lib/useEditMode';
 
 /**
  * Reusable data table component dengan role-based access + inline validation.
@@ -15,6 +18,7 @@ import PeriodWorkflowBadge from '@/components/PeriodWorkflowBadge';
  * label UI "Dusun".
  */
 export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, columns, tableName }) {
+  const { mode, setMode, isWord } = useEditMode();
   const [dusun, setDusun] = useState([]);
   const [data, setData] = useState({});
   const [prevYearData, setPrevYearData] = useState({});
@@ -113,13 +117,15 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
     }
   };
 
-  const handleChange = (dusunId, key, value, isDynamic = false, type = 'number') => {
+  const handleChange = (dusunId, key, value, isDynamic = false, type = 'text') => {
     if (!canEdit) return;
     // Row-level: kalau role kader-dusun, hanya boleh edit dusunnya sendiri
     if (userDusunId != null && Number(dusunId) !== Number(userDusunId)) return;
 
+    // v6: semua kolom data tabel data_* sekarang fleksibel teks. Type 'number'
+    // hanya dipakai untuk kolom dinamis (custom_columns) yang diset numerik.
     let parsedValue = value;
-    if (type === 'number') {
+    if (isDynamic && type === 'number') {
       parsedValue = value === '' ? '' : Number(value);
     }
 
@@ -154,12 +160,10 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
     const rowData = data[dusunId] || {};
     const payload = { dusun_id: dusunId, tahun, custom_columns: {} };
 
+    // v6: kirim semua nilai sebagai string. Server simpan as-is. Validator
+    // hanya cap length & strip control chars.
     columns.forEach((col) => {
-      if (col.type === 'text') {
-        payload[col.key] = String(rowData[col.key] ?? '');
-      } else {
-        payload[col.key] = Number(rowData[col.key] || 0);
-      }
+      payload[col.key] = String(rowData[col.key] ?? '');
     });
 
     dynamicColumns.forEach((col) => {
@@ -238,7 +242,12 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
     if (isDynamic) {
       return dusun.reduce((sum, d) => sum + (Number(data[d.id]?.custom_columns?.[key]) || 0), 0);
     }
-    return dusun.reduce((sum, d) => sum + (Number(data[d.id]?.[key]) || 0), 0);
+    // v6: kolom data flexible — coerce dengan toleransi (string non-numerik = 0)
+    return dusun.reduce((sum, d) => {
+      const raw = data[d.id]?.[key];
+      const num = Number(raw);
+      return sum + (Number.isFinite(num) ? num : 0);
+    }, 0);
   };
 
   const filteredDusun = dusun.filter((d) => d.nama.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -334,8 +343,8 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
                       ) : (
                         <input
                           id={`${d.id}-${col.key}`}
-                          type="number"
-                          inputMode="numeric"
+                          type="text"
+                          inputMode="decimal"
                           className={`w-full text-base py-2.5 px-3 rounded-lg border outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${
                             hasError ? 'border-red-300 bg-red-50 text-red-900' :
                             hasWarning ? 'border-amber-300 bg-amber-50 text-amber-900' :
@@ -345,12 +354,12 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
                           value={rowData[col.key] ?? ''}
                           onChange={(e) => handleChange(d.id, col.key, e.target.value)}
                           onBlur={() => saveRow(d.id)}
-                          min="0"
+                          placeholder="0"
                         />
                       )
                     ) : (
                       <div className="text-base font-medium text-gray-800 py-2.5 px-3">
-                        {isText ? (rowData[col.key] || '-') : (rowData[col.key] || 0).toLocaleString('id-ID')}
+                        {isText ? (rowData[col.key] || '-') : (rowData[col.key] ?? '-')}
                       </div>
                     )}
                     {(hasError || hasWarning) && (
@@ -430,6 +439,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          <EditModeSwitcher mode={mode} onChange={setMode} />
           {canEdit && (
             <button
               onClick={saveAll}
@@ -509,7 +519,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
       {/* Desktop Table View (>=768px) */}
       <div className="hidden md:block bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
         <div className="data-table-wrapper" style={{ maxHeight: '75vh' }}>
-          <table className="data-table relative">
+          <table className={`data-table relative ${isWord ? 'mode-word' : ''}`}>
             <thead className="sticky top-0 z-20">
               <tr>
                 <th rowSpan={2} style={{ position: 'sticky', left: 0, zIndex: 30, background: '#f9fafb', minWidth: 40 }}>No</th>
@@ -549,7 +559,17 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
                       return (
                         <td key={col.key} className="relative">
                           {dusunEditable ? (
-                            isText ? (
+                            isWord ? (
+                              <AutoGrowTextarea
+                                className={inputClass}
+                                value={rowData[col.key] ?? ''}
+                                onChange={(e) => handleChange(d.id, col.key, e.target.value, false, isText ? 'text' : 'mixed')}
+                                onBlur={() => saveRow(d.id)}
+                                placeholder={isText ? '' : '0'}
+                                title={valObj.warning || ''}
+                                style={{ textAlign: isText ? 'left' : 'center' }}
+                              />
+                            ) : isText ? (
                               <input
                                 type="text"
                                 className={inputClass}
@@ -560,18 +580,19 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
                               />
                             ) : (
                               <input
-                                type="number"
+                                type="text"
+                                inputMode="decimal"
                                 className={inputClass}
                                 value={rowData[col.key] ?? ''}
                                 onChange={(e) => handleChange(d.id, col.key, e.target.value)}
                                 onBlur={() => saveRow(d.id)}
-                                min="0"
                                 title={valObj.warning || ''}
+                                placeholder="0"
                               />
                             )
                           ) : (
                             <span className="block text-center px-2 py-1 text-gray-500" title={valObj.warning || ''}>
-                              {isText ? (rowData[col.key] || '-') : (rowData[col.key] || 0).toLocaleString('id-ID')}
+                              {isText ? (rowData[col.key] || '-') : (rowData[col.key] ?? '-')}
                               {hasWarning && <ExclamationCircle className="w-3 h-3 text-amber-500 inline ml-1" />}
                             </span>
                           )}
