@@ -87,7 +87,7 @@ export default function LoginPage() {
             </div>
             <h1 className="text-lg font-bold text-gray-800">Masuk Aplikasi</h1>
             <p className="text-xs text-gray-500 mt-1">
-              Sistem Rekapitulasi Data TP PKK<br />
+              Lumbung Data PKK<br />
               Desa Belikurip, Kecamatan Baturetno, Wonogiri
             </p>
           </div>

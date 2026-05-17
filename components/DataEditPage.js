@@ -2,6 +2,7 @@
 
 import BumilDataPage from '@/components/BumilDataPage';
 import RekapDawisDataPage from '@/components/RekapDawisDataPage';
+import Pokja1DataPage from '@/components/Pokja1DataPage';
 import Pokja2DataPage from '@/components/Pokja2DataPage';
 import DataUmumDataPage from '@/components/DataUmumDataPage';
 import { DataPageIcon } from '@/components/DataPageIcon';
@@ -22,6 +23,10 @@ export default function DataEditPage({ config }) {
 
   if (config.tableName === 'data_pokja2') {
     return <Pokja2DataPage config={config} />;
+  }
+
+  if (config.tableName === 'data_pokja1') {
+    return <Pokja1DataPage config={config} />;
   }
 
   if (config.tableName === 'data_rekap_dawis') {

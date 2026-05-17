@@ -21,7 +21,7 @@ const STORAGE_KEY = 'onboarding-completed';
 const STEPS = [
   {
     target: null,
-    title: 'Selamat datang di Sistem Rekapitulasi PKK',
+    title: 'Selamat datang di Lumbung Data PKK',
     body: 'Tour singkat akan memandu Anda mengenali fitur utama. Bisa di-skip kapan saja.',
   },
   {

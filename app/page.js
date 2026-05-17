@@ -51,9 +51,9 @@ export default function WelcomePage() {
       <header className="bg-white border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
           <Link href="/" className="flex items-center gap-2.5 min-w-0">
-            <img src="/logo.png" alt="Logo TP PKK Baturetno" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+            <img src="/logo.png" alt="Logo TP PKK Desa Belikurip" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
             <div className="min-w-0">
-              <div className="text-sm font-bold text-gray-800 truncate">Sistem Rekapitulasi PKK</div>
+              <div className="text-sm font-bold text-gray-800 truncate">Lumbung PKK</div>
               <div className="text-[11px] text-gray-500 truncate">Desa Belikurip</div>
             </div>
           </Link>
@@ -90,9 +90,9 @@ export default function WelcomePage() {
               TP PKK · Desa Belikurip · Kecamatan Baturetno · Wonogiri
             </span>
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 leading-tight">
-              Sistem Rekapitulasi Data
+              Lumbung Data PKK
               <br className="hidden sm:block" />
-              <span className="text-primary-700"> TP PKK Desa Belikurip</span>
+              <span className="text-primary-700"> Desa Belikurip</span>
             </h1>
             <p className="mt-4 text-sm sm:text-base text-gray-600 max-w-2xl leading-relaxed">
               Aplikasi internal untuk mencatat, memantau, dan melaporkan data kegiatan PKK 9 dusun di Desa Belikurip.

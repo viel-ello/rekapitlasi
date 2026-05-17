@@ -90,7 +90,7 @@ export async function GET(request) {
       }));
 
     const wb = new ExcelJS.Workbook();
-    wb.creator = 'Sistem Rekapitulasi PKK Desa Belikurip';
+    wb.creator = 'Lumbung Data PKK Desa Belikurip';
     wb.created = new Date();
 
     const sheetName = sheetNameForTable(tableName);

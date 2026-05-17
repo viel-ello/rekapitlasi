@@ -10,7 +10,7 @@ export default function PublicHeader() {
         <Link href="/" className="flex items-center gap-2.5 min-w-0">
           <img src="/logo.png" alt="Logo TP PKK Baturetno" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
           <div className="min-w-0">
-            <div className="text-sm font-bold text-gray-800 truncate">PKK Rekapitulasi</div>
+            <div className="text-sm font-bold text-gray-800 truncate">Lumbung PKK</div>
             <div className="text-[11px] text-gray-500 truncate">Desa Belikurip</div>
           </div>
         </Link>

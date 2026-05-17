@@ -72,7 +72,7 @@ export default function Sidebar({ user, onLogout, collapsed, onToggle, mobileOpe
               />
             </div>
             <div className="brand-text min-w-0">
-              <h3 className="text-sm font-bold text-gray-800 truncate">PKK Rekapitulasi</h3>
+              <h3 className="text-sm font-bold text-gray-800 truncate">Lumbung PKK</h3>
               <span className="text-[0.65rem] text-gray-400">Desa Belikurip</span>
             </div>
             <button className="sidebar-toggle" onClick={onToggle} aria-label="Tutup sidebar">

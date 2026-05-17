@@ -155,7 +155,7 @@ export async function POST(request) {
 async function buildExcel(report, config) {
   const ExcelJS = (await import('exceljs')).default;
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'Sistem Rekapitulasi PKK';
+  wb.creator = 'Lumbung Data PKK';
   wb.created = new Date();
 
   const HF = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D7377' } };
@@ -256,7 +256,7 @@ async function buildWord(report, config) {
 
   const doc = new Document({
     sections: sections.length > 0 ? sections : [{ children: [new Paragraph({ children: [new TextRun('Tidak ada data')] })] }],
-    creator: 'Sistem Rekapitulasi PKK',
+    creator: 'Lumbung Data PKK',
   });
 
   const buffer = await Packer.toBuffer(doc);
@@ -275,7 +275,7 @@ async function buildPdf(report, config) {
   const PDFKit = (await import('pdfkit')).default;
   const stamp = new Date().toISOString().slice(0, 10);
 
-  const doc = new PDFKit({ size: 'A4', layout: 'landscape', margin: 36, info: { Title: 'Laporan PKK', Author: 'Sistem Rekapitulasi PKK' } });
+  const doc = new PDFKit({ size: 'A4', layout: 'landscape', margin: 36, info: { Title: 'Laporan PKK', Author: 'Lumbung Data PKK' } });
   const chunks = [];
   doc.on('data', (c) => chunks.push(c));
   const done = new Promise((resolve) => doc.on('end', resolve));

@@ -145,7 +145,16 @@ function HeaderCellLabel({ node }) {
   return <span style={{ fontSize: 11, fontWeight: 700 }}>{node.label}</span>;
 }
 
-export default function NestedDataPage({ config, tree, titleBlock, unitLabel = 'Nama Dusun', unitColumnLabel }) {
+export default function NestedDataPage({
+  config, tree, titleBlock,
+  unitLabel = 'Nama Dusun', unitColumnLabel,
+  headerTheme,
+}) {
+  const theme = {
+    bg: headerTheme?.bg || '#f9fafb',
+    fg: headerTheme?.fg || '#111827',
+    borderColor: headerTheme?.borderColor || '#d1d5db',
+  };
   const [dusun, setDusun] = useState([]);
   const [data, setData] = useState({});
   const [prevYearData, setPrevYearData] = useState({});
@@ -471,14 +480,14 @@ export default function NestedDataPage({ config, tree, titleBlock, unitLabel = '
           <table style={{ borderCollapse: 'collapse', tableLayout: 'auto', width: 'max-content', minWidth: '100%' }}>
             <thead>
               {/* Row 1 — termasuk No + Nama dengan rowSpan = totalDepth */}
-              <tr style={{ background: '#f9fafb' }}>
+              <tr style={{ background: theme.bg, color: theme.fg }}>
                 <th rowSpan={totalDepth} style={{
-                  position: 'sticky', left: 0, zIndex: 30, background: '#f9fafb',
-                  minWidth: 36, padding: 6, border: '1px solid #d1d5db', verticalAlign: 'middle',
+                  position: 'sticky', left: 0, zIndex: 30, background: theme.bg, color: theme.fg,
+                  minWidth: 36, padding: 6, border: `1px solid ${theme.borderColor}`, verticalAlign: 'middle',
                 }}>No</th>
                 <th rowSpan={totalDepth} style={{
-                  position: 'sticky', left: 36, zIndex: 30, background: '#f9fafb',
-                  minWidth: 130, padding: 6, border: '1px solid #d1d5db', verticalAlign: 'middle',
+                  position: 'sticky', left: 36, zIndex: 30, background: theme.bg, color: theme.fg,
+                  minWidth: 130, padding: 6, border: `1px solid ${theme.borderColor}`, verticalAlign: 'middle',
                 }}>{numColLabel}</th>
                 {headerRows[0].map((c, i) => (
                   <th key={`r1-${i}`}
@@ -486,9 +495,10 @@ export default function NestedDataPage({ config, tree, titleBlock, unitLabel = '
                     colSpan={c.colSpan}
                     style={{
                       padding: c.node.kind === 'leaf' && c.node.vertical ? 0 : 6,
-                      border: '1px solid #d1d5db',
+                      border: `1px solid ${theme.borderColor}`,
                       textAlign: 'center', verticalAlign: 'middle',
                       minWidth: c.node.kind === 'leaf' && c.node.vertical ? 32 : 60,
+                      background: theme.bg, color: theme.fg,
                     }}
                     title={c.node.fullLabel || c.node.label}
                   >
@@ -497,16 +507,17 @@ export default function NestedDataPage({ config, tree, titleBlock, unitLabel = '
                 ))}
               </tr>
               {headerRows.slice(1).map((row, idx) => (
-                <tr key={`hr-${idx + 2}`} style={{ background: '#f9fafb' }}>
+                <tr key={`hr-${idx + 2}`} style={{ background: theme.bg, color: theme.fg }}>
                   {row.map((c, i) => (
                     <th key={`r${idx + 2}-${i}`}
                       rowSpan={c.rowSpan}
                       colSpan={c.colSpan}
                       style={{
                         padding: c.node.kind === 'leaf' && c.node.vertical ? 0 : 4,
-                        border: '1px solid #d1d5db',
+                        border: `1px solid ${theme.borderColor}`,
                         textAlign: 'center', verticalAlign: 'middle',
                         minWidth: c.node.kind === 'leaf' && c.node.vertical ? 32 : 60,
+                        background: theme.bg, color: theme.fg,
                       }}
                       title={c.node.fullLabel || c.node.label}
                     >
@@ -516,20 +527,21 @@ export default function NestedDataPage({ config, tree, titleBlock, unitLabel = '
                 </tr>
               ))}
               {/* Last row — column numbers full width */}
-              <tr style={{ background: '#f9fafb' }}>
+              <tr style={{ background: theme.bg, color: theme.fg }}>
                 {Array.from({ length: totalCols }, (_, i) => {
                   const idx = i + 1;
                   const sticky =
-                    idx === 1 ? { position: 'sticky', left: 0, zIndex: 30, background: '#f9fafb', minWidth: 36 } :
-                    idx === 2 ? { position: 'sticky', left: 36, zIndex: 30, background: '#f9fafb', minWidth: 130 } :
+                    idx === 1 ? { position: 'sticky', left: 0, zIndex: 30, background: theme.bg, minWidth: 36 } :
+                    idx === 2 ? { position: 'sticky', left: 36, zIndex: 30, background: theme.bg, minWidth: 130 } :
                     undefined;
                   return (
                     <th key={`num-${idx}`} style={{
                       ...sticky,
-                      border: '1px solid #d1d5db',
+                      border: `1px solid ${theme.borderColor}`,
                       textAlign: 'center', verticalAlign: 'middle',
-                      fontSize: 10, fontWeight: 500, color: '#6b7280',
+                      fontSize: 10, fontWeight: 500, color: theme.fg, opacity: 0.85,
                       padding: '2px 4px',
+                      background: theme.bg,
                     }}>{idx}</th>
                   );
                 })}

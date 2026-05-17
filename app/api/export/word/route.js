@@ -374,7 +374,7 @@ export async function GET(request) {
 
     const doc = new Document({
       sections,
-      creator: 'Sistem Rekapitulasi PKK',
+      creator: 'Lumbung Data PKK',
       title: `Data Kegiatan PKK ${tahun}`,
     });
 

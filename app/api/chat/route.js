@@ -116,7 +116,7 @@ function buildSystemPrompt(userRole, userName, allowedTables, userDusunName) {
     ? `\n- Anda hanya boleh edit DATA DUSUN: ${userDusunName} (tidak boleh edit dusun lain).`
     : '';
 
-  return `Kamu adalah asisten AI bernama "PKK Assistant" untuk Sistem Rekapitulasi Data PKK ${BRAND.organization}, ${BRAND.region}, ${BRAND.regency}.
+  return `Kamu adalah asisten AI bernama "PKK Assistant" untuk Lumbung Data PKK ${BRAND.organization}, ${BRAND.region}, ${BRAND.regency}.
 
 ═══════════════════════════════════════════
 IDENTITAS USER YANG SEDANG CHAT:

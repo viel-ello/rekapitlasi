@@ -937,7 +937,7 @@ export async function GET(request) {
     const tableFilter = searchParams.get('table'); // optional, single sheet only
 
     const wb = new ExcelJS.Workbook();
-    wb.creator = `Sistem Rekapitulasi PKK · ${BRAND.organization}`;
+    wb.creator = `Lumbung Data PKK · ${BRAND.organization}`;
     wb.created = new Date();
 
     // Fetch dusun list (sorted by nomor_urut, must match DUSUN_LIST ordering)
