@@ -13,6 +13,9 @@ import { timeAgo } from '@/lib/time';
 import { useYears } from '@/lib/useYears';
 import { useRouter } from 'next/navigation';
 import DashboardToolbar from '@/components/DashboardToolbar';
+import DusunBarChart from '@/components/charts/DusunBarChart';
+import KaderDonut from '@/components/charts/KaderDonut';
+import StackedBumilBar from '@/components/charts/StackedBumilBar';
 
 const TABLE_FILTERS = [
   { value: 'all', label: 'Semua Data', short: 'Semua' },
@@ -393,6 +396,50 @@ export default function DashboardPage() {
         {trendCards.map((card) => (
           <MiniTrendCard key={card.field} label={card.label} rows={trend} field={card.field} tone={card.tone} />
         ))}
+      </motion.div>
+
+      {/* ── New: Per-Dusun Charts (Charts Update v6) ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+        className="grid lg:grid-cols-3 gap-6"
+      >
+        <div className="lg:col-span-2">
+          <DusunBarChart
+            data={rekap?.perDusunMetrics || []}
+            metrics={[
+              { key: 'kk', label: 'KK', color: '#059669' },
+              { key: 'jiwa', label: 'Jiwa', color: '#3B82F6' },
+              { key: 'dasaWisma', label: 'Dasa Wisma', color: '#22C55E' },
+              { key: 'kaderTotal', label: 'Kader', color: '#F59E0B' },
+              { key: 'posyandu', label: 'Posyandu', color: '#A855F7' },
+              { key: 'rumahSehat', label: 'Rumah Sehat', color: '#10B981' },
+              { key: 'jknBpjs', label: 'JKN/BPJS', color: '#EC4899' },
+            ]}
+            defaultMetric="kk"
+            title="Perbandingan per Dusun"
+            subtitle="Pilih indikator untuk lihat ranking dusun"
+          />
+        </div>
+        <div>
+          <KaderDonut
+            segments={[
+              { label: 'Kader Umum (Data Umum)', value: rekap?.kaderBreakdown?.kaderUmum || 0, color: '#059669' },
+              { label: 'Pokja I (PKBN/PKDRT/Pola Asuh)', value: rekap?.kaderBreakdown?.kaderPokja1 || 0, color: '#3B82F6' },
+              { label: 'Pokja III (Pangan/Sandang/RT)', value: rekap?.kaderBreakdown?.kaderPokja3 || 0, color: '#F59E0B' },
+              { label: 'Pokja IV (Posyandu/Gizi/KB)', value: rekap?.kaderBreakdown?.kaderPokja4 || 0, color: '#A855F7' },
+            ]}
+          />
+        </div>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.15 }}
+      >
+        <StackedBumilBar data={rekap?.perDusunMetrics || []} />
       </motion.div>
 
       <div className="grid lg:grid-cols-3 gap-6">

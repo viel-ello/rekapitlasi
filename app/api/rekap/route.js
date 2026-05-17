@@ -90,6 +90,75 @@ export async function GET(request) {
       };
     });
 
+    // ── Per-dusun aggregation untuk dashboard charts ──
+    // v6: kolom data sekarang TEXT — coerce via toNumericValue (string non-numerik = 0).
+    const perDusunMetrics = dusunList.map((d) => {
+      const du = (umumList || []).find((u) => unitIdOf(u) === d.id) || {};
+      const p1 = (p1List || []).find((r) => unitIdOf(r) === d.id) || {};
+      const p3 = (p3List || []).find((r) => unitIdOf(r) === d.id) || {};
+      const p4 = (p4List || []).find((r) => unitIdOf(r) === d.id) || {};
+      const bumilRow = (bumilList || []).find((r) => unitIdOf(r) === d.id) || {};
+      const dawisRow = (dawisList || []).find((r) => unitIdOf(r) === d.id) || {};
+
+      const jiwaL = toNumericValue(du.jml_jiwa_l);
+      const jiwaP = toNumericValue(du.jml_jiwa_p);
+      const kaderTpPkk = toNumericValue(du.jml_kader_tp_pkk_l) + toNumericValue(du.jml_kader_tp_pkk_p);
+      const kaderUmum = toNumericValue(du.jml_kader_umum_l) + toNumericValue(du.jml_kader_umum_p);
+      const kaderKhusus = toNumericValue(du.jml_kader_khusus_l) + toNumericValue(du.jml_kader_khusus_p);
+
+      return {
+        id: d.id,
+        nama: d.nama,
+        kk: toNumericValue(du.jml_kk),
+        jiwa: jiwaL + jiwaP,
+        jiwaL,
+        jiwaP,
+        dasaWisma: toNumericValue(du.jml_dasa_wisma),
+        kaderTotal: kaderTpPkk + kaderUmum + kaderKhusus
+          + toNumericValue(p1.kader_pkbn) + toNumericValue(p1.kader_pkdrt) + toNumericValue(p1.kader_pola_asuh)
+          + toNumericValue(p3.kader_pangan) + toNumericValue(p3.kader_sandang) + toNumericValue(p3.kader_tata_laksana_rt)
+          + toNumericValue(p4.kader_posyandu) + toNumericValue(p4.kader_gizi) + toNumericValue(p4.kader_kesling)
+          + toNumericValue(p4.kader_kb) + toNumericValue(p4.kader_phbs),
+        posyandu: toNumericValue(p4.posyandu_jumlah),
+        rumahSehat: toNumericValue(p3.rumah_sehat) + toNumericValue(dawisRow.rumah_sehat),
+        ibuHamil: toNumericValue(bumilRow.ibu_hamil),
+        bayiLahir: toNumericValue(bumilRow.bayi_lahir_l) + toNumericValue(bumilRow.bayi_lahir_p),
+        ibuMelahirkan: toNumericValue(bumilRow.ibu_melahirkan),
+        ibuNifas: toNumericValue(bumilRow.ibu_nifas),
+        jknBpjs: toNumericValue(dawisRow.jkn_bpjs),
+        anggotaDawis: toNumericValue(dawisRow.jml_anggota_l) + toNumericValue(dawisRow.jml_anggota_p),
+        balita: toNumericValue(dawisRow.balita_l) + toNumericValue(dawisRow.balita_p),
+        lansia: toNumericValue(dawisRow.lansia),
+      };
+    });
+
+    // ── Aggregate kader breakdown untuk donut chart ──
+    const kaderBreakdown = (() => {
+      const acc = {
+        kaderUmum: 0, // TP PKK + Umum + Khusus
+        kaderPokja1: 0,
+        kaderPokja3: 0,
+        kaderPokja4: 0,
+      };
+      for (const du of umumList || []) {
+        acc.kaderUmum +=
+          toNumericValue(du.jml_kader_tp_pkk_l) + toNumericValue(du.jml_kader_tp_pkk_p) +
+          toNumericValue(du.jml_kader_umum_l) + toNumericValue(du.jml_kader_umum_p) +
+          toNumericValue(du.jml_kader_khusus_l) + toNumericValue(du.jml_kader_khusus_p);
+      }
+      for (const r of p1List || []) {
+        acc.kaderPokja1 += toNumericValue(r.kader_pkbn) + toNumericValue(r.kader_pkdrt) + toNumericValue(r.kader_pola_asuh);
+      }
+      for (const r of p3List || []) {
+        acc.kaderPokja3 += toNumericValue(r.kader_pangan) + toNumericValue(r.kader_sandang) + toNumericValue(r.kader_tata_laksana_rt);
+      }
+      for (const r of p4List || []) {
+        acc.kaderPokja4 += toNumericValue(r.kader_posyandu) + toNumericValue(r.kader_gizi) + toNumericValue(r.kader_kesling)
+          + toNumericValue(r.kader_kb) + toNumericValue(r.kader_phbs);
+      }
+      return acc;
+    })();
+
     // Pokja I
     const { data: p1List } = await supabase.from('data_pokja1').select('*').eq('tahun', tahun);
     const kaderPokja1 = (p1List || []).reduce(
@@ -256,6 +325,8 @@ export async function GET(request) {
       dataUmum,
       perDusunJiwa,
       perDesaJiwa: perDusunJiwa, // alias
+      perDusunMetrics,
+      kaderBreakdown,
       kaderSummary: {
         pokja1: kaderPokja1,
         pokja2: pokja2Summary,

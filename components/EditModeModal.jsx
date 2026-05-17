@@ -85,8 +85,8 @@ export default function EditModeModal({ open, onClose, editPath }) {
                 }`}
               >
                 {defaultMode === 'excel' && (
-                  <span className="absolute top-3 right-3 px-2 py-0.5 bg-primary-600 text-white text-[10px] font-semibold rounded-full uppercase tracking-wide">
-                    Terakhir dipakai
+                  <span className="absolute top-3 right-3 px-2 py-0.5 bg-primary-100 text-primary-700 text-[10px] font-semibold rounded-full uppercase tracking-wide">
+                    Disarankan
                   </span>
                 )}
                 <div className="flex items-center gap-2 mb-3">
@@ -115,8 +115,8 @@ export default function EditModeModal({ open, onClose, editPath }) {
                 }`}
               >
                 {defaultMode === 'word' && (
-                  <span className="absolute top-3 right-3 px-2 py-0.5 bg-primary-600 text-white text-[10px] font-semibold rounded-full uppercase tracking-wide">
-                    Terakhir dipakai
+                  <span className="absolute top-3 right-3 px-2 py-0.5 bg-primary-100 text-primary-700 text-[10px] font-semibold rounded-full uppercase tracking-wide">
+                    Disarankan
                   </span>
                 )}
                 <div className="flex items-center gap-2 mb-3">
