@@ -96,6 +96,7 @@ CREATE TABLE IF NOT EXISTS data_pokja2 (
   taman_bacaan INTEGER DEFAULT 0,
   klp_pembaca INTEGER DEFAULT 0,
   bkb_klp INTEGER DEFAULT 0,
+  bkb_jml_ibu_peserta INTEGER DEFAULT 0,
   bkb_ape_set_a INTEGER DEFAULT 0,
   bkb_ape_set_b INTEGER DEFAULT 0,
   kader_tutor_kf INTEGER DEFAULT 0,

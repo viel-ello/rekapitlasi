@@ -19,6 +19,7 @@ describe('DATA_PAGES — kolom baru migrasi v5', () => {
     expect(keys).toContain('kf_wrg');
     expect(keys).toContain('paud_sejenis');
     expect(keys).toContain('bkb_klp');
+    expect(keys).toContain('bkb_jml_ibu_peserta');
     expect(keys).toContain('bkb_ape_set_a');
     expect(keys).toContain('bkb_ape_set_b');
     expect(keys).toContain('kader_tutor_kf');
