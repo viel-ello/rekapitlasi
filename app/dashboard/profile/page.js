@@ -10,8 +10,16 @@ const ROLE_LABELS = {
   pokja2: 'Pokja II',
   pokja3: 'Pokja III',
   pokja4: 'Pokja IV',
-  sekretaris: 'Sekretaris',
   user: 'Pengguna',
+  dusun_soko: 'Kader Dusun Soko',
+  dusun_melikan: 'Kader Dusun Melikan',
+  dusun_jamprit_wetan: 'Kader Dusun Jamprit Wetan',
+  dusun_jamprit_kulon: 'Kader Dusun Jamprit Kulon',
+  dusun_belikurip: 'Kader Dusun Belikurip',
+  dusun_pagersari: 'Kader Dusun Pagersari',
+  dusun_klerong: 'Kader Dusun Klerong',
+  dusun_tanjung: 'Kader Dusun Tanjung',
+  dusun_banyuripan: 'Kader Dusun Banyuripan',
 };
 
 const ACTION_LABEL = {

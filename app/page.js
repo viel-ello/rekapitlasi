@@ -17,12 +17,12 @@ const FEATURES = [
   {
     icon: ClipboardList,
     title: 'Rekap data PKK terpadu',
-    desc: 'Data Umum, Pokja I-IV, Kegiatan Warga, dan Bumil dalam satu sistem konsisten antar desa.',
+    desc: 'Data Umum, Pokja I-IV, Kegiatan Warga, dan Bumil dalam satu sistem konsisten antar dusun.',
   },
   {
     icon: ChartLineUp,
     title: 'Monitoring kelengkapan',
-    desc: 'Pantau status pengisian per desa per periode dengan validasi otomatis dan peringatan anomali.',
+    desc: 'Pantau status pengisian per dusun per periode dengan validasi otomatis dan peringatan anomali.',
   },
   {
     icon: ChartPie,
@@ -122,13 +122,13 @@ export default function WelcomePage() {
         <section className="border-y border-gray-100 bg-gray-50/60">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-              <KpiTile label="Desa Aktif" value={summary.totalDesa} icon={Users} tone="primary" />
-              <KpiTile label="Desa Lengkap" value={summary.completeness?.complete} sub={`dari ${summary.totalDesa}`} icon={CheckCircle} tone="green" />
+              <KpiTile label="Dusun Aktif" value={summary.totalDusun ?? summary.totalDesa} icon={Users} tone="primary" />
+              <KpiTile label="Dusun Lengkap" value={summary.completeness?.complete} sub={`dari ${summary.totalDusun ?? summary.totalDesa ?? 0}`} icon={CheckCircle} tone="green" />
               <KpiTile label="Total KK" value={summary.totals?.total_kk} icon={ClipboardList} tone="blue" />
               <KpiTile label="Posyandu" value={summary.totals?.total_posyandu} icon={ChartPie} tone="amber" />
             </div>
             <p className="text-[11px] text-gray-500 mt-3">
-              Tahun {summary.tahun}. Data agregat publik. Untuk detail per desa,{' '}
+              Tahun {summary.tahun}. Data agregat publik. Untuk detail per dusun,{' '}
               <Link href="/publik" className="text-primary-700 font-medium hover:underline">buka data publik</Link>.
             </p>
           </div>

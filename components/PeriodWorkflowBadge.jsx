@@ -71,12 +71,11 @@ export default function PeriodWorkflowBadge({ tableName, tahun, bulan = null, us
   const Icon = cfg.Icon;
 
   const isAdmin = userRole === 'admin';
-  const isSekretaris = userRole === 'sekretaris';
 
   // Tombol yang muncul per status + role
   const showSubmit = status === 'draft' && canEdit;
-  const showApprove = status === 'submitted' && (isAdmin || isSekretaris);
-  const showReturn = status === 'submitted' && (isAdmin || isSekretaris);
+  const showApprove = status === 'submitted' && isAdmin;
+  const showReturn = status === 'submitted' && isAdmin;
   const showLock = status === 'approved' && isAdmin;
   const showUnlock = (status === 'approved' || status === 'locked') && isAdmin;
 

@@ -6,8 +6,8 @@
  *
  * Access matrix:
  *   submit:  role yang punya write access ke tabel (canWrite)
- *   approve: admin atau sekretaris
- *   return:  admin atau sekretaris (submitted → draft)
+ *   approve: admin (sebelumnya sekretaris juga; sekretaris sudah dihapus)
+ *   return:  admin (submitted → draft)
  *   lock:    admin
  *   unlock:  admin (→ draft)
  */
@@ -35,7 +35,7 @@ function canPerformAction(user, action, tableName) {
       return user.role === 'admin' || canWrite(user.role, tableName);
     case 'approve':
     case 'return':
-      return user.role === 'admin' || user.role === 'sekretaris';
+      return user.role === 'admin';
     case 'lock':
     case 'unlock':
       return user.role === 'admin';
@@ -123,8 +123,8 @@ export async function POST(request) {
     }
 
     // Role-specific guards untuk approve & lock
-    if (nextStatus === 'approved' && user.role !== 'admin' && user.role !== 'sekretaris') {
-      return NextResponse.json({ error: 'Hanya admin/sekretaris yang boleh approve' }, { status: 403 });
+    if (nextStatus === 'approved' && user.role !== 'admin') {
+      return NextResponse.json({ error: 'Hanya admin yang boleh approve' }, { status: 403 });
     }
     if (nextStatus === 'locked' && user.role !== 'admin') {
       return NextResponse.json({ error: 'Hanya admin yang boleh lock' }, { status: 403 });

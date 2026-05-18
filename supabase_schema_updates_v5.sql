@@ -138,7 +138,7 @@ BEGIN
 END $$;
 
 ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN (
-  'admin', 'pokja1', 'pokja2', 'pokja3', 'pokja4', 'sekretaris', 'user',
+  'admin', 'pokja1', 'pokja2', 'pokja3', 'pokja4', 'user',
   'dusun_soko', 'dusun_melikan', 'dusun_jamprit_wetan', 'dusun_jamprit_kulon',
   'dusun_belikurip', 'dusun_pagersari', 'dusun_klerong', 'dusun_tanjung', 'dusun_banyuripan'
 ));

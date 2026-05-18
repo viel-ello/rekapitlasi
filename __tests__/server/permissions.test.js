@@ -49,13 +49,25 @@ describe('Role Permissions — canWrite', () => {
     expect(canWrite('pokja4', 'data_pokja1')).toBe(false);
   });
 
-  test('sekretaris can write to data_umum, kegiatan_warga, bumil', () => {
+  test('sekretaris role has been removed (no write access)', () => {
+    const { canWrite, ROLE_PERMISSIONS } = require('@/lib/auth');
+    expect(ROLE_PERMISSIONS.sekretaris).toBeUndefined();
+    expect(canWrite('sekretaris', 'data_umum')).toBe(false);
+    expect(canWrite('sekretaris', 'data_kegiatan_warga')).toBe(false);
+    expect(canWrite('sekretaris', 'data_bumil')).toBe(false);
+  });
+
+  test('dusun_melikan can write to data_umum, rekap_dawis, bumil (table-level)', () => {
     const { canWrite } = require('@/lib/auth');
-    expect(canWrite('sekretaris', 'data_umum')).toBe(true);
-    expect(canWrite('sekretaris', 'data_kegiatan_warga')).toBe(true);
-    expect(canWrite('sekretaris', 'data_bumil')).toBe(true);
-    expect(canWrite('sekretaris', 'data_pokja1')).toBe(false);
-    expect(canWrite('sekretaris', 'data_pokja2')).toBe(false);
+    expect(canWrite('dusun_melikan', 'data_umum')).toBe(true);
+    expect(canWrite('dusun_melikan', 'data_rekap_dawis')).toBe(true);
+    expect(canWrite('dusun_melikan', 'data_kegiatan_warga')).toBe(true);
+    expect(canWrite('dusun_melikan', 'data_bumil')).toBe(true);
+    // Pokja tables tetap blocked
+    expect(canWrite('dusun_melikan', 'data_pokja1')).toBe(false);
+    expect(canWrite('dusun_melikan', 'data_pokja2')).toBe(false);
+    expect(canWrite('dusun_melikan', 'data_pokja3')).toBe(false);
+    expect(canWrite('dusun_melikan', 'data_pokja4')).toBe(false);
   });
 
   test('user role has NO write access', () => {

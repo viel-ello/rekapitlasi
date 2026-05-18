@@ -143,8 +143,8 @@ export default function ReportsPage() {
         if (!res.ok) {
           if (!cancelled) setPreviewError('Gagal memuat preview');
         } else {
-          // Excel buffer tidak bisa di-preview di browser. Untuk preview cepat, kita ambil sampel via /api/desa untuk hitung row count saja.
-          // Skip preview cepat — tampilkan jumlah desa & tahun
+          // Excel buffer tidak bisa di-preview di browser. Untuk preview cepat, kita ambil sampel via /api/dusun untuk hitung row count saja.
+          // Skip preview cepat — tampilkan jumlah dusun & tahun
         }
       } catch {
         if (!cancelled) setPreviewError('Gagal menghubungi server');
@@ -190,12 +190,12 @@ export default function ReportsPage() {
         <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
           <ChartPie className="w-7 h-7 text-primary-600" /> Report Builder
         </h1>
-        <p className="text-sm text-gray-500 mt-0.5">Bangun laporan custom: pilih tabel, periode, desa, dan kolom — lalu unduh sebagai Excel, Word, atau PDF.</p>
+        <p className="text-sm text-gray-500 mt-0.5">Bangun laporan custom: pilih tabel, periode, dusun, dan kolom — lalu unduh sebagai Excel, Word, atau PDF.</p>
       </div>
 
       {/* Stepper */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1">
-        {['Tabel', 'Periode', 'Desa & Kolom', 'Pratinjau'].map((label, idx) => {
+        {['Tabel', 'Periode', 'Dusun & Kolom', 'Pratinjau'].map((label, idx) => {
           const n = idx + 1;
           const active = step === n;
           const done = step > n;
@@ -345,10 +345,10 @@ function Step3DesaCols({ desaList, desaIds, setDesaIds, tables, effectiveCols, c
 
   return (
     <>
-      <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide mb-3">Pilih desa</h2>
+      <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide mb-3">Pilih dusun</h2>
       <div className="bg-gray-50 border border-gray-100 rounded-xl p-3 mb-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-medium text-gray-600">{desaIds.length === 0 ? 'Semua desa aktif' : `${desaIds.length} desa terpilih`}</span>
+          <span className="text-xs font-medium text-gray-600">{desaIds.length === 0 ? 'Semua dusun aktif' : `${desaIds.length} dusun terpilih`}</span>
           <button onClick={toggleAllDesa} className="text-xs font-semibold text-primary-700 hover:text-primary-800">
             {desaIds.length === allDesa.length ? 'Kosongkan' : 'Pilih semua'}
           </button>
@@ -361,7 +361,7 @@ function Step3DesaCols({ desaList, desaIds, setDesaIds, tables, effectiveCols, c
             </label>
           ))}
         </div>
-        <p className="text-[11px] text-gray-400 mt-2">Tip: kosongkan semua untuk menyertakan semua desa aktif.</p>
+        <p className="text-[11px] text-gray-400 mt-2">Tip: kosongkan semua untuk menyertakan semua dusun aktif.</p>
       </div>
 
       <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide mb-3">Pilih kolom per tabel</h2>
@@ -405,7 +405,7 @@ function Step4Preview({ config, desaList, effectiveCols, previewLoading, preview
       <div className="grid sm:grid-cols-2 gap-3 mb-4">
         <Field label="Tabel" value={tableTitles.join(', ') || '-'} />
         <Field label="Periode" value={`${config.tahunFrom} – ${config.tahunTo}${config.tables.includes('data_bumil') ? ` · Bulan ${config.bulan}` : ''}`} />
-        <Field label="Desa" value={desaCount > 0 ? `${desaCount} desa` : 'Semua desa aktif'} />
+        <Field label="Dusun" value={desaCount > 0 ? `${desaCount} dusun` : 'Semua dusun aktif'} />
         <Field label="Total kolom" value={`${totalCols} kolom`} />
       </div>
 

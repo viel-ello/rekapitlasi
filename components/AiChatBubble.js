@@ -40,9 +40,9 @@ export default function AiChatBubble({ tahun, user }) {
   };
 
   const SUGGESTED_PROMPTS = [
-    'Desa mana yang datanya belum lengkap tahun ini?',
+    'Dusun mana yang datanya belum lengkap tahun ini?',
     'Bandingkan jumlah posyandu 2024 dan 2025',
-    'Rata-rata jumlah KK per desa',
+    'Rata-rata jumlah KK per dusun',
     'Bagaimana cara import data Excel?',
   ];
 
@@ -356,7 +356,7 @@ export default function AiChatBubble({ tahun, user }) {
                                 />
                               </th>
                               <th className="px-3 py-3 w-10">Aksi</th>
-                              <th className="px-3 py-3 w-40">Desa</th>
+                              <th className="px-3 py-3 w-40">Dusun</th>
                               <th className="px-3 py-3">Perubahan (Hanya yang berbeda)</th>
                             </tr>
                           </thead>
@@ -487,7 +487,7 @@ export default function AiChatBubble({ tahun, user }) {
               <div className="flex items-start gap-2 px-3 py-2.5 bg-blue-50 border border-blue-100 rounded-xl text-[11px] text-blue-800 leading-relaxed">
                 <span className="flex-shrink-0 mt-0.5">ℹ️</span>
                 <div className="flex-1">
-                  Pesan dan data konteks (tahun aktif ±1, daftar desa) dikirim ke Google Gemini untuk diproses. Jangan masukkan data pribadi sensitif.
+                  Pesan dan data konteks (tahun aktif ±1, daftar dusun) dikirim ke Google Gemini untuk diproses. Jangan masukkan data pribadi sensitif.
                 </div>
                 <button onClick={dismissPrivacy} className="flex-shrink-0 text-blue-500 hover:text-blue-700 text-xs font-medium" aria-label="Tutup peringatan privasi">✕</button>
               </div>

@@ -57,6 +57,7 @@ describe('operational table catalog', () => {
     const { ROLE_TABLE_MAP } = require('@/lib/excel/sheetMap');
 
     expect(ROLE_TABLE_MAP.admin).toContain('data_kegiatan_warga');
-    expect(ROLE_TABLE_MAP.sekretaris).toContain('data_kegiatan_warga');
+    // Role 'sekretaris' sudah dihapus — tidak boleh ada di ROLE_TABLE_MAP.
+    expect(ROLE_TABLE_MAP.sekretaris).toBeUndefined();
   });
 });

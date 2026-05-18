@@ -619,7 +619,7 @@ function DesaCompareSelector({ desaList, selected, onChange }) {
   };
 
   const label = selected.length === 0
-    ? 'Total desa'
+    ? 'Agregat semua dusun'
     : selected.length === 1
       ? (desaList.find((d) => d.id === selected[0])?.nama || 'Dusun')
       : `${selected.length} dusun terpilih`;
@@ -652,7 +652,7 @@ function DesaCompareSelector({ desaList, selected, onChange }) {
                 onClick={() => { onChange([]); setOpen(false); }}
                 className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 font-medium text-primary-700"
               >
-                Total desa (semua dusun)
+                Agregat semua dusun
               </button>
               <div className="border-t border-gray-50 my-1" />
               {filtered.map((d) => (

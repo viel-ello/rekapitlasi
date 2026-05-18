@@ -21,7 +21,7 @@ const TABS = [
 
 const ROLES = [
   // Role utama
-  'admin', 'pokja1', 'pokja2', 'pokja3', 'pokja4', 'sekretaris', 'user',
+  'admin', 'pokja1', 'pokja2', 'pokja3', 'pokja4', 'user',
   // 9 role kader-dusun (auto-assign dusun_id berdasarkan role)
   'dusun_soko', 'dusun_melikan', 'dusun_jamprit_wetan', 'dusun_jamprit_kulon',
   'dusun_belikurip', 'dusun_pagersari', 'dusun_klerong', 'dusun_tanjung', 'dusun_banyuripan',
@@ -33,17 +33,16 @@ const ROLE_LABELS = {
   pokja2: 'pokja2 — Pendidikan & Koperasi',
   pokja3: 'pokja3 — Pangan & Sandang',
   pokja4: 'pokja4 — Kesehatan & Lingkungan',
-  sekretaris: 'sekretaris — Data Umum, Rekap Dawis, Bumil',
   user: 'user (read-only)',
-  dusun_soko: 'Kader Dusun Soko (Rekap Dawis dusun Soko)',
-  dusun_melikan: 'Kader Dusun Melikan',
-  dusun_jamprit_wetan: 'Kader Dusun Jamprit Wetan',
-  dusun_jamprit_kulon: 'Kader Dusun Jamprit Kulon',
-  dusun_belikurip: 'Kader Dusun Belikurip',
-  dusun_pagersari: 'Kader Dusun Pagersari',
-  dusun_klerong: 'Kader Dusun Klerong',
-  dusun_tanjung: 'Kader Dusun Tanjung',
-  dusun_banyuripan: 'Kader Dusun Banyuripan',
+  dusun_soko: 'Kader Dusun Soko (Data Umum, Rekap Dawis, Bumil — dusun Soko)',
+  dusun_melikan: 'Kader Dusun Melikan (Data Umum, Rekap Dawis, Bumil — dusun Melikan)',
+  dusun_jamprit_wetan: 'Kader Dusun Jamprit Wetan (Data Umum, Rekap Dawis, Bumil — dusun Jamprit Wetan)',
+  dusun_jamprit_kulon: 'Kader Dusun Jamprit Kulon (Data Umum, Rekap Dawis, Bumil — dusun Jamprit Kulon)',
+  dusun_belikurip: 'Kader Dusun Belikurip (Data Umum, Rekap Dawis, Bumil — dusun Belikurip)',
+  dusun_pagersari: 'Kader Dusun Pagersari (Data Umum, Rekap Dawis, Bumil — dusun Pagersari)',
+  dusun_klerong: 'Kader Dusun Klerong (Data Umum, Rekap Dawis, Bumil — dusun Klerong)',
+  dusun_tanjung: 'Kader Dusun Tanjung (Data Umum, Rekap Dawis, Bumil — dusun Tanjung)',
+  dusun_banyuripan: 'Kader Dusun Banyuripan (Data Umum, Rekap Dawis, Bumil — dusun Banyuripan)',
 };
 
 export default function AdminPage() {
@@ -186,7 +185,7 @@ function UsersTab({ toast, setToast }) {
                 {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r] || r}</option>)}
               </select>
               <p className="text-[11px] text-gray-500 mt-1">
-                Role kader-dusun otomatis di-link ke dusun yang sesuai. Pilih role pokja1-4 / sekretaris / admin untuk akses lintas dusun.
+                Role kader-dusun otomatis di-link ke dusun yang sesuai dan hanya bisa mengedit Data Umum, Rekapitulasi Dawis, dan Data Bumil dari dusun mereka sendiri. Pilih role pokja1-4 / admin untuk akses lintas dusun.
               </p>
             </div>
             <button type="submit" className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors">

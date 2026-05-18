@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT NOT NULL,
   nama_lengkap TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'user' CHECK (role IN (
-    'admin', 'pokja1', 'pokja2', 'pokja3', 'pokja4', 'sekretaris', 'user',
+    'admin', 'pokja1', 'pokja2', 'pokja3', 'pokja4', 'user',
     'dusun_soko', 'dusun_melikan', 'dusun_jamprit_wetan', 'dusun_jamprit_kulon',
     'dusun_belikurip', 'dusun_pagersari', 'dusun_klerong', 'dusun_tanjung', 'dusun_banyuripan'
   )),

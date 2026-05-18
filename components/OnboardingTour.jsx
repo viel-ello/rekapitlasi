@@ -39,7 +39,7 @@ const STEPS = [
   {
     target: 'table',
     title: 'Matrix kelengkapan',
-    body: 'Pantau status pengisian per desa. Klik baris desa untuk masuk ke detail drill-down.',
+    body: 'Pantau status pengisian per dusun. Klik baris dusun untuk masuk ke detail drill-down.',
     placement: 'top',
   },
   {
