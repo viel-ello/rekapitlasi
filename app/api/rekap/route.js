@@ -206,8 +206,12 @@ export async function GET(request) {
       { total_hamil: 0, total_melahirkan: 0, total_bayi_lahir: 0 }
     );
 
-    // Rekap Dawis (sebelumnya kegiatan_warga)
-    const { data: dawisList } = await supabase.from('data_rekap_dawis').select('*').eq('tahun', tahun);
+    // Rekap Dawis (sebelumnya kegiatan_warga) — per-bulan sejak v10
+    const { data: dawisList } = await supabase
+      .from('data_rekap_dawis')
+      .select('*')
+      .eq('tahun', tahun)
+      .eq('bulan', bulan);
     const rekapDawisSummary = (dawisList || []).reduce(
       (acc, row) => {
         acc.anggota += toNumericValue(row.jml_anggota_l) + toNumericValue(row.jml_anggota_p);
@@ -246,7 +250,7 @@ export async function GET(request) {
         let currentQuery = supabase.from(tableName).select('*').eq('tahun', tahun);
         let previousQuery = supabase.from(tableName).select('*').eq('tahun', Number(tahun) - 1);
 
-        if (tableName === 'data_bumil') {
+        if (tableName === 'data_bumil' || tableName === 'data_rekap_dawis') {
           currentQuery = currentQuery.eq('bulan', bulan);
           previousQuery = previousQuery.eq('bulan', bulan);
         }

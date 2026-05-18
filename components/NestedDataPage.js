@@ -11,6 +11,7 @@ import PeriodWorkflowBadge from '@/components/PeriodWorkflowBadge';
 import EditModeSwitcher from '@/components/EditModeSwitcher';
 import AutoGrowTextarea from '@/components/AutoGrowTextarea';
 import { useEditMode } from '@/lib/useEditMode';
+import { MONTHS } from '@/lib/dataPages';
 
 /**
  * Komponen generic untuk tabel dengan multi-row header arbitrary depth.
@@ -163,6 +164,7 @@ export default function NestedDataPage({
   const [data, setData] = useState({});
   const [prevYearData, setPrevYearData] = useState({});
   const [tahun, setTahun] = useState(new Date().getFullYear());
+  const [bulan, setBulan] = useState(new Date().getMonth() + 1);
   const [saving, setSaving] = useState(null);
   const [saveStatus, setSaveStatus] = useState({});
   const [toast, setToast] = useState(null);
@@ -172,6 +174,8 @@ export default function NestedDataPage({
   const [overrides, setOverrides] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const { years } = useYears();
+
+  const hasMonth = !!config.hasMonth;
 
   useEffect(() => {
     if (years.length > 0 && !years.includes(tahun)) setTahun(years[0]);
@@ -197,7 +201,7 @@ export default function NestedDataPage({
       fetchData(tahun);
       fetchData(tahun - 1, true);
     }
-  }, [tahun, dusun]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tahun, bulan, dusun]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const checkPermission = async () => {
     try {
@@ -226,7 +230,9 @@ export default function NestedDataPage({
   };
 
   const fetchData = async (targetYear, isPrev = false) => {
-    const res = await fetch(`${config.apiEndpoint}?tahun=${targetYear}`);
+    const params = new URLSearchParams({ tahun: String(targetYear) });
+    if (hasMonth) params.set('bulan', String(bulan));
+    const res = await fetch(`${config.apiEndpoint}?${params.toString()}`);
     if (!res.ok) return;
     const rows = await res.json();
     const map = {};
@@ -262,6 +268,7 @@ export default function NestedDataPage({
   const _doSaveRow = async (dusunId) => {
     const rowData = data[dusunId] || {};
     const payload = { dusun_id: dusunId, tahun };
+    if (hasMonth) payload.bulan = bulan;
     config.columns.forEach((col) => {
       // v6: semua kolom kirim sebagai string. Server simpan as-is.
       payload[col.key] = String(rowData[col.key] ?? '');
@@ -292,7 +299,7 @@ export default function NestedDataPage({
     setSaving(null);
     setTimeout(() => setToast(null), 3500);
     setTimeout(() => setSaveStatus((prev) => ({ ...prev, [dusunId]: null })), 5000);
-  }, [data, prevYearData, tahun, canEdit, config, leaves]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [data, prevYearData, tahun, bulan, canEdit, config, leaves, hasMonth]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveAll = async () => {
     if (!canEdit) return;
@@ -439,7 +446,7 @@ export default function NestedDataPage({
             )}
           </p>
           <div className="mt-2">
-            <PeriodWorkflowBadge tableName={config.tableName} tahun={tahun} userRole={userRole} canEdit={canEdit} onStatusChange={() => fetchData(tahun)} />
+            <PeriodWorkflowBadge tableName={config.tableName} tahun={tahun} bulan={hasMonth ? bulan : null} userRole={userRole} canEdit={canEdit} onStatusChange={() => fetchData(tahun)} />
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -453,11 +460,16 @@ export default function NestedDataPage({
           <select value={tahun} onChange={(e) => setTahun(Number(e.target.value))} className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary-500 outline-none shadow-sm">
             {years.map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
+          {hasMonth && (
+            <select value={bulan} onChange={(e) => setBulan(Number(e.target.value))} className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary-500 outline-none shadow-sm" aria-label="Pilih bulan">
+              {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+            </select>
+          )}
         </div>
       </div>
 
       {/* Title block (custom per page) */}
-      {titleBlock && titleBlock(tahun)}
+      {titleBlock && titleBlock(tahun, hasMonth ? bulan : undefined)}
 
       <div className="mb-4 relative max-w-sm">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Search className="h-4 w-4 text-gray-400" /></div>

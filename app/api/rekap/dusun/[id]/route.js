@@ -64,7 +64,7 @@ export async function GET(request, ctx) {
     for (const t of TABLES) {
       let q = supabase.from(t).select('*').eq('dusun_id', dusunId).eq('tahun', tahun);
       let qp = supabase.from(t).select('*').eq('dusun_id', dusunId).eq('tahun', tahun - 1);
-      if (t === 'data_bumil') {
+      if (t === 'data_bumil' || t === 'data_rekap_dawis') {
         q = q.eq('bulan', bulan);
         qp = qp.eq('bulan', bulan);
       }

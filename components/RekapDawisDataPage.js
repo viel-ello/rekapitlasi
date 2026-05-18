@@ -1,10 +1,11 @@
 'use client';
 
 import NestedDataPage from '@/components/NestedDataPage';
+import { MONTHS } from '@/lib/dataPages';
 
 /**
  * Rekapitulasi Dawis — pixel-perfect sesuai Annex F.
- * 34 kolom logis, 3-level header.
+ * 34 kolom logis, 3-level header. Per-bulan (Januari-Desember) sejak v10.
  */
 
 const REKAP_DAWIS_TREE = [
@@ -77,13 +78,14 @@ const REKAP_DAWIS_TREE = [
   { kind: 'leaf', key: 'jkn_bpjs', label: 'KET (JKN/BPJS)' },
 ];
 
-function TitleBlock(tahun) {
+function TitleBlock(tahun, bulan) {
+  const bulanLabel = bulan ? MONTHS[bulan - 1] : null;
   return (
     <div className="mb-4 rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm">
       <div className="text-center text-sm font-bold uppercase leading-snug text-gray-900">
         <div>CATATAN DATA DAN KEGIATAN WARGA</div>
         <div>TP PKK DESA BELIKURIP KECAMATAN BATURETNO</div>
-        <div>TAHUN {tahun}</div>
+        {bulanLabel ? <div>BULAN {bulanLabel} · TAHUN {tahun}</div> : <div>TAHUN {tahun}</div>}
       </div>
     </div>
   );

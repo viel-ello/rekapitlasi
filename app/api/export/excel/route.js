@@ -41,11 +41,17 @@ function unitIdOf(row) {
 
 /**
  * Fetch data per dusun untuk tabel target. Return Map { dusunNama -> rowData }.
- * Untuk data_bumil dengan bulan: filter bulan; tanpa bulan: aggregate semua bulan jadi 1 row per dusun.
+ *
+ * Tabel per-bulan (`data_bumil`, `data_rekap_dawis`):
+ *   - dengan `bulan`: filter ke bulan itu, return row per dusun.
+ *   - tanpa `bulan`: aggregate sum semua bulan jadi 1 row per dusun.
  */
 async function fetchDusunData(table, tahun, bulan = null, dusunByName) {
+  const TABLES_WITH_MONTH = new Set(['data_bumil', 'data_rekap_dawis']);
+  const isMonthly = TABLES_WITH_MONTH.has(table);
+
   let q = supabase.from(table).select('*').eq('tahun', tahun);
-  if (table === 'data_bumil' && bulan != null) q = q.eq('bulan', bulan);
+  if (isMonthly && bulan != null) q = q.eq('bulan', bulan);
   const { data: rows } = await q;
 
   const map = {};
@@ -58,7 +64,7 @@ async function fetchDusunData(table, tahun, bulan = null, dusunByName) {
     const dusunName = Object.keys(dusunByName).find((nama) => dusunByName[nama].id === id);
     if (!dusunName) continue;
 
-    if (table === 'data_bumil' && bulan == null) {
+    if (isMonthly && bulan == null) {
       // Aggregate semua bulan
       const existing = map[dusunName];
       for (const [k, v] of Object.entries(row)) {
@@ -627,13 +633,16 @@ function buildPokja4Sheet(wb, tahun, dusunListSorted, dataMap) {
 // ──────────────────────────────────────────────────────────────────────────────
 // Annex F — Rekap Dawis
 // ──────────────────────────────────────────────────────────────────────────────
-function buildRekapDawisSheet(wb, tahun, dusunListSorted, dataMap) {
+function buildRekapDawisSheet(wb, tahun, bulan, dusunListSorted, dataMap) {
   const ws = wb.addWorksheet('Rekap Dawis', { pageSetup: { orientation: 'landscape', paperSize: 8 } });
 
   // 1. Title (rows 1-3)
   ws.mergeCells('A1:AH1'); ws.getCell('A1').value = 'CATATAN DATA DAN KEGIATAN WARGA';
   ws.mergeCells('A2:AH2'); ws.getCell('A2').value = 'TP PKK DESA BELIKURIP KECAMATAN BATURETNO';
-  ws.mergeCells('A3:AH3'); ws.getCell('A3').value = `TAHUN ${tahun}`;
+  const periodLabel = bulan != null
+    ? `BULAN ${MONTHS[bulan - 1]} · TAHUN ${tahun}`
+    : `TAHUN ${tahun}`;
+  ws.mergeCells('A3:AH3'); ws.getCell('A3').value = periodLabel;
   for (const r of [1, 2, 3]) {
     const cell = ws.getCell(r, 1);
     cell.font = { bold: true, name: 'Arial', size: r === 1 ? 12 : 10 };
@@ -958,7 +967,7 @@ export async function GET(request) {
       fetchDusunData('data_pokja2', tahun, null, dusunByName),
       fetchDusunData('data_pokja3', tahun, null, dusunByName),
       fetchDusunData('data_pokja4', tahun, null, dusunByName),
-      fetchDusunData('data_rekap_dawis', tahun, null, dusunByName),
+      fetchDusunData('data_rekap_dawis', tahun, bulan, dusunByName),
       fetchDusunData('data_bumil', tahun, bulan, dusunByName),
     ]);
 
@@ -969,7 +978,7 @@ export async function GET(request) {
     if (want('data_pokja2')) buildPokja2Sheet(wb, tahun, sortedDusun, p2Map);
     if (want('data_pokja3')) buildPokja3Sheet(wb, tahun, sortedDusun, p3Map);
     if (want('data_pokja4')) buildPokja4Sheet(wb, tahun, sortedDusun, p4Map);
-    if (want('data_rekap_dawis')) buildRekapDawisSheet(wb, tahun, sortedDusun, dawisMap);
+    if (want('data_rekap_dawis')) buildRekapDawisSheet(wb, tahun, bulan, sortedDusun, dawisMap);
     if (want('data_bumil')) buildBumilSheet(wb, tahun, bulan, sortedDusun, bumilMap, dawisMap);
 
     const buffer = await wb.xlsx.writeBuffer();

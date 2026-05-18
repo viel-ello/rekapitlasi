@@ -198,10 +198,12 @@ CREATE TABLE IF NOT EXISTS data_pokja4 (
 );
 
 -- Tabel Data Rekapitulasi Dawis (sebelumnya: data_kegiatan_warga, Lampiran 4-17b)
+-- Per-bulan sejak v10: setiap dusun punya 12 baris per tahun (1 per bulan).
 CREATE TABLE IF NOT EXISTS data_rekap_dawis (
   id SERIAL PRIMARY KEY,
   dusun_id INTEGER NOT NULL REFERENCES dusun(id),
   tahun INTEGER NOT NULL,
+  bulan INTEGER NOT NULL CHECK (bulan BETWEEN 1 AND 12),
   jml_rw TEXT DEFAULT '',
   jml_rt TEXT DEFAULT '',
   jml_dawis TEXT DEFAULT '',
@@ -235,7 +237,7 @@ CREATE TABLE IF NOT EXISTS data_rekap_dawis (
   ikut_kesling TEXT DEFAULT '',
   jkn_bpjs TEXT DEFAULT '',
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE (dusun_id, tahun)
+  UNIQUE (dusun_id, tahun, bulan)
 );
 
 -- Tabel Data Bumil (Lampiran 4-19b)
