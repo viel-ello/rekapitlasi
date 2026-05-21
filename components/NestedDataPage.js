@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { FloppyDisk, Lock, Search, CheckCircle, ExclamationCircle } from 'flowbite-react-icons/outline';
 import { DataPageIcon } from '@/components/DataPageIcon';
 import { applyColumnOverrides } from '@/lib/columnOverrides';
@@ -174,6 +174,21 @@ export default function NestedDataPage({
   const [userDusunId, setUserDusunId] = useState(null);
   const [overrides, setOverrides] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  // State expanded mobile card di parent supaya tidak reset tiap re-render
+  // (kalau di local MobileCard, akan unmount setiap kali parent re-render
+  // karena MobileCard di-define inline → React anggap component baru).
+  const [expandedIds, setExpandedIds] = useState(() => new Set());
+  // Buffer perubahan input yang belum di-save. Pakai ref supaya saat user
+  // ngetik tidak trigger re-render — input tetap responsif & focus tidak
+  // hilang. Map dusunId -> { columnKey: stringValue }.
+  const pendingChangesRef = useRef(new Map());
+  // Set dusunId yang punya pending changes. Update hanya saat transisi
+  // clean→dirty (sekali per dusun) — bukan tiap karakter.
+  const [dirtyIds, setDirtyIds] = useState(() => new Set());
+  // Versi data dari server (increment saat fetch ulang). Dipakai sebagai key
+  // di input supaya input uncontrolled re-mount saat data fresh masuk
+  // (mis. setelah save sukses atau ganti tahun/bulan).
+  const [dataVersion, setDataVersion] = useState(0);
   const { years } = useYears();
 
   const hasMonth = !!config.hasMonth;
@@ -242,32 +257,60 @@ export default function NestedDataPage({
       if (id != null) map[id] = r;
     });
     if (isPrev) setPrevYearData(map);
-    else { setData(map); setSaveStatus({}); }
+    else {
+      setData(map);
+      setSaveStatus({});
+      // Clear pending buffer + dirty marker — data dari server jadi truth baru.
+      pendingChangesRef.current = new Map();
+      setDirtyIds(new Set());
+      // Bump version — input uncontrolled akan re-mount dengan defaultValue baru.
+      setDataVersion((v) => v + 1);
+    }
   };
 
-  const handleChange = (dusunId, key, value, type = 'text') => {
+  // handleChange v2: tulis ke ref (tidak trigger re-render). Hanya update
+  // state `dirtyIds` saat transisi pertama clean→dirty per dusun.
+  const handleChange = (dusunId, key, value) => {
     if (!canEdit) return;
     if (userDusunId != null && Number(dusunId) !== Number(userDusunId)) return;
-    // v6: semua kolom data flexible — simpan as string.
-    setData((prev) => ({
-      ...prev,
-      [dusunId]: {
-        ...(prev[dusunId] || {}),
-        dusun_id: dusunId,
-        [key]: value,
-      },
-    }));
-    setSaveStatus((prev) => ({ ...prev, [dusunId]: 'dirty' }));
+    const map = pendingChangesRef.current;
+    let row = map.get(dusunId);
+    if (!row) {
+      row = {};
+      map.set(dusunId, row);
+    }
+    row[key] = value;
+    // Tandai dusun sebagai dirty (sekali per dusun, tidak per karakter).
+    setDirtyIds((prev) => {
+      if (prev.has(dusunId)) return prev;
+      const next = new Set(prev);
+      next.add(dusunId);
+      return next;
+    });
+    // Clear status saved/error sebelumnya (biar banner status update).
+    setSaveStatus((prev) => {
+      if (!prev[dusunId]) return prev;
+      const next = { ...prev };
+      delete next[dusunId];
+      return next;
+    });
+  };
+
+  // Helper: ambil snapshot data row final (server data + pending changes overlay).
+  const getRowSnapshot = (dusunId) => {
+    const base = data[dusunId] || {};
+    const pending = pendingChangesRef.current.get(dusunId);
+    return pending ? { ...base, ...pending, dusun_id: dusunId } : { ...base, dusun_id: dusunId };
   };
 
   const getRowIssueCount = (dusunId) => {
-    const validation = validateRow(data[dusunId] || {}, leaves, prevYearData[dusunId] || null);
+    const validation = validateRow(getRowSnapshot(dusunId), leaves, prevYearData[dusunId] || null);
     const issues = countIssues(validation);
     return issues.errors + issues.warnings;
   };
 
   const _doSaveRow = async (dusunId) => {
-    const rowData = data[dusunId] || {};
+    const rowData = getRowSnapshot(dusunId);
     const payload = { dusun_id: dusunId, tahun };
     if (hasMonth) payload.bulan = bulan;
     config.columns.forEach((col) => {
@@ -283,6 +326,21 @@ export default function NestedDataPage({
       const err = await res.json();
       throw new Error(err.error || 'Gagal menyimpan');
     }
+    // Commit pending changes ke `data` state lalu hapus dari buffer & dirty set.
+    const pending = pendingChangesRef.current.get(dusunId);
+    if (pending) {
+      setData((prev) => ({
+        ...prev,
+        [dusunId]: { ...(prev[dusunId] || {}), ...pending, dusun_id: dusunId },
+      }));
+      pendingChangesRef.current.delete(dusunId);
+    }
+    setDirtyIds((prev) => {
+      if (!prev.has(dusunId)) return prev;
+      const next = new Set(prev);
+      next.delete(dusunId);
+      return next;
+    });
   };
 
   const saveRow = useCallback(async (dusunId) => {
@@ -325,33 +383,51 @@ export default function NestedDataPage({
   useKeyboardShortcut({ 'ctrl+s': saveAll }, { enabled: canEdit });
 
   const filteredDusun = dusun.filter((d) => d.nama.toLowerCase().includes(searchQuery.toLowerCase()));
-  const dirtyCount = Object.values(saveStatus).filter((s) => s === 'dirty').length;
+  const dirtyCount = dirtyIds.size;
+  // "Batalkan" — buang pending changes + refresh data dari server.
+  const cancelPending = () => {
+    pendingChangesRef.current = new Map();
+    setDirtyIds(new Set());
+    fetchData(tahun);
+  };
   const getTotal = (key) => dusun.reduce((sum, d) => {
-    const raw = data[d.id]?.[key];
-    const num = Number(raw);
+    // Total pakai snapshot (server data + pending changes overlay)
+    const snap = getRowSnapshot(d.id);
+    const num = Number(snap?.[key]);
     return sum + (Number.isFinite(num) ? num : 0);
   }, 0);
   const isDusunEditable = (id) => canEdit && (userDusunId == null || Number(id) === Number(userDusunId));
 
   const totalCols = 2 + leaves.length;
 
+  // Toggle expanded state per dusun (state hidup di parent agar tidak reset
+  // tiap kali user ngetik di input — re-render parent jangan unmount card).
+  const toggleExpanded = (id) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   // Mobile card render
   const MobileCard = ({ d, i }) => {
-    const [expanded, setExpanded] = useState(false);
+    const expanded = expandedIds.has(d.id);
     const rowData = data[d.id] || {};
     const prevRowData = prevYearData[d.id] || null;
     const validation = validateRow(rowData, leaves, prevRowData);
     const { errors, warnings } = countIssues(validation);
     const isSaving = saving === d.id;
     const isSaved = saveStatus[d.id] === 'saved';
-    const isDirty = saveStatus[d.id] === 'dirty';
+    const isDirty = dirtyIds.has(d.id);
     const isError = saveStatus[d.id] === 'error';
     const dusunEditable = isDusunEditable(d.id);
     const filledCount = leaves.filter((c) => Number(rowData[c.key] || 0) > 0).length;
 
     return (
       <div className={`bg-white rounded-xl border ${isDirty ? 'border-amber-200' : 'border-gray-200'} mb-3 shadow-sm overflow-hidden`}>
-        <button onClick={() => setExpanded(!expanded)} className="w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-gray-50 active:bg-gray-100 transition-colors text-left" style={{ minHeight: 56 }}>
+        <button onClick={() => toggleExpanded(d.id)} className="w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-gray-50 active:bg-gray-100 transition-colors text-left" style={{ minHeight: 56 }}>
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md">{i + 1}</span>
             <div className="min-w-0">
@@ -390,12 +466,17 @@ export default function NestedDataPage({
                   {dusunEditable ? (
                     isText ? (
                       <textarea rows={2}
+                        key={`${d.id}-${leaf.key}-${dataVersion}`}
                         className="w-full text-base py-2.5 px-3 rounded-lg border border-gray-200 bg-gray-50 outline-none focus:ring-2 focus:ring-primary-500"
-                        value={rowData[leaf.key] ?? ''} onChange={(e) => handleChange(d.id, leaf.key, e.target.value, 'text')} onBlur={() => saveRow(d.id)} />
+                        defaultValue={rowData[leaf.key] ?? ''}
+                        onChange={(e) => handleChange(d.id, leaf.key, e.target.value)} />
                     ) : (
                       <input type="text" inputMode="decimal"
+                        key={`${d.id}-${leaf.key}-${dataVersion}`}
                         className={`w-full text-sm py-1.5 px-2 rounded-md border outline-none focus:ring-2 focus:ring-primary-500 ${hasError ? 'border-red-300 bg-red-50' : hasWarning ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'}`}
-                        value={rowData[leaf.key] ?? ''} onChange={(e) => handleChange(d.id, leaf.key, e.target.value)} onBlur={() => saveRow(d.id)} placeholder="0" />
+                        defaultValue={rowData[leaf.key] ?? ''}
+                        onChange={(e) => handleChange(d.id, leaf.key, e.target.value)}
+                        placeholder="0" />
                     )
                   ) : (
                     <div className="text-sm font-medium text-gray-800">{isText ? (rowData[leaf.key] || '-') : (rowData[leaf.key] ?? '-')}</div>
@@ -489,7 +570,7 @@ export default function NestedDataPage({
             <span>{dirtyCount} {unitLabel.toLowerCase()} memiliki perubahan belum tersimpan</span>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => fetchData(tahun)} className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">Batalkan</button>
+            <button onClick={cancelPending} className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">Batalkan</button>
             <button onClick={saveAll} disabled={saving === 'all'} className="px-3 py-1.5 text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg disabled:opacity-50">
               {saving === 'all' ? 'Menyimpan...' : 'Simpan Semua'}
             </button>
@@ -612,9 +693,9 @@ export default function NestedDataPage({
                           {dusunEditable ? (
                             isWord ? (
                               <AutoGrowTextarea
-                                value={rowData[col.key] ?? ''}
-                                onChange={(e) => handleChange(d.id, col.key, e.target.value, isText ? 'text' : 'mixed')}
-                                onBlur={() => saveRow(d.id)}
+                                key={`${d.id}-${col.key}-${dataVersion}`}
+                                defaultValue={rowData[col.key] ?? ''}
+                                onChange={(e) => handleChange(d.id, col.key, e.target.value)}
                                 placeholder={isText ? '' : '0'}
                                 className="w-full text-[13px] py-1.5 px-2 rounded-md border outline-none focus:ring-2 focus:ring-primary-500"
                                 style={{
@@ -628,10 +709,13 @@ export default function NestedDataPage({
                               />
                             ) : isText ? (
                               <input type="text"
+                                key={`${d.id}-${col.key}-${dataVersion}`}
                                 style={{ width: '100%', padding: '2px 4px', fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 4, outline: 'none' }}
-                                value={rowData[col.key] ?? ''} onChange={(e) => handleChange(d.id, col.key, e.target.value, 'text')} onBlur={() => saveRow(d.id)} />
+                                defaultValue={rowData[col.key] ?? ''}
+                                onChange={(e) => handleChange(d.id, col.key, e.target.value)} />
                             ) : (
                               <input
+                                key={`${d.id}-${col.key}-${dataVersion}`}
                                 type="text"
                                 inputMode="decimal"
                                 style={{
@@ -641,9 +725,8 @@ export default function NestedDataPage({
                                   background: hasError ? '#fef2f2' : hasWarning ? '#fffbeb' : '#fff',
                                   outline: 'none',
                                 }}
-                                value={rowData[col.key] ?? ''}
+                                defaultValue={rowData[col.key] ?? ''}
                                 onChange={(e) => handleChange(d.id, col.key, e.target.value)}
-                                onBlur={() => saveRow(d.id)}
                                 placeholder="0"
                                 title={valObj.warning || col.fullLabel || col.label}
                               />

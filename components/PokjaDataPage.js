@@ -36,6 +36,8 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
   const [overrides, setOverrides] = useState([]);
 
   const [searchQuery, setSearchQuery] = useState('');
+  // Expanded state per dusun di parent — supaya tidak reset tiap re-render.
+  const [expandedIds, setExpandedIds] = useState(() => new Set());
 
   const { years } = useYears();
 
@@ -276,8 +278,17 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
   };
 
   // Mobile card view
+  const toggleExpanded = (id) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const MobileCard = ({ d, i }) => {
-    const [expanded, setExpanded] = useState(false);
+    const expanded = expandedIds.has(d.id);
     const rowData = data[d.id] || {};
     const prevRowData = prevYearData[d.id] || null;
     const validation = validateRow(rowData, effectiveColumns, prevRowData);
@@ -292,7 +303,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
     return (
       <div className={`bg-white rounded-xl border ${isDirty ? 'border-amber-200' : 'border-gray-200'} mb-3 shadow-sm overflow-hidden`}>
         <button
-          onClick={() => setExpanded(!expanded)}
+          onClick={() => toggleExpanded(d.id)}
           className="w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-gray-50 active:bg-gray-100 transition-colors text-left"
           style={{ minHeight: 56 }}
           aria-expanded={expanded}
