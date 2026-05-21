@@ -12,15 +12,24 @@ import PokjaDataPage from '@/components/PokjaDataPage';
 
 /**
  * Router untuk halaman edit per tabel.
- * - Bumil: filter bulan + multi-row header (Annex A)
- * - Pokja II: 4-level header pixel-perfect
- * - Rekap Dawis: 3-level header pixel-perfect (Annex F)
- * - Data Umum: 3-level header dengan identity block
- * - Lainnya: tabel flat standar
+ * Urutan dispatch dari yang paling spesifik:
+ *   - Bumil: filter bulan + multi-row header (Annex A)
+ *   - Rekap Dawis: 3-level header pixel-perfect (Annex F) — sejak v10 juga per-bulan
+ *   - Pokja I-IV: pixel-perfect masing-masing
+ *   - Data Umum: 3-level header dengan identity block
+ *   - Lainnya: tabel flat standar (PokjaDataPage)
+ *
+ * Catatan: jangan cek `config.hasMonth` duluan, karena sekarang Rekap Dawis
+ * juga `hasMonth=true` (sejak v10) tapi punya layout sendiri yang berbeda
+ * dari Bumil. Cek by `tableName` dulu.
  */
 export default function DataEditPage({ config }) {
-  if (config.hasMonth) {
+  if (config.tableName === 'data_bumil') {
     return <BumilDataPage config={config} />;
+  }
+
+  if (config.tableName === 'data_rekap_dawis') {
+    return <RekapDawisDataPage config={config} />;
   }
 
   if (config.tableName === 'data_pokja2') {
@@ -39,12 +48,14 @@ export default function DataEditPage({ config }) {
     return <Pokja4DataPage config={config} />;
   }
 
-  if (config.tableName === 'data_rekap_dawis') {
-    return <RekapDawisDataPage config={config} />;
-  }
-
   if (config.tableName === 'data_umum') {
     return <DataUmumDataPage config={config} />;
+  }
+
+  // Fallback umum: kalau ada tabel custom dengan hasMonth tapi tanpa layout
+  // dedicated, pakai BumilDataPage (UI dengan dropdown bulan).
+  if (config.hasMonth) {
+    return <BumilDataPage config={config} />;
   }
 
   return (
