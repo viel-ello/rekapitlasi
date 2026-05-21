@@ -12,6 +12,7 @@ import PeriodWorkflowBadge from '@/components/PeriodWorkflowBadge';
 import EditModeSwitcher from '@/components/EditModeSwitcher';
 import AutoGrowTextarea from '@/components/AutoGrowTextarea';
 import { useEditMode } from '@/lib/useEditMode';
+import { captureScrollState, restoreScrollState } from '@/lib/preserveScroll';
 
 const BUMIL_FORM_TITLE = 'REKAPITULASI DATA/BUKU CATATAN IBU HAMIL,MELAHIRKAN,NIFAS,IBU MENINGGAL,KELAHIRAN BAYI,BAYI MENINGGAL DAN KEMATIAN BALITA';
 const BUMIL_ORG_TITLE = 'TP PKK DESA BELIKURIP';
@@ -253,6 +254,7 @@ export default function BumilDataPage({ config }) {
 
   const saveRow = useCallback(async (dusunId) => {
     if (!canEdit) return;
+    const scrollSnapshot = captureScrollState();
     setSaving(dusunId);
     try {
       await _doSaveRow(dusunId);
@@ -267,12 +269,14 @@ export default function BumilDataPage({ config }) {
       setToast({ type: 'error', message: err.message });
     }
     setSaving(null);
+    restoreScrollState(scrollSnapshot);
     setTimeout(() => setToast(null), 4000);
     setTimeout(() => setSaveStatus((prev) => ({ ...prev, [dusunId]: null })), 5000);
   }, [data, prevData, tahun, bulan, canEdit, config, visibleColumns]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveAll = async () => {
     if (!canEdit) return;
+    const scrollSnapshot = captureScrollState();
     const targets = userDusunId != null ? dusun.filter((d) => d.id === Number(userDusunId)) : dusun;
     const warningCount = targets.reduce((sum, d) => sum + getRowIssueCount(d.id), 0);
     if (warningCount > 0 && !window.confirm(`Ada ${warningCount} peringatan validasi. Tetap simpan semua?`)) return;
@@ -289,6 +293,7 @@ export default function BumilDataPage({ config }) {
       }
     }
     setSaving(null);
+    restoreScrollState(scrollSnapshot);
     setToast({ type: fail === 0 ? 'success' : 'error', message: `Berhasil ${ok}${fail > 0 ? `, gagal ${fail}` : ''}` });
     setTimeout(() => setToast(null), 4000);
   };

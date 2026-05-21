@@ -10,6 +10,7 @@ import PeriodWorkflowBadge from '@/components/PeriodWorkflowBadge';
 import EditModeSwitcher from '@/components/EditModeSwitcher';
 import AutoGrowTextarea from '@/components/AutoGrowTextarea';
 import { useEditMode } from '@/lib/useEditMode';
+import { captureScrollState, restoreScrollState } from '@/lib/preserveScroll';
 
 /**
  * Reusable data table component dengan role-based access + inline validation.
@@ -185,6 +186,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
 
   const saveRow = useCallback(async (dusunId) => {
     if (!canEdit) return;
+    const scrollSnapshot = captureScrollState();
     setSaving(dusunId);
     try {
       await _doSaveRow(dusunId);
@@ -199,12 +201,14 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
       setToast({ type: 'error', message: err.message });
     }
     setSaving(null);
+    restoreScrollState(scrollSnapshot);
     setTimeout(() => setToast(null), 3000);
     setTimeout(() => setSaveStatus((prev) => ({ ...prev, [dusunId]: null })), 5000);
   }, [data, prevYearData, tahun, apiEndpoint, columns, effectiveColumns, canEdit, dynamicColumns]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveAll = async () => {
     if (!canEdit) return;
+    const scrollSnapshot = captureScrollState();
     const targets = userDusunId != null ? dusun.filter((d) => d.id === Number(userDusunId)) : dusun;
     const warningCount = targets.reduce((sum, d) => sum + getRowIssueCount(d.id), 0);
     if (warningCount > 0 && !window.confirm(`Ada ${warningCount} peringatan validasi. Tetap simpan semua perubahan?`)) {
@@ -227,6 +231,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
     }
 
     setSaving(null);
+    restoreScrollState(scrollSnapshot);
     if (failCount === 0) {
       setToast({ type: 'success', message: `Berhasil menyimpan semua data (${successCount} dusun)` });
     } else {

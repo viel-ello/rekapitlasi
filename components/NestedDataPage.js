@@ -12,6 +12,7 @@ import EditModeSwitcher from '@/components/EditModeSwitcher';
 import AutoGrowTextarea from '@/components/AutoGrowTextarea';
 import { useEditMode } from '@/lib/useEditMode';
 import { MONTHS } from '@/lib/dataPages';
+import { captureScrollState, restoreScrollState } from '@/lib/preserveScroll';
 
 /**
  * Komponen generic untuk tabel dengan multi-row header arbitrary depth.
@@ -286,6 +287,7 @@ export default function NestedDataPage({
 
   const saveRow = useCallback(async (dusunId) => {
     if (!canEdit) return;
+    const scrollSnapshot = captureScrollState();
     setSaving(dusunId);
     try {
       await _doSaveRow(dusunId);
@@ -297,12 +299,14 @@ export default function NestedDataPage({
       setToast({ type: 'error', message: err.message });
     }
     setSaving(null);
+    restoreScrollState(scrollSnapshot);
     setTimeout(() => setToast(null), 3500);
     setTimeout(() => setSaveStatus((prev) => ({ ...prev, [dusunId]: null })), 5000);
   }, [data, prevYearData, tahun, bulan, canEdit, config, leaves, hasMonth]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveAll = async () => {
     if (!canEdit) return;
+    const scrollSnapshot = captureScrollState();
     const targets = userDusunId != null ? dusun.filter((d) => d.id === Number(userDusunId)) : dusun;
     const warningCount = targets.reduce((sum, d) => sum + getRowIssueCount(d.id), 0);
     if (warningCount > 0 && !window.confirm(`Ada ${warningCount} peringatan validasi. Tetap simpan semua?`)) return;
@@ -313,6 +317,7 @@ export default function NestedDataPage({
       catch { setSaveStatus((p) => ({ ...p, [d.id]: 'error' })); fail++; }
     }
     setSaving(null);
+    restoreScrollState(scrollSnapshot);
     setToast({ type: fail === 0 ? 'success' : 'error', message: `Berhasil ${ok}${fail > 0 ? `, gagal ${fail}` : ''}` });
     setTimeout(() => setToast(null), 4000);
   };
@@ -498,7 +503,7 @@ export default function NestedDataPage({
       </div>
 
       <div className="hidden md:block bg-white rounded-2xl border border-gray-100 p-3 shadow-sm">
-        <div style={{ overflow: 'auto', maxHeight: '78vh' }}>
+        <div data-preserve-scroll style={{ overflow: 'auto', maxHeight: '78vh' }}>
           <table style={{
             borderCollapse: 'collapse',
             tableLayout: isWord ? 'auto' : 'fixed',
