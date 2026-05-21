@@ -78,6 +78,27 @@ describe('supabase_schema_updates_v6.sql — non-destructive default', () => {
   });
 });
 
+describe('supabase_schema_updates_v11.sql - canonical dusun indexes', () => {
+  const sql = readFile('supabase_schema_updates_v11.sql');
+  const active = stripCommentLines(sql);
+
+  test('Tidak ada operasi destruktif aktif', () => {
+    expect(active).not.toMatch(/\bTRUNCATE\b/i);
+    expect(active).not.toMatch(/\bDROP\s+(TABLE|COLUMN)\b/i);
+    expect(active).not.toMatch(/\bDELETE\s+FROM\b/i);
+  });
+
+  test('Memastikan unique index untuk upsert data_bumil per bulan', () => {
+    expect(sql).toMatch(/data_bumil_dusun_tahun_bulan_uidx/i);
+    expect(sql).toMatch(/ARRAY\['dusun_id', 'tahun', 'bulan'\]/i);
+  });
+
+  test('Membuat compatibility view untuk data_kegiatan_warga', () => {
+    expect(sql).toMatch(/CREATE\s+VIEW\s+public\.data_kegiatan_warga/i);
+    expect(sql).toMatch(/SELECT\s+\*\s+FROM\s+public\.data_rekap_dawis/i);
+  });
+});
+
 describe('Destructive scripts tersedia sebagai file terpisah', () => {
   test('supabase_schema_updates_v5_destructive.sql ada', () => {
     expect(
@@ -120,6 +141,11 @@ describe('supabase_schema.sql (fresh install) konsisten dengan v6 (TEXT)', () =>
 
   test('data_rekap_dawis ada di fresh schema (rename dari data_kegiatan_warga)', () => {
     expect(sql).toMatch(/CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+data_rekap_dawis/i);
+  });
+
+  test('fresh schema menyediakan compatibility view data_kegiatan_warga', () => {
+    expect(sql).toMatch(/CREATE\s+OR\s+REPLACE\s+VIEW\s+data_kegiatan_warga/i);
+    expect(sql).toMatch(/SELECT\s+\*\s+FROM\s+data_rekap_dawis/i);
   });
 
   test('seed dusun 9 entri Belikurip', () => {

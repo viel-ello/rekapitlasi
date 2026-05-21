@@ -269,6 +269,12 @@ CREATE TABLE IF NOT EXISTS data_bumil (
   UNIQUE (dusun_id, tahun, bulan)
 );
 
+-- Compatibility view untuk caller lama yang masih SELECT `data_kegiatan_warga`.
+-- Endpoint aplikasi canonical tetap `/api/rekap-dawis` dan tabel canonical
+-- tetap `data_rekap_dawis`.
+CREATE OR REPLACE VIEW data_kegiatan_warga AS
+SELECT * FROM data_rekap_dawis;
+
 -- Tabel Audit Logs
 -- Catatan: kolom desa_nama dipertahankan untuk history lama, tapi caller baru
 -- harus pakai dusun_nama (lihat lib/audit.js).

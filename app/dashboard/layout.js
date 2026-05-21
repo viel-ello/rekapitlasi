@@ -18,12 +18,17 @@ export default function DashboardLayout({ children }) {
   const router = useRouter();
 
   useEffect(() => {
-    // Auto-collapse sidebar on mobile screens
+    // Sidebar mode by viewport:
+    //   - Mobile (<768px): selalu pakai mode mobile drawer (full-width).
+    //     Tidak pernah `collapsed`. State `mobileOpen` mengontrol visibility.
+    //   - Desktop (>=768px): user bisa toggle `collapsed` (icon only) atau full.
     const handleResize = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
       if (mobile) {
-        setSidebarCollapsed(true);
+        // Saat masuk mobile, paksa collapsed=false supaya sidebar drawer
+        // tampil full-width (label + icon), bukan icon-only.
+        setSidebarCollapsed(false);
         setMobileOpen(false);
       }
     };
@@ -85,7 +90,9 @@ export default function DashboardLayout({ children }) {
         <Sidebar
           user={user}
           onLogout={handleLogout}
-          collapsed={sidebarCollapsed}
+          // Mobile selalu pakai layout full-width (collapsed=false). Toggle
+          // collapse hanya berlaku di desktop.
+          collapsed={isMobile ? false : sidebarCollapsed}
           onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
           mobileOpen={mobileOpen}
           onMobileClose={() => setMobileOpen(false)}
