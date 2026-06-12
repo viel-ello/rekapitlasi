@@ -41,10 +41,12 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- Tabel Data Umum PKK (Lampiran 4-20b)
 -- Catatan: kolom data numerik memakai TEXT (bisa diisi angka atau teks pendek).
+-- Per-bulan sejak v12: setiap dusun punya 12 baris per tahun (1 per bulan).
 CREATE TABLE IF NOT EXISTS data_umum (
   id SERIAL PRIMARY KEY,
   dusun_id INTEGER NOT NULL REFERENCES dusun(id),
   tahun INTEGER NOT NULL,
+  bulan INTEGER NOT NULL CHECK (bulan BETWEEN 1 AND 12),
   jml_dusun TEXT DEFAULT '',
   jml_pkk_rw TEXT DEFAULT '',
   jml_pkk_rt TEXT DEFAULT '',
@@ -65,7 +67,7 @@ CREATE TABLE IF NOT EXISTS data_umum (
   jml_tenaga_bantuan_p TEXT DEFAULT '',
   keterangan TEXT,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE (dusun_id, tahun)
+  UNIQUE (dusun_id, tahun, bulan)
 );
 
 -- Tabel Data Pokja I (Lampiran 4-21)

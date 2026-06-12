@@ -61,7 +61,7 @@ export async function GET(request, ctx) {
         .select(cols)
         .eq('dusun_id', dusunId)
         .eq('tahun', tahun);
-      if (table === 'data_bumil' || table === 'data_rekap_dawis') query = query.eq('bulan', bulan);
+      if (table === 'data_bumil' || table === 'data_rekap_dawis' || table === 'data_umum') query = query.eq('bulan', bulan);
       const { data } = await query.maybeSingle();
       return data || null;
     };
@@ -78,6 +78,7 @@ export async function GET(request, ctx) {
       .from('data_umum')
       .select('tahun, jml_kk, jml_jiwa_l, jml_jiwa_p, jml_dasa_wisma')
       .eq('dusun_id', dusunId)
+      .eq('bulan', bulan)
       .in('tahun', trendYears)
       .order('tahun');
 

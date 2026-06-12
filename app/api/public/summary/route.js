@@ -66,7 +66,7 @@ export async function GET(request) {
       // Schema baru hanya pakai dusun_id. desa_id tidak ada lagi.
       const cols = ['dusun_id', ...fields].join(',');
       let query = supabase.from(table).select(cols).eq('tahun', tahun);
-      if (table === 'data_bumil' || table === 'data_rekap_dawis') query = query.eq('bulan', bulan);
+      if (table === 'data_bumil' || table === 'data_rekap_dawis' || table === 'data_umum') query = query.eq('bulan', bulan);
       const { data } = await query;
       return data || [];
     };

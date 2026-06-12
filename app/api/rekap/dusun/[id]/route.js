@@ -64,7 +64,7 @@ export async function GET(request, ctx) {
     for (const t of TABLES) {
       let q = supabase.from(t).select('*').eq('dusun_id', dusunId).eq('tahun', tahun);
       let qp = supabase.from(t).select('*').eq('dusun_id', dusunId).eq('tahun', tahun - 1);
-      if (t === 'data_bumil' || t === 'data_rekap_dawis') {
+      if (t === 'data_bumil' || t === 'data_rekap_dawis' || t === 'data_umum') {
         q = q.eq('bulan', bulan);
         qp = qp.eq('bulan', bulan);
       }
@@ -95,7 +95,7 @@ export async function GET(request, ctx) {
     const trendYears = Array.from({ length: 5 }, (_, i) => tahun - 4 + i);
     const { data: trendUmum } = await supabase
       .from('data_umum').select('tahun, jml_kk, jml_jiwa_l, jml_jiwa_p, jml_dasa_wisma')
-      .eq('dusun_id', dusunId).in('tahun', trendYears).order('tahun');
+      .eq('dusun_id', dusunId).eq('bulan', bulan).in('tahun', trendYears).order('tahun');
     const { data: trendP4 } = await supabase
       .from('data_pokja4').select('tahun, posyandu_jumlah')
       .eq('dusun_id', dusunId).in('tahun', trendYears).order('tahun');

@@ -31,7 +31,8 @@ export async function GET(request) {
     let duQ = supabase
       .from('data_umum')
       .select('tahun, dusun_id, jml_kk, jml_jiwa_l, jml_jiwa_p, jml_dasa_wisma')
-      .in('tahun', years);
+      .in('tahun', years)
+      .eq('bulan', 12); // data_umum per-bulan sejak v12 — pakai snapshot Desember untuk trend tahunan
     let p4Q = supabase
       .from('data_pokja4')
       .select('tahun, dusun_id, posyandu_jumlah')

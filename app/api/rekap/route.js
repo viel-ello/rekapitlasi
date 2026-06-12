@@ -63,8 +63,12 @@ export async function GET(request) {
     if (dusunError) throw dusunError;
     const totalDusun = dusunList.length;
 
-    // Fetch data_umum
-    const { data: umumList, error: umumError } = await supabase.from('data_umum').select('*').eq('tahun', tahun);
+    // Fetch data_umum — per-bulan sejak v12, filter agar total tidak ter-multiply 12x.
+    const { data: umumList, error: umumError } = await supabase
+      .from('data_umum')
+      .select('*')
+      .eq('tahun', tahun)
+      .eq('bulan', bulan);
     if (umumError) throw umumError;
 
     const dataUmum = (umumList || []).reduce(
@@ -250,7 +254,7 @@ export async function GET(request) {
         let currentQuery = supabase.from(tableName).select('*').eq('tahun', tahun);
         let previousQuery = supabase.from(tableName).select('*').eq('tahun', Number(tahun) - 1);
 
-        if (tableName === 'data_bumil' || tableName === 'data_rekap_dawis') {
+        if (tableName === 'data_bumil' || tableName === 'data_rekap_dawis' || tableName === 'data_umum') {
           currentQuery = currentQuery.eq('bulan', bulan);
           previousQuery = previousQuery.eq('bulan', bulan);
         }

@@ -47,7 +47,7 @@ function unitIdOf(row) {
  *   - tanpa `bulan`: aggregate sum semua bulan jadi 1 row per dusun.
  */
 async function fetchDusunData(table, tahun, bulan = null, dusunByName) {
-  const TABLES_WITH_MONTH = new Set(['data_bumil', 'data_rekap_dawis']);
+  const TABLES_WITH_MONTH = new Set(['data_bumil', 'data_rekap_dawis', 'data_umum']);
   const isMonthly = TABLES_WITH_MONTH.has(table);
 
   let q = supabase.from(table).select('*').eq('tahun', tahun);
@@ -780,7 +780,7 @@ function buildRekapDawisSheet(wb, tahun, bulan, dusunListSorted, dataMap) {
 //   Row 10:  Column numbers
 //   Row 11+: Data 9 dusun
 // ──────────────────────────────────────────────────────────────────────────────
-function buildDataUmumSheet(wb, tahun, dusunListSorted, dataMap) {
+function buildDataUmumSheet(wb, tahun, bulan, dusunListSorted, dataMap) {
   const ws = wb.addWorksheet('Data Umum', { pageSetup: { orientation: 'landscape', paperSize: 8 } });
 
   // Definisi leaf columns (urutan pasti sesuai gambar):
@@ -825,7 +825,10 @@ function buildDataUmumSheet(wb, tahun, dusunListSorted, dataMap) {
   ws.getCell('A3').value = 'KECAMATAN  : BATURETNO';
   ws.getCell('A4').value = 'KABUPATEN  : WONOGIRI';
   ws.getCell('A5').value = 'PROVINSI   : JAWA TENGAH';
-  ws.getCell(3, totalCols - 2).value = `TAHUN : ${tahun}`;
+  ws.getCell(3, totalCols - 2).value = bulan != null
+    ? `BULAN : ${MONTHS[bulan - 1]}`
+    : `TAHUN : ${tahun}`;
+  if (bulan != null) ws.getCell(4, totalCols - 2).value = `TAHUN : ${tahun}`;
   for (const r of [3, 4, 5]) {
     ws.getCell(r, 1).font = { name: 'Arial', size: 10, bold: true };
   }
@@ -962,7 +965,7 @@ export async function GET(request) {
 
     // Fetch all data in parallel
     const [umumMap, p1Map, p2Map, p3Map, p4Map, dawisMap, bumilMap] = await Promise.all([
-      fetchDusunData('data_umum', tahun, null, dusunByName),
+      fetchDusunData('data_umum', tahun, bulan, dusunByName),
       fetchDusunData('data_pokja1', tahun, null, dusunByName),
       fetchDusunData('data_pokja2', tahun, null, dusunByName),
       fetchDusunData('data_pokja3', tahun, null, dusunByName),
@@ -973,7 +976,7 @@ export async function GET(request) {
 
     const want = (t) => !tableFilter || normalizeTableName(tableFilter) === t;
 
-    if (want('data_umum')) buildDataUmumSheet(wb, tahun, sortedDusun, umumMap);
+    if (want('data_umum')) buildDataUmumSheet(wb, tahun, bulan, sortedDusun, umumMap);
     if (want('data_pokja1')) buildPokja1Sheet(wb, tahun, sortedDusun, p1Map);
     if (want('data_pokja2')) buildPokja2Sheet(wb, tahun, sortedDusun, p2Map);
     if (want('data_pokja3')) buildPokja3Sheet(wb, tahun, sortedDusun, p3Map);

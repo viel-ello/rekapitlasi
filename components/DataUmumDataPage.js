@@ -98,7 +98,8 @@ const DATA_UMUM_TREE = [
   { kind: 'leaf', key: 'keterangan', label: 'KETERANGAN', type: 'text' },
 ];
 
-function TitleBlock(tahun) {
+function TitleBlock(tahun, bulan) {
+  const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
   const labelStyle = { display: 'inline-block', minWidth: 100, fontWeight: 600 };
   return (
     <div className="mb-4 rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm">
@@ -110,6 +111,7 @@ function TitleBlock(tahun) {
         <div><span style={labelStyle}>KECAMATAN</span>: BATURETNO</div>
         <div><span style={labelStyle}>KABUPATEN</span>: WONOGIRI</div>
         <div><span style={labelStyle}>PROVINSI</span>: JAWA TENGAH</div>
+        {bulan != null && <div><span style={labelStyle}>BULAN</span>: {MONTHS[bulan - 1]}</div>}
         <div><span style={labelStyle}>TAHUN</span>: {tahun}</div>
       </div>
     </div>
