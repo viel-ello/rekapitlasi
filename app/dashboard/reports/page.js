@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ChartPie, Download, FileLines, ArrowRight, ArrowLeft, CheckCircle, ExclamationCircle } from 'flowbite-react-icons/outline';
 import { DATA_PAGES } from '@/lib/dataPages';
 import { useYears } from '@/lib/useYears';
+import { getDusunCached } from '@/lib/fetchDusun';
 import { applyColumnOverrides } from '@/lib/columnOverrides';
 
 const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
@@ -53,8 +54,8 @@ export default function ReportsPage() {
 
     (async () => {
       try {
-        const res = await fetch('/api/dusun');
-        if (res.ok) setDesaList(await res.json());
+        const list = await getDusunCached();
+        if (list.length) setDesaList(list);
       } catch { /* silent */ }
     })();
   }, []);

@@ -6,7 +6,7 @@
  * Migration v5: unit data dusun. Response shape backward-compat (`totalDesa`/`desa` field tetap, isi dusun).
  */
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAnon as supabase } from '@/lib/supabase';
 import { PUBLIC_DUSUN_FIELDS, PUBLIC_COLUMNS, PUBLIC_TABLES } from '@/lib/publicData';
 import {
   COMPLETENESS_STATUS,

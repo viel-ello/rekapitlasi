@@ -6,8 +6,15 @@
  *   import ThemeProvider from '@/components/ThemeProvider';
  */
 
+import { MotionConfig } from 'framer-motion';
 import { ThemeProvider as Provider } from '@/lib/useTheme';
 
 export default function ThemeProvider({ children, defaultTheme = 'light' }) {
-  return <Provider defaultTheme={defaultTheme}>{children}</Provider>;
+  // reducedMotion="user" → framer-motion otomatis menonaktifkan animasi
+  // transform/layout untuk user yang set prefers-reduced-motion di OS.
+  return (
+    <Provider defaultTheme={defaultTheme}>
+      <MotionConfig reducedMotion="user">{children}</MotionConfig>
+    </Provider>
+  );
 }

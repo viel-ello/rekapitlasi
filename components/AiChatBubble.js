@@ -245,6 +245,14 @@ export default function AiChatBubble({ tahun, user }) {
 
       if (data.error) {
         setMessages(prev => [...prev, { role: 'assistant', content: `❌ ${data.error}` }]);
+      } else if (data.type === 'mutation_preview' && data.mutation) {
+        // AI mengusulkan perubahan data — tampilkan kartu konfirmasi (dry-run).
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          type: 'mutation_preview',
+          content: data.reply,
+          mutation: data.mutation,
+        }]);
       } else {
         setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
       }
@@ -252,6 +260,33 @@ export default function AiChatBubble({ tahun, user }) {
       setMessages(prev => [...prev, { role: 'assistant', content: '❌ Terjadi kesalahan jaringan. Coba lagi.' }]);
     }
     setLoading(false);
+  };
+
+  // Terapkan mutasi yang diusulkan AI setelah user klik "Terapkan".
+  const applyMutation = async (msgIndex, mutation) => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/chat/confirm-mutation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mutation }),
+      });
+      const data = await res.json();
+      // Tandai kartu sebagai sudah diproses supaya tombol hilang.
+      setMessages(prev => prev.map((m, i) => i === msgIndex ? { ...m, mutationDone: true } : m));
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: (!res.ok || data.error) ? `❌ ${data.error || 'Gagal menerapkan perubahan'}` : `✅ ${data.message}`,
+      }]);
+    } catch {
+      setMessages(prev => [...prev, { role: 'assistant', content: '❌ Gagal menerapkan perubahan. Coba lagi.' }]);
+    }
+    setLoading(false);
+  };
+
+  const cancelMutation = (msgIndex) => {
+    setMessages(prev => prev.map((m, i) => i === msgIndex ? { ...m, mutationDone: true } : m));
+    setMessages(prev => [...prev, { role: 'assistant', content: '🚫 Perubahan dibatalkan. Data tidak diubah.' }]);
   };
 
   const renderContent = (content) => {
@@ -501,6 +536,54 @@ export default function AiChatBubble({ tahun, user }) {
                     : 'bg-white text-gray-700 border border-gray-100 shadow-sm rounded-bl-md'
                 }`}>
                   {renderContent(msg.content)}
+                  {/* Kartu konfirmasi mutasi AI (dry-run) */}
+                  {msg.type === 'mutation_preview' && msg.mutation && (
+                    <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[12px]">
+                      <div className="font-semibold text-amber-900 mb-1.5">
+                        Usulan perubahan: {msg.mutation.dusunNama} · {msg.mutation.tableLabel} · {msg.mutation.tahun}{msg.mutation.isMonthly ? ` / bln ${msg.mutation.bulan}` : ''}
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="text-amber-700">
+                              <th className="py-1 pr-3 font-medium">Kolom</th>
+                              <th className="py-1 pr-3 font-medium">Sebelum</th>
+                              <th className="py-1 font-medium">Sesudah</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {msg.mutation.changes.map((c) => (
+                              <tr key={c.key} className="border-t border-amber-200/60">
+                                <td className="py-1 pr-3 font-mono text-[11px] text-gray-700">{c.key}</td>
+                                <td className="py-1 pr-3 text-gray-500">{c.before === null || c.before === '' ? '—' : String(c.before)}</td>
+                                <td className="py-1 font-semibold text-gray-900">{String(c.after)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      {!msg.mutationDone ? (
+                        <div className="flex items-center gap-2 mt-3">
+                          <button
+                            onClick={() => applyMutation(i, msg.mutation)}
+                            disabled={loading}
+                            className="px-3 py-1.5 text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg disabled:opacity-50"
+                          >
+                            Terapkan
+                          </button>
+                          <button
+                            onClick={() => cancelMutation(i)}
+                            disabled={loading}
+                            className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                          >
+                            Batal
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="mt-2 text-[11px] text-gray-500 italic">Sudah diproses.</div>
+                      )}
+                    </div>
+                  )}
                   {/* Copy button for assistant messages */}
                   {msg.role === 'assistant' && msg.content && (
                     <button

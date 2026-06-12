@@ -8,9 +8,13 @@ import { useYears } from '@/lib/useYears';
 import { useKeyboardShortcut } from '@/lib/useKeyboardShortcut';
 import PeriodWorkflowBadge from '@/components/PeriodWorkflowBadge';
 import EditModeSwitcher from '@/components/EditModeSwitcher';
+import DensityToggle from '@/components/DensityToggle';
 import AutoGrowTextarea from '@/components/AutoGrowTextarea';
+import TableSkeleton from '@/components/TableSkeleton';
 import { useEditMode } from '@/lib/useEditMode';
+import { useDensity } from '@/lib/useDensity';
 import { captureScrollState, restoreScrollState } from '@/lib/preserveScroll';
+import { getDusunCached } from '@/lib/fetchDusun';
 
 /**
  * Reusable data table component dengan role-based access + inline validation.
@@ -20,6 +24,7 @@ import { captureScrollState, restoreScrollState } from '@/lib/preserveScroll';
  */
 export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, columns, tableName }) {
   const { mode, setMode, isWord } = useEditMode();
+  const { density, setDensity, isCompact } = useDensity();
   const [dusun, setDusun] = useState([]);
   const [data, setData] = useState({});
   const [prevYearData, setPrevYearData] = useState({});
@@ -36,6 +41,8 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
   const [overrides, setOverrides] = useState([]);
 
   const [searchQuery, setSearchQuery] = useState('');
+  // Loading state untuk skeleton saat fetch awal.
+  const [initialLoading, setInitialLoading] = useState(true);
   // Expanded state per dusun di parent — supaya tidak reset tiap re-render.
   const [expandedIds, setExpandedIds] = useState(() => new Set());
 
@@ -79,8 +86,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
   };
 
   const fetchDusun = async () => {
-    const res = await fetch('/api/dusun');
-    const list = await res.json();
+    const list = await getDusunCached();
     setDusun(list);
   };
 
@@ -117,6 +123,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
     else {
       setData(map);
       setSaveStatus({});
+      setInitialLoading(false);
     }
   };
 
@@ -244,6 +251,10 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
 
   useKeyboardShortcut({ 'ctrl+s': saveAll }, { enabled: canEdit });
 
+  if (initialLoading) {
+    return <TableSkeleton rows={9} cols={Math.min(effectiveColumns.length || 6, 8)} />;
+  }
+
   const getTotal = (key, isDynamic = false, type = 'number') => {
     if (type !== 'number') return '-';
     if (isDynamic) {
@@ -301,7 +312,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
     const dusunEditable = isDusunEditable(d.id);
 
     return (
-      <div className={`bg-white rounded-xl border ${isDirty ? 'border-amber-200' : 'border-gray-200'} mb-3 shadow-sm overflow-hidden`}>
+      <div id={`dusun-card-${d.id}`} className={`bg-white rounded-xl border ${isDirty ? 'border-amber-200' : 'border-gray-200'} mb-3 shadow-sm overflow-hidden`}>
         <button
           onClick={() => toggleExpanded(d.id)}
           className="w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-gray-50 active:bg-gray-100 transition-colors text-left"
@@ -456,6 +467,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
 
         <div className="flex flex-wrap items-center gap-3">
           <EditModeSwitcher mode={mode} onChange={setMode} />
+          <DensityToggle density={density} onChange={setDensity} />
           {canEdit && (
             <button
               onClick={saveAll}
@@ -526,6 +538,27 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
 
       {/* Mobile View (<768px) */}
       <div className="md:hidden">
+        {filteredDusun.length > 1 && (
+          <div className="sticky top-16 z-20 mb-3 flex items-center gap-2 rounded-xl border border-gray-200 bg-white/95 backdrop-blur px-3 py-2 shadow-sm">
+            <span className="text-xs font-medium text-gray-500 flex-shrink-0">Lompat ke:</span>
+            <select
+              value=""
+              onChange={(e) => {
+                const id = Number(e.target.value);
+                if (!id) return;
+                setExpandedIds((prev) => new Set(prev).add(id));
+                setTimeout(() => {
+                  document.getElementById(`dusun-card-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 50);
+              }}
+              className="flex-1 min-w-0 px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+              aria-label="Lompat ke dusun"
+            >
+              <option value="">Pilih dusun...</option>
+              {filteredDusun.map((d) => <option key={d.id} value={d.id}>{d.nama}</option>)}
+            </select>
+          </div>
+        )}
         {filteredDusun.map((d, i) => <MobileCard key={d.id} d={d} i={i} />)}
         {filteredDusun.length === 0 && (
           <div className="text-center py-8 text-gray-500 bg-white rounded-xl border border-gray-100">Dusun tidak ditemukan</div>
@@ -535,7 +568,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
       {/* Desktop Table View (>=768px) */}
       <div className="hidden md:block bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
         <div className="data-table-wrapper" style={{ maxHeight: '75vh' }}>
-          <table className={`data-table relative ${isWord ? 'mode-word' : ''}`}>
+          <table className={`data-table relative ${isWord ? 'mode-word' : ''} ${isCompact ? 'density-compact' : ''}`}>
             <thead className="sticky top-0 z-20">
               <tr>
                 <th rowSpan={2} style={{ position: 'sticky', left: 0, zIndex: 30, background: '#f9fafb', minWidth: 40 }}>No</th>

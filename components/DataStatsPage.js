@@ -16,6 +16,7 @@ import { buildColumnTotals, buildDusunRanking, buildStatsSummary } from '@/lib/c
 import { validateRow, countIssues } from '@/lib/validation';
 import { applyColumnOverrides } from '@/lib/columnOverrides';
 import { useYears } from '@/lib/useYears';
+import { getDusunCached } from '@/lib/fetchDusun';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import { DataPageIcon } from '@/components/DataPageIcon';
 import EditModeModal from '@/components/EditModeModal';
@@ -120,18 +121,17 @@ export default function DataStatsPage({ config }) {
           prevParams.set('bulan', String(bulan));
         }
 
-        const [desaRes, dataRes, prevRes] = await Promise.all([
-          fetch('/api/dusun'),
+        const [desaData, dataRes, prevRes] = await Promise.all([
+          getDusunCached(),
           fetch(`${config.apiEndpoint}?${params.toString()}`),
           fetch(`${config.apiEndpoint}?${prevParams.toString()}`),
         ]);
 
-        if (!desaRes.ok || !dataRes.ok || !prevRes.ok) {
+        if (!dataRes.ok || !prevRes.ok) {
           throw new Error('Gagal memuat statistik data');
         }
 
-        const [desaData, rowData, prevData] = await Promise.all([
-          desaRes.json(),
+        const [rowData, prevData] = await Promise.all([
           dataRes.json(),
           prevRes.json(),
         ]);

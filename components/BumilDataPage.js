@@ -10,9 +10,13 @@ import { validateRow, countIssues } from '@/lib/validation';
 import { useKeyboardShortcut } from '@/lib/useKeyboardShortcut';
 import PeriodWorkflowBadge from '@/components/PeriodWorkflowBadge';
 import EditModeSwitcher from '@/components/EditModeSwitcher';
+import DensityToggle from '@/components/DensityToggle';
+import TableSkeleton from '@/components/TableSkeleton';
 import AutoGrowTextarea from '@/components/AutoGrowTextarea';
 import { useEditMode } from '@/lib/useEditMode';
+import { useDensity } from '@/lib/useDensity';
 import { captureScrollState, restoreScrollState } from '@/lib/preserveScroll';
+import { getDusunCached } from '@/lib/fetchDusun';
 
 const BUMIL_FORM_TITLE = 'REKAPITULASI DATA/BUKU CATATAN IBU HAMIL,MELAHIRKAN,NIFAS,IBU MENINGGAL,KELAHIRAN BAYI,BAYI MENINGGAL DAN KEMATIAN BALITA';
 const BUMIL_ORG_TITLE = 'TP PKK DESA BELIKURIP';
@@ -125,6 +129,7 @@ function flattenBumilGroups(groups) {
 
 export default function BumilDataPage({ config }) {
   const { mode, setMode, isWord } = useEditMode();
+  const { density, setDensity, isCompact } = useDensity();
   const [dusun, setDusun] = useState([]);
   const [data, setData] = useState({});
   const [prevData, setPrevData] = useState({});
@@ -138,6 +143,8 @@ export default function BumilDataPage({ config }) {
   const [userDusunId, setUserDusunId] = useState(null);
   const [overrides, setOverrides] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [monthsWithData, setMonthsWithData] = useState(() => new Set());
+  const [initialLoading, setInitialLoading] = useState(true);
 
   const { years } = useYears();
 
@@ -153,7 +160,7 @@ export default function BumilDataPage({ config }) {
   const visibleColumns = useMemo(() => flattenBumilGroups(bumilGroups), [bumilGroups]);
 
   useEffect(() => { fetchDusun(); checkPermission(); fetchOverrides(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (dusun.length > 0) { fetchData(); fetchPrevData(); } }, [tahun, bulan, dusun]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (dusun.length > 0) { fetchData(); fetchPrevData(); fetchMonthsWithData(); } }, [tahun, bulan, dusun]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const checkPermission = async () => {
     try {
@@ -172,8 +179,8 @@ export default function BumilDataPage({ config }) {
 
   const fetchDusun = async () => {
     try {
-      const res = await fetch('/api/dusun');
-      if (res.ok) setDusun(await res.json());
+      const list = await getDusunCached();
+      if (list.length) setDusun(list);
     } catch (err) { console.error('Failed to fetch dusun', err); }
   };
 
@@ -196,7 +203,8 @@ export default function BumilDataPage({ config }) {
       });
       setData(map);
       setSaveStatus({});
-    } catch (err) { console.error('Failed to fetch data', err); }
+      setInitialLoading(false);
+    } catch (err) { console.error('Failed to fetch data', err); setInitialLoading(false); }
   };
 
   const fetchPrevData = async () => {
@@ -210,6 +218,18 @@ export default function BumilDataPage({ config }) {
         if (id != null) map[id] = r;
       });
       setPrevData(map);
+    } catch { /* silent */ }
+  };
+
+  // Kumpulkan bulan mana saja yang sudah punya data (untuk penanda di dropdown).
+  const fetchMonthsWithData = async () => {
+    try {
+      const res = await fetch(`${config.apiEndpoint}?tahun=${tahun}`);
+      if (!res.ok) return;
+      const rows = await res.json();
+      const set = new Set();
+      (rows || []).forEach((r) => { if (r.bulan != null) set.add(Number(r.bulan)); });
+      setMonthsWithData(set);
     } catch { /* silent */ }
   };
 
@@ -270,6 +290,7 @@ export default function BumilDataPage({ config }) {
     }
     setSaving(null);
     restoreScrollState(scrollSnapshot);
+    setMonthsWithData((prev) => new Set(prev).add(bulan));
     setTimeout(() => setToast(null), 4000);
     setTimeout(() => setSaveStatus((prev) => ({ ...prev, [dusunId]: null })), 5000);
   }, [data, prevData, tahun, bulan, canEdit, config, visibleColumns]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -294,6 +315,7 @@ export default function BumilDataPage({ config }) {
     }
     setSaving(null);
     restoreScrollState(scrollSnapshot);
+    if (ok > 0) setMonthsWithData((prev) => new Set(prev).add(bulan));
     setToast({ type: fail === 0 ? 'success' : 'error', message: `Berhasil ${ok}${fail > 0 ? `, gagal ${fail}` : ''}` });
     setTimeout(() => setToast(null), 4000);
   };
@@ -302,11 +324,24 @@ export default function BumilDataPage({ config }) {
 
   const filteredDusun = dusun.filter((d) => d.nama.toLowerCase().includes(searchQuery.toLowerCase()));
   const dirtyCount = Object.values(saveStatus).filter((s) => s === 'dirty').length;
+
+  // Peringatkan sebelum menutup tab kalau masih ada perubahan belum disimpan.
+  useEffect(() => {
+    if (dirtyCount === 0) return undefined;
+    const handler = (e) => { e.preventDefault(); e.returnValue = ''; return ''; };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [dirtyCount]);
+
   const getTotal = (key) => dusun.reduce((sum, d) => {
     const num = Number(data[d.id]?.[key]);
     return sum + (Number.isFinite(num) ? num : 0);
   }, 0);
   const isDusunEditable = (id) => canEdit && (userDusunId == null || Number(id) === Number(userDusunId));
+
+  if (initialLoading) {
+    return <TableSkeleton rows={9} cols={Math.min(visibleColumns.length || 6, 8)} />;
+  }
 
   const MobileCard = ({ d, i }) => {
     const rowData = data[d.id] || {};
@@ -320,7 +355,7 @@ export default function BumilDataPage({ config }) {
     const dusunEditable = isDusunEditable(d.id);
 
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 shadow-sm">
+      <div id={`dusun-card-${d.id}`} className="bg-white rounded-xl border border-gray-200 p-4 mb-4 shadow-sm">
         <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-100">
           <div>
             <span className="text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md mr-2">{i + 1}</span>
@@ -423,6 +458,7 @@ export default function BumilDataPage({ config }) {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <EditModeSwitcher mode={mode} onChange={setMode} />
+          <DensityToggle density={density} onChange={setDensity} />
           {canEdit && (
             <button onClick={saveAll} disabled={saving === 'all'}
               className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors disabled:opacity-50">
@@ -430,8 +466,8 @@ export default function BumilDataPage({ config }) {
               Simpan Semua
             </button>
           )}
-          <select value={bulan} onChange={(e) => setBulan(Number(e.target.value))} className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none" aria-label="Pilih bulan">
-            {MONTHS.map((b, i) => <option key={b} value={i + 1}>{b}</option>)}
+          <select value={bulan} onChange={(e) => setBulan(Number(e.target.value))} className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none" aria-label="Pilih bulan" title="Bulan bertanda ● sudah memiliki data">
+            {MONTHS.map((b, i) => <option key={b} value={i + 1}>{monthsWithData.has(i + 1) ? `● ${b}` : b}</option>)}
           </select>
           <select value={tahun} onChange={(e) => setTahun(Number(e.target.value))} className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none" aria-label="Pilih tahun">
             {years.map((y) => <option key={y} value={y}>{y}</option>)}
@@ -476,13 +512,33 @@ export default function BumilDataPage({ config }) {
       )}
 
       <div className="md:hidden">
+        {filteredDusun.length > 1 && (
+          <div className="sticky top-16 z-20 mb-3 flex items-center gap-2 rounded-xl border border-gray-200 bg-white/95 backdrop-blur px-3 py-2 shadow-sm">
+            <span className="text-xs font-medium text-gray-500 flex-shrink-0">Lompat ke:</span>
+            <select
+              value=""
+              onChange={(e) => {
+                const id = Number(e.target.value);
+                if (!id) return;
+                setTimeout(() => {
+                  document.getElementById(`dusun-card-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 50);
+              }}
+              className="flex-1 min-w-0 px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+              aria-label="Lompat ke dusun"
+            >
+              <option value="">Pilih dusun...</option>
+              {filteredDusun.map((d) => <option key={d.id} value={d.id}>{d.nama}</option>)}
+            </select>
+          </div>
+        )}
         {filteredDusun.map((d, i) => <MobileCard key={d.id} d={d} i={i} />)}
         {filteredDusun.length === 0 && <div className="text-center py-8 text-gray-500 bg-white rounded-xl border border-gray-100">Dusun tidak ditemukan</div>}
       </div>
 
       <div className="hidden md:block bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
         <div className="data-table-wrapper" style={{ maxHeight: '75vh' }}>
-          <table className={`data-table ${isWord ? 'mode-word' : ''}`}>
+          <table className={`data-table ${isWord ? 'mode-word' : ''} ${isCompact ? 'density-compact' : ''}`}>
             <thead>
               <tr>
                 <th rowSpan={3} style={{ position: 'sticky', left: 0, zIndex: 4, background: '#f9fafb', minWidth: 40 }}>NO</th>

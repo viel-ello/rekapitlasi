@@ -67,7 +67,7 @@ export async function POST(request) {
     }
 
     const allowedTables = ROLE_TABLE_MAP[user.role] || [];
-    const results = await importToSupabase(sheetsToImport, targetYear, allowedTables, dusunList);
+    const results = await importToSupabase(sheetsToImport, targetYear, allowedTables, dusunList, user);
     const totalSuccess = results.reduce((sum, result) => sum + (result.success || 0), 0);
     const totalFailed = results.reduce((sum, result) => sum + (result.failed || 0), 0);
 
@@ -78,7 +78,15 @@ export async function POST(request) {
           username: user.username,
           action: 'import',
           tableName: result.table,
-          detail: `Import Excel sheet "${result.sheet}" tahun ${targetYear}: ${result.success} baris`,
+          detail: `Import Excel sheet "${result.sheet}" tahun ${targetYear}: ${result.success} baris${result.rowLevelSkipped ? ` (${result.rowLevelSkipped} baris dusun lain ditolak)` : ''}`,
+        });
+      } else if (result.skipped) {
+        await writeLog({
+          userId: user.userId,
+          username: user.username,
+          action: 'permission_denied',
+          tableName: result.table,
+          detail: `Import ditolak untuk sheet "${result.sheet}": ${result.reason || result.error}`,
         });
       }
     }

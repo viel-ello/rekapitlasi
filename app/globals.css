@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -286,6 +284,19 @@
 .data-table .row-total td {
   border-top: 2px solid #059669;
   color: #059669;
+}
+
+/* ---- Density: Compact (Ringkas) ---- */
+.data-table.density-compact th {
+  padding: 0.3rem 0.4rem;
+  font-size: 0.72rem;
+}
+.data-table.density-compact td {
+  padding: 0.2rem 0.35rem;
+}
+.data-table.density-compact .cell-input {
+  padding: 0.2rem 0.35rem;
+  font-size: 0.78rem;
 }
 
 /* ---- Word Mode (auto-stretch cells, multi-line) ---- */

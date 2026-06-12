@@ -6,7 +6,7 @@
  * Endpoint legacy `/api/public/desa/[id]` redirect ke endpoint ini.
  */
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAnon as supabase } from '@/lib/supabase';
 import { PUBLIC_DUSUN_FIELDS, PUBLIC_COLUMNS, PUBLIC_TABLES } from '@/lib/publicData';
 import {
   evaluateRecordCompleteness,

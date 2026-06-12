@@ -10,9 +10,11 @@ import { useKeyboardShortcut } from '@/lib/useKeyboardShortcut';
 import PeriodWorkflowBadge from '@/components/PeriodWorkflowBadge';
 import EditModeSwitcher from '@/components/EditModeSwitcher';
 import AutoGrowTextarea from '@/components/AutoGrowTextarea';
+import TableSkeleton from '@/components/TableSkeleton';
 import { useEditMode } from '@/lib/useEditMode';
 import { MONTHS } from '@/lib/dataPages';
 import { captureScrollState, restoreScrollState } from '@/lib/preserveScroll';
+import { getDusunCached } from '@/lib/fetchDusun';
 
 /**
  * Komponen generic untuk tabel dengan multi-row header arbitrary depth.
@@ -189,6 +191,12 @@ export default function NestedDataPage({
   // di input supaya input uncontrolled re-mount saat data fresh masuk
   // (mis. setelah save sukses atau ganti tahun/bulan).
   const [dataVersion, setDataVersion] = useState(0);
+  const [initialLoading, setInitialLoading] = useState(true);
+  // Tick untuk memaksa recompute total footer dari buffer input terbaru
+  // (input uncontrolled tidak trigger re-render saat user ngetik).
+  const [recalcTick, setRecalcTick] = useState(0);
+  // Untuk tabel per-bulan: set bulan (1-12) yang sudah punya minimal 1 baris data.
+  const [monthsWithData, setMonthsWithData] = useState(() => new Set());
   const { years } = useYears();
 
   const hasMonth = !!config.hasMonth;
@@ -216,6 +224,7 @@ export default function NestedDataPage({
     if (dusun.length > 0) {
       fetchData(tahun);
       fetchData(tahun - 1, true);
+      if (hasMonth) fetchMonthsWithData(tahun);
     }
   }, [tahun, bulan, dusun]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -233,8 +242,8 @@ export default function NestedDataPage({
 
   const fetchDusun = async () => {
     try {
-      const res = await fetch('/api/dusun');
-      if (res.ok) setDusun(await res.json());
+      const list = await getDusunCached();
+      if (list.length) setDusun(list);
     } catch { /* silent */ }
   };
 
@@ -242,6 +251,19 @@ export default function NestedDataPage({
     try {
       const res = await fetch(`/api/admin/column-overrides?table_name=${config.tableName}`);
       if (res.ok) setOverrides(await res.json());
+    } catch { /* silent */ }
+  };
+
+  // Tabel per-bulan: ambil semua baris tahun ini (tanpa filter bulan) lalu
+  // kumpulkan bulan mana saja yang sudah punya data → untuk penanda di dropdown.
+  const fetchMonthsWithData = async (targetYear) => {
+    try {
+      const res = await fetch(`${config.apiEndpoint}?tahun=${targetYear}`);
+      if (!res.ok) return;
+      const rows = await res.json();
+      const set = new Set();
+      (rows || []).forEach((r) => { if (r.bulan != null) set.add(Number(r.bulan)); });
+      setMonthsWithData(set);
     } catch { /* silent */ }
   };
 
@@ -260,6 +282,7 @@ export default function NestedDataPage({
     else {
       setData(map);
       setSaveStatus({});
+      setInitialLoading(false);
       // Clear pending buffer + dirty marker — data dari server jadi truth baru.
       pendingChangesRef.current = new Map();
       setDirtyIds(new Set());
@@ -358,6 +381,7 @@ export default function NestedDataPage({
     }
     setSaving(null);
     restoreScrollState(scrollSnapshot);
+    if (hasMonth) { setMonthsWithData((prev) => new Set(prev).add(bulan)); }
     setTimeout(() => setToast(null), 3500);
     setTimeout(() => setSaveStatus((prev) => ({ ...prev, [dusunId]: null })), 5000);
   }, [data, prevYearData, tahun, bulan, canEdit, config, leaves, hasMonth]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -376,6 +400,7 @@ export default function NestedDataPage({
     }
     setSaving(null);
     restoreScrollState(scrollSnapshot);
+    if (hasMonth && ok > 0) { setMonthsWithData((prev) => new Set(prev).add(bulan)); }
     setToast({ type: fail === 0 ? 'success' : 'error', message: `Berhasil ${ok}${fail > 0 ? `, gagal ${fail}` : ''}` });
     setTimeout(() => setToast(null), 4000);
   };
@@ -384,6 +409,20 @@ export default function NestedDataPage({
 
   const filteredDusun = dusun.filter((d) => d.nama.toLowerCase().includes(searchQuery.toLowerCase()));
   const dirtyCount = dirtyIds.size;
+
+  // Peringatkan user sebelum menutup/refresh tab kalau masih ada perubahan
+  // yang belum disimpan (pendingChangesRef belum di-commit).
+  useEffect(() => {
+    if (dirtyCount === 0) return undefined;
+    const handler = (e) => {
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [dirtyCount]);
+
   // "Batalkan" — buang pending changes + refresh data dari server.
   const cancelPending = () => {
     pendingChangesRef.current = new Map();
@@ -426,7 +465,7 @@ export default function NestedDataPage({
     const filledCount = leaves.filter((c) => Number(rowData[c.key] || 0) > 0).length;
 
     return (
-      <div className={`bg-white rounded-xl border ${isDirty ? 'border-amber-200' : 'border-gray-200'} mb-3 shadow-sm overflow-hidden`}>
+      <div className={`bg-white rounded-xl border ${isDirty ? 'border-amber-200' : 'border-gray-200'} mb-3 shadow-sm overflow-hidden`} id={`dusun-card-${d.id}`}>
         <button onClick={() => toggleExpanded(d.id)} className="w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-gray-50 active:bg-gray-100 transition-colors text-left" style={{ minHeight: 56 }}>
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md">{i + 1}</span>
@@ -500,6 +539,10 @@ export default function NestedDataPage({
 
   const numColLabel = unitColumnLabel || 'Nama Dusun';
 
+  if (initialLoading) {
+    return <TableSkeleton rows={9} cols={Math.min(leaves.length || 6, 8)} />;
+  }
+
   return (
     <div>
       {toast && (
@@ -547,8 +590,8 @@ export default function NestedDataPage({
             {years.map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
           {hasMonth && (
-            <select value={bulan} onChange={(e) => setBulan(Number(e.target.value))} className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary-500 outline-none shadow-sm" aria-label="Pilih bulan">
-              {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+            <select value={bulan} onChange={(e) => setBulan(Number(e.target.value))} className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary-500 outline-none shadow-sm" aria-label="Pilih bulan" title="Bulan bertanda ● sudah memiliki data">
+              {MONTHS.map((m, i) => <option key={m} value={i + 1}>{monthsWithData.has(i + 1) ? `● ${m}` : m}</option>)}
             </select>
           )}
         </div>
@@ -579,11 +622,44 @@ export default function NestedDataPage({
       )}
 
       <div className="md:hidden">
+        {filteredDusun.length > 1 && (
+          <div className="sticky top-16 z-20 mb-3 flex items-center gap-2 rounded-xl border border-gray-200 bg-white/95 backdrop-blur px-3 py-2 shadow-sm">
+            <span className="text-xs font-medium text-gray-500 flex-shrink-0">Lompat ke:</span>
+            <select
+              value=""
+              onChange={(e) => {
+                const id = Number(e.target.value);
+                if (!id) return;
+                setExpandedIds((prev) => new Set(prev).add(id));
+                setTimeout(() => {
+                  document.getElementById(`dusun-card-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 50);
+              }}
+              className="flex-1 min-w-0 px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+              aria-label="Lompat ke dusun"
+            >
+              <option value="">Pilih dusun...</option>
+              {filteredDusun.map((d) => <option key={d.id} value={d.id}>{d.nama}</option>)}
+            </select>
+          </div>
+        )}
         {filteredDusun.map((d, i) => <MobileCard key={d.id} d={d} i={i} />)}
         {filteredDusun.length === 0 && <div className="text-center py-8 text-gray-500 bg-white rounded-xl border border-gray-100">{unitLabel} tidak ditemukan</div>}
       </div>
 
       <div className="hidden md:block bg-white rounded-2xl border border-gray-100 p-3 shadow-sm">
+        {canEdit && (
+          <div className="flex items-center justify-end gap-2 mb-2">
+            <span className="text-[11px] text-gray-400">Total di bawah dihitung dari data yang sudah disimpan.</span>
+            <button
+              onClick={() => setRecalcTick((t) => t + 1)}
+              className="px-2.5 py-1 text-xs font-medium text-primary-700 bg-primary-50 border border-primary-200 rounded-lg hover:bg-primary-100 transition-colors"
+              title="Hitung ulang total dari nilai yang sedang Anda ketik (termasuk yang belum disimpan)"
+            >
+              Hitung ulang total
+            </button>
+          </div>
+        )}
         <div data-preserve-scroll style={{ overflow: 'auto', maxHeight: '78vh' }}>
           <table style={{
             borderCollapse: 'collapse',
@@ -754,7 +830,7 @@ export default function NestedDataPage({
                 <tr><td colSpan={totalCols} style={{ textAlign: 'center', padding: 24, color: '#6b7280' }}>{unitLabel} tidak ditemukan</td></tr>
               )}
               {filteredDusun.length > 0 && (
-                <tr style={{ background: '#f0fdf4' }}>
+                <tr style={{ background: '#f0fdf4' }} data-recalc={recalcTick}>
                   <td style={{ position: 'sticky', left: 0, background: '#f0fdf4', zIndex: 1, border: '1px solid #d1fae5' }}></td>
                   <td style={{ position: 'sticky', left: 36, background: '#f0fdf4', zIndex: 1, padding: '6px 8px', border: '1px solid #d1fae5', fontWeight: 700, color: '#065f46' }}>JUMLAH</td>
                   {leaves.map((col) => (

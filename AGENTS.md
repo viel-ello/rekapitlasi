@@ -77,7 +77,8 @@ Konvensi paling penting di versi ini:
 - Catatan: sempat bereksperimen pindah ke Claude Sonnet 4.5 via `@anthropic-ai/sdk` tapi di-rollback. Kalau suatu saat mau pindah lagi, pattern integrasi sudah pernah dibangun dan bisa ditemukan di history git.
 - Konteks DB yang dikirim ke Gemini dibatasi ke tahun aktif ±1 untuk menghemat token dan membatasi exposure data.
 - Chat history dibatasi 12 pesan terakhir.
-- Function call `update_desa_data` divalidasi server-side terhadap `VALID_TABLES` + `VALID_COLUMNS`, role dari JWT, dan integer sanitization.
+- Function call `update_desa_data` divalidasi server-side terhadap `VALID_TABLES` + `VALID_COLUMNS` (di `lib/aiMutation.js`), role dari JWT, dan integer sanitization.
+- Mutasi AI pakai pola dry-run: `/api/chat` mengembalikan `mutation_preview` (before/after), eksekusi baru terjadi setelah user klik "Terapkan" → `/api/chat/confirm-mutation` (re-validasi penuh server-side + period lock + audit `ai_update`).
 - File upload (.xlsx): validasi ekstensi + magic bytes ZIP (PK header).
 
 ## Completeness logic
@@ -105,7 +106,7 @@ Konvensi paling penting di versi ini:
 # Panduan modifikasi
 
 - Sebelum menambah kolom baru ke salah satu `data_*` tabel: update `DATA_PAGES` di `lib/dataPages.js`, `SHEET_MAP` di `lib/excel/sheetMap.js`, `VALID_COLUMNS` di `app/api/chat/route.js`, `TABLE_COLUMNS` di `app/api/export/template/route.js`, dan skema SQL di Supabase. Kolom akan otomatis muncul di UI input.
-- Sebelum membiarkan AI memutasi tabel baru: tambahkan ke `VALID_TABLES` + `VALID_COLUMNS` di `app/api/chat/route.js` DAN `ROLE_PERMISSIONS` di `lib/auth.js`.
+- Sebelum membiarkan AI memutasi tabel baru: tambahkan ke `VALID_TABLES` + `VALID_COLUMNS` di `lib/aiMutation.js` DAN `ROLE_PERMISSIONS` di `lib/auth.js`.
 - Jangan menaruh password/rahasia di log. Audit log menyimpan detail aksi dan opsional JSON before/after.
 - Default admin `admin/admin123`: ganti di produksi. Belum ada paksa ganti di first-login; lakukan manual.
 

@@ -9,6 +9,7 @@ import {
 import ConfirmModal from '@/components/ConfirmModal';
 import { DATA_PAGES as DATA_PAGES_CLIENT } from '@/lib/dataPages';
 import { notifyYearsUpdated, useYears } from '@/lib/useYears';
+import { invalidateDusunCache } from '@/lib/fetchDusun';
 
 const TABS = [
   { id: 'users', label: 'Pengguna', icon: User },
@@ -266,7 +267,7 @@ function DesaTab({ toast, setToast }) {
   const saveNama = async (id) => {
     try {
       const res = await fetch('/api/admin/dusun', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, nama: editNama }) });
-      if (res.ok) { setToast({ type: 'success', message: 'Nama dusun diperbarui' }); setEditId(null); fetchDesa(); }
+      if (res.ok) { setToast({ type: 'success', message: 'Nama dusun diperbarui' }); setEditId(null); invalidateDusunCache(); fetchDesa(); }
       else { const err = await res.json(); setToast({ type: 'error', message: err.error || 'Gagal memperbarui' }); }
     } catch { setToast({ type: 'error', message: 'Gagal menghubungi server' }); }
     setTimeout(() => setToast(null), 3000);
@@ -278,6 +279,7 @@ function DesaTab({ toast, setToast }) {
       if (res.ok) { setToast({ type: 'success', message: current ? 'Dusun dinonaktifkan' : 'Dusun diaktifkan' }); }
       else { const err = await res.json(); setToast({ type: 'error', message: err.error || 'Gagal memperbarui' }); }
     } catch { setToast({ type: 'error', message: 'Gagal menghubungi server' }); }
+    invalidateDusunCache();
     fetchDesa();
     setTimeout(() => setToast(null), 3000);
   };
@@ -348,7 +350,7 @@ function LogsTab() {
     'table_column_overrides', 'report_periods', 'report_years',
   ];
   const ACTION_OPTIONS = [
-    '', 'update', 'create', 'delete', 'import',
+    '', 'update', 'create', 'delete', 'import', 'export', 'ai_update', 'permission_denied',
     'period_submit', 'period_approve', 'period_return', 'period_lock', 'period_unlock',
   ];
 

@@ -9,8 +9,8 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['"Fira Sans"', 'system-ui', '-apple-system', 'sans-serif'],
-        mono: ['"Fira Code"', 'Menlo', 'monospace'],
+        sans: ['var(--font-fira-sans)', '"Fira Sans"', 'system-ui', '-apple-system', 'sans-serif'],
+        mono: ['var(--font-fira-code)', '"Fira Code"', 'Menlo', 'monospace'],
       },
       colors: {
         primary: {

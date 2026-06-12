@@ -20,6 +20,7 @@ import { requireAuth, normalizeTableName } from '@/lib/auth';
 import { DUSUN_LIST } from '@/lib/dusun';
 import { MONTHS } from '@/lib/dataPages';
 import { BRAND } from '@/lib/branding';
+import { writeLog } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -987,6 +988,14 @@ export async function GET(request) {
     const buffer = await wb.xlsx.writeBuffer();
     const stamp = `${tahun}${bulan != null ? `_${String(bulan).padStart(2, '0')}` : ''}`;
     const filename = `Rekapitulasi_PKK_Belikurip_${stamp}.xlsx`;
+
+    await writeLog({
+      userId: user.userId,
+      username: user.username,
+      action: 'export',
+      tableName: tableFilter ? normalizeTableName(tableFilter) : 'semua',
+      detail: `Export Excel tahun ${tahun}${bulan != null ? ` bulan ${bulan}` : ''}`,
+    });
 
     return new NextResponse(buffer, {
       status: 200,

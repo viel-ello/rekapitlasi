@@ -1,5 +1,21 @@
 import './globals.css';
+import { Fira_Sans, Fira_Code } from 'next/font/google';
 import ThemeProvider from '@/components/ThemeProvider';
+
+// Self-host Google Fonts via next/font — menghilangkan render-blocking @import
+// di CSS dan mencegah layout shift (FOUT). Exposed sebagai CSS variable.
+const firaSans = Fira_Sans({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-fira-sans',
+  display: 'swap',
+});
+const firaCode = Fira_Code({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-fira-code',
+  display: 'swap',
+});
 
 export const metadata = {
   title: 'Lumbung Data PKK Desa Belikurip',
@@ -31,7 +47,7 @@ const themeInitScript = `
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="id" className="light">
+    <html lang="id" className={`light ${firaSans.variable} ${firaCode.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>

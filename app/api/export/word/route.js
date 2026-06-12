@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, WidthType, AlignmentType, BorderStyle, VerticalAlign, PageOrientation } from 'docx';
 import { requireAuth } from '@/lib/auth';
+import { writeLog } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -379,6 +380,14 @@ export async function GET(request) {
     });
 
     const buffer = await Packer.toBuffer(doc);
+
+    await writeLog({
+      userId: user.userId,
+      username: user.username,
+      action: 'export',
+      tableName: 'semua',
+      detail: `Export Word tahun ${tahun}`,
+    });
 
     return new NextResponse(buffer, { status: 200, headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',

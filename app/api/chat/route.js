@@ -14,7 +14,7 @@ import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { supabase } from '@/lib/supabase';
 import { getAuthUser, ROLE_PERMISSIONS, ROLE_SCOPE, normalizeTableName } from '@/lib/auth';
-import { parseYear, toBoundedInteger } from '@/lib/requestValidation';
+import { parseYear } from '@/lib/requestValidation';
 import { writeLog } from '@/lib/audit';
 import { DUSUN_LIST } from '@/lib/dusun';
 import { BRAND } from '@/lib/branding';
@@ -26,24 +26,9 @@ const MAX_CHAT_MESSAGE_LENGTH = 2000;
 const MAX_CHAT_HISTORY_ITEMS = 12;
 const MAX_EXCEL_SHEETS_FOR_AI = 10;
 
-// Whitelist tabel yang boleh dimutasi via AI. `data_kegiatan_warga` alias
-// dipertahankan untuk transition; akan di-normalize ke `data_rekap_dawis`.
-const VALID_TABLES = [
-  'data_umum', 'data_pokja1', 'data_pokja2', 'data_pokja3', 'data_pokja4',
-  'data_rekap_dawis', 'data_kegiatan_warga', 'data_bumil',
-];
-
-const VALID_COLUMNS = {
-  data_umum: ['jml_dusun', 'jml_pkk_rw', 'jml_pkk_rt', 'jml_dasa_wisma', 'jml_krt', 'jml_kk', 'jml_jiwa_l', 'jml_jiwa_p', 'jml_kader_tp_pkk_l', 'jml_kader_tp_pkk_p', 'jml_kader_umum_l', 'jml_kader_umum_p', 'jml_kader_khusus_l', 'jml_kader_khusus_p', 'jml_tenaga_honorer_l', 'jml_tenaga_honorer_p', 'jml_tenaga_bantuan_l', 'jml_tenaga_bantuan_p', 'keterangan'],
-  data_pokja1: ['kader_pkbn', 'kader_pkdrt', 'kader_pola_asuh', 'pkbn_jml_klp_simulasi', 'pkbn_jml_anggota', 'pkdrt_jml_klp_simulasi', 'pkdrt_jml_anggota', 'pola_asuh_jml_klp', 'pola_asuh_jml_anggota', 'lansia_jml_klp', 'lansia_jml_anggota', 'gr_kerja_bakti', 'gr_rukun_kematian', 'gr_keagamaan', 'gr_jimpitan', 'gr_arisan', 'keterangan'],
-  data_pokja2: ['jml_warga_3_buta', 'paket_a_klp', 'paket_a_wrg', 'paket_b_klp', 'paket_b_wrg', 'paket_c_klp', 'paket_c_wrg', 'kf_klp', 'kf_wrg', 'paud_sejenis', 'taman_bacaan', 'klp_pembaca', 'bkb_klp', 'bkb_jml_ibu_peserta', 'bkb_ape_set_a', 'bkb_ape_set_b', 'kader_tutor_kf', 'kader_tutor_paud', 'kader_bkb', 'kader_khusus_koperasi', 'kader_khusus_keterampilan', 'yg_dilatih_lp3pkk', 'yg_dilatih_tp3pkk', 'yg_dilatih_damaspkk', 'up2k_pemula_klp', 'up2k_pemula_psrt', 'up2k_madya_klp', 'up2k_madya_psrt', 'up2k_utama_klp', 'up2k_utama_psrt', 'up2k_mandiri_klp', 'up2k_mandiri_psrt', 'koperasi_berbadan_hukum_kop', 'koperasi_berbadan_hukum_angg', 'keterangan'],
-  data_pokja3: ['kader_pangan', 'kader_sandang', 'kader_tata_laksana_rt', 'pangan_beras', 'pangan_non_beras', 'pemanfaatan_peternakan', 'pemanfaatan_perikanan', 'pemanfaatan_warung_hidup', 'pemanfaatan_lumbung_hidup', 'pemanfaatan_toga', 'pemanfaatan_tanaman_keras', 'industri_pangan', 'industri_sandang', 'industri_jasa', 'rumah_sehat', 'rumah_kurang_sehat', 'keterangan'],
-  data_pokja4: ['kader_posyandu', 'kader_gizi', 'kader_kesling', 'kader_penyuluh_narkoba', 'kader_phbs', 'kader_kb', 'posyandu_jumlah', 'posyandu_terintegrasi', 'lansia_jml_klp', 'lansia_jml_anggota', 'lansia_jml_kartu_berobat', 'rumah_jamban', 'rumah_spal', 'rumah_tempat_sampah', 'rumah_mck', 'air_pdam', 'air_sumur', 'air_lain', 'jml_pus', 'jml_wus', 'akseptor_kb_l', 'akseptor_kb_p', 'kk_tabungan', 'keterangan'],
-  data_rekap_dawis: ['jml_rw', 'jml_rt', 'jml_dawis', 'jml_krt', 'jml_kk', 'jml_anggota_l', 'jml_anggota_p', 'balita_l', 'balita_p', 'pus', 'wus', 'ibu_hamil', 'ibu_menyusui', 'lansia', 'tiga_buta', 'berkebutuhan_khusus', 'rumah_sehat', 'rumah_kurang_sehat', 'punya_tempat_sampah', 'punya_spal', 'jamban', 'stiker_p4k', 'air_pdam', 'air_sumur', 'air_sungai', 'air_dll', 'makan_beras', 'makan_non_beras', 'ikut_up2k', 'ikut_pekarangan', 'ikut_kesling', 'jkn_bpjs'],
-  data_bumil: ['jml_rt', 'jml_rw', 'jml_dasa_wisma', 'ibu_hamil', 'ibu_melahirkan', 'ibu_nifas', 'ibu_meninggal', 'bayi_lahir_l', 'bayi_lahir_p', 'akte_l', 'akte_p', 'akte_ada', 'akte_tidak', 'bayi_meninggal_l', 'bayi_meninggal_p', 'balita_meninggal_l', 'balita_meninggal_p', 'keterangan'],
-};
-// Backward-compat alias: data_kegiatan_warga ≡ data_rekap_dawis kolom set
-VALID_COLUMNS.data_kegiatan_warga = VALID_COLUMNS.data_rekap_dawis;
+// Whitelist tabel & kolom + validasi mutasi AI di-extract ke lib/aiMutation.js
+// supaya bisa dipakai bersama oleh endpoint preview (chat) & confirm.
+import { validateAiMutation } from '@/lib/aiMutation';
 
 const ROLE_LABELS = {
   admin: 'Administrator (akses penuh semua data)',
@@ -454,6 +439,10 @@ Tahun yang sedang dipilih user di dashboard: ${currentYear}
             type: 'OBJECT',
             description: 'Key-value pairs kolom → nilai integer. Contoh: { jml_kk: 100 }',
           },
+          bulan: {
+            type: 'INTEGER',
+            description: 'Bulan 1-12. WAJIB untuk tabel per-bulan (data_umum, data_rekap_dawis, data_bumil). Kalau user tidak menyebut bulan, pakai bulan berjalan.',
+          },
         },
         required: ['table_name', 'dusun_id', 'updates'],
       },
@@ -481,96 +470,63 @@ Tahun yang sedang dipilih user di dashboard: ${currentYear}
       // Accept canonical or legacy alias
       if (call.name === 'update_dusun_data' || call.name === 'update_desa_data') {
         const { table_name: rawTable, updates } = call.args;
-        // Accept dusun_id (canonical) atau desa_id (legacy)
         const rawUnitId = call.args.dusun_id ?? call.args.desa_id;
-        const tableName = normalizeTableName(rawTable || '');
-        let apiResponse;
 
-        if (!VALID_TABLES.includes(rawTable) && !VALID_TABLES.includes(tableName)) {
-          apiResponse = { error: `Tabel '${rawTable}' tidak valid.` };
-        } else if (!allowedTables.includes(tableName) && !allowedTables.includes(rawTable)) {
-          apiResponse = { error: `Akses ditolak: Role '${userRole}' tidak diizinkan mengubah tabel '${tableName}'.` };
-        } else {
-          const validCols = VALID_COLUMNS[tableName] || [];
-          if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
-            apiResponse = { error: 'Payload update tidak valid.' };
-          } else if (Object.keys(updates).length === 0) {
-            apiResponse = { error: 'Minimal satu kolom harus diupdate.' };
-          } else {
-            const invalidCols = Object.keys(updates).filter((k) => !validCols.includes(k));
-            if (invalidCols.length > 0) {
-              apiResponse = { error: `Kolom tidak valid: ${invalidCols.join(', ')}. Kolom yang diizinkan: ${validCols.join(', ')}` };
-            } else {
-              const validUnitId = toBoundedInteger(rawUnitId, 'dusun_id', { min: 1, max: 2147483647 });
-              if (validUnitId.error) {
-                apiResponse = { error: validUnitId.error };
-              } else {
-                // Row-level enforcement untuk role kader-dusun
-                let targetDusunId = validUnitId.value;
-                if (ROLE_SCOPE[userRole] === 'own_dusun') {
-                  if (userDusunId == null) {
-                    apiResponse = { error: 'Akun kader-dusun belum di-assign dusun. Hubungi admin.' };
-                  } else if (Number(userDusunId) !== Number(targetDusunId)) {
-                    apiResponse = { error: `Anda hanya boleh edit data dusun ${userDusunName || userDusunId}, bukan dusun ID ${targetDusunId}.` };
-                  }
-                  targetDusunId = Number(userDusunId);
-                }
+        // Validasi proposal (TIDAK eksekusi). Eksekusi terjadi setelah user
+        // konfirmasi lewat /api/chat/confirm-mutation (dry-run / preview).
+        const v = validateAiMutation({
+          user: { role: userRole, dusun_id: userDusunId },
+          rawTable,
+          rawUnitId,
+          updates,
+          rawBulan: call.args.bulan,
+          allowedTables,
+        });
 
-                if (!apiResponse) {
-                  const sanitizedUpdates = {};
-                  for (const [key, value] of Object.entries(updates)) {
-                    // keterangan adalah text — bypass numeric validation
-                    if (key === 'keterangan') {
-                      sanitizedUpdates[key] = String(value ?? '').slice(0, 1000);
-                      continue;
-                    }
-                    const parsed = toBoundedInteger(value, key);
-                    if (parsed.error) {
-                      apiResponse = { error: parsed.error };
-                      break;
-                    }
-                    sanitizedUpdates[key] = parsed.value;
-                  }
-
-                  if (!apiResponse) {
-                    // Schema baru hanya pakai dusun_id (kolom desa_id sudah dihapus
-                    // atau di-archive). Tidak ada fallback desa_id di endpoint canonical.
-                    const { data: updatedRows, error } = await supabase
-                      .from(tableName)
-                      .update(sanitizedUpdates)
-                      .eq('dusun_id', targetDusunId)
-                      .eq('tahun', currentYear)
-                      .select('id');
-
-                    if (error) {
-                      apiResponse = { error: `Gagal menyimpan ke database: ${error.message}` };
-                    } else if (!updatedRows || updatedRows.length === 0) {
-                      apiResponse = { error: `Data dusun ${targetDusunId} tahun ${currentYear} belum ada. Isi lewat halaman data atau import terlebih dahulu.` };
-                    } else {
-                      const dusunNama = ctx.dusun.find((d) => d.id === targetDusunId)?.nama || `dusun ${targetDusunId}`;
-                      await writeLog({
-                        userId: authUser.userId,
-                        username: userName,
-                        action: 'ai_update',
-                        tableName,
-                        dusunNama,
-                        detail: `AI update dusun_id ${targetDusunId} tahun ${currentYear}: ${Object.keys(sanitizedUpdates).join(', ')}`,
-                      });
-                      apiResponse = { success: true, message: `Data ${dusunNama} di tabel ${tableName} berhasil diperbarui.` };
-                    }
-                  }
-                }
-              }
-            }
-          }
+        if (v.error) {
+          // Beri tahu model supaya jawab ke user dengan sopan.
+          result = await chat.sendMessage([{
+            functionResponse: { name: call.name, response: { error: v.error } },
+          }]);
+          return NextResponse.json({ reply: result.response.text() });
         }
 
-        result = await chat.sendMessage([{
-          functionResponse: {
-            name: call.name,
-            response: apiResponse,
+        // Ambil nilai lama untuk before/after di kartu konfirmasi.
+        let beforeRow = {};
+        {
+          let q = supabase
+            .from(v.tableName)
+            .select(Object.keys(v.sanitizedUpdates).join(','))
+            .eq('dusun_id', v.dusunId)
+            .eq('tahun', currentYear);
+          if (v.isMonthly) q = q.eq('bulan', v.bulan);
+          const { data: existing } = await q.maybeSingle();
+          beforeRow = existing || {};
+        }
+
+        const dusunNama = ctx.dusun.find((d) => d.id === v.dusunId)?.nama || `Dusun #${v.dusunId}`;
+        const changes = Object.entries(v.sanitizedUpdates).map(([key, after]) => ({
+          key,
+          before: beforeRow[key] ?? null,
+          after,
+        }));
+
+        // Kembalikan PREVIEW. User harus klik "Terapkan" untuk eksekusi.
+        return NextResponse.json({
+          type: 'mutation_preview',
+          reply: `Saya siapkan perubahan untuk **${dusunNama}** (${TABLE_LABELS[v.tableName] || v.tableName}, tahun ${currentYear}${v.isMonthly ? `, bulan ${v.bulan}` : ''}). Periksa dulu, lalu klik **Terapkan** untuk menyimpan.`,
+          mutation: {
+            tableName: v.tableName,
+            tableLabel: TABLE_LABELS[v.tableName] || v.tableName,
+            dusunId: v.dusunId,
+            dusunNama,
+            tahun: currentYear,
+            bulan: v.bulan,
+            isMonthly: v.isMonthly,
+            updates: v.sanitizedUpdates,
+            changes,
           },
-        }]);
+        });
       }
     }
 
