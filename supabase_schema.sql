@@ -305,7 +305,15 @@ INSERT INTO dusun (nama, nomor_urut, is_active) VALUES
   ('Banyuripan', 9, 1)
 ON CONFLICT (nama) DO NOTHING;
 
--- INSERT ADMIN DEFAULT (password: admin123)
+-- ==========================================================================
+-- ⚠️  AKUN ADMIN DEFAULT — username: admin, password: admin123
+-- ==========================================================================
+-- Ini HANYA untuk bootstrap awal / dev lokal.
+-- WAJIB GANTI PASSWORD sebelum aplikasi diakses publik/online.
+-- Akun default yang dibiarkan = celah keamanan serius.
+-- Cara ganti: login admin → menu profil → Ganti Password (min 12 karakter).
+-- Lihat docs/OPERATIONS.md bagian "Rotasi / Ganti Password Admin".
+-- ==========================================================================
 INSERT INTO users (username, password_hash, nama_lengkap, role) VALUES
   ('admin', '$2a$10$wT0ESt0yX1W5b4vA2v9oO.l2Jd0RkZg3c3tV.g2f1s0y.l2Jd0RkZ', 'Administrator', 'admin')
 ON CONFLICT DO NOTHING;

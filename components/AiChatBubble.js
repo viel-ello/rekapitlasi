@@ -24,6 +24,9 @@ export default function AiChatBubble({ tahun, user }) {
   const [importPreviewData, setImportPreviewData] = useState(null);
   const [importTahun, setImportTahun] = useState(tahun || new Date().getFullYear());
   const [importBulan, setImportBulan] = useState(new Date().getMonth() + 1);
+  const [recomputing, setRecomputing] = useState(false);
+  // Tandai preview perlu dihitung ulang karena periode berubah setelah upload.
+  const [previewStale, setPreviewStale] = useState(false);
   const { years } = useYears();
   const [privacyDismissed, setPrivacyDismissed] = useState(true);
   const [toastMsg, setToastMsg] = useState(null);
@@ -138,6 +141,7 @@ export default function AiChatBubble({ tahun, user }) {
              if (ids.length > 0) initialSel[sheet.tableName] = new Set(ids);
            }
            setSelectedRows(initialSel);
+           setPreviewStale(false);
            setOpen(false);
         }
       }
@@ -214,6 +218,40 @@ export default function AiChatBubble({ tahun, user }) {
       content: '🚫 Import dibatalkan. Data tidak diubah.',
     }]);
     setOpen(true);
+  };
+
+  // Hitung ulang preview diff terhadap periode (tahun/bulan) yang dipilih saat
+  // ini. Dipakai saat user mengganti tahun/bulan setelah upload, supaya diff
+  // sinkron dengan periode target sebelum konfirmasi.
+  const recomputePreview = async () => {
+    if (!importPreviewData) return;
+    setRecomputing(true);
+    try {
+      const diffRes = await fetch('/api/import/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parsedData: importPreviewData.parsedData, tahun: importTahun, bulan: importBulan }),
+      });
+      const diffData = await diffRes.json();
+      if (!diffRes.ok || diffData.error) {
+        setToastMsg(diffData.error || 'Gagal menghitung ulang preview');
+        setTimeout(() => setToastMsg(null), 2500);
+      } else {
+        setImportPreviewData((prev) => ({ ...prev, diff: diffData.diff }));
+        const initialSel = {};
+        for (const sheet of diffData.diff || []) {
+          const ids = (sheet.rows || [])
+            .filter((r) => (r.action === 'insert' || r.action === 'update') && r.desaId)
+            .map((r) => r.desaId);
+          if (ids.length > 0) initialSel[sheet.tableName] = new Set(ids);
+        }
+        setSelectedRows(initialSel);
+      }
+    } catch {
+      setToastMsg('Gagal menghubungi server');
+      setTimeout(() => setToastMsg(null), 2500);
+    }
+    setRecomputing(false);
   };
 
   const sendMessage = async () => {
@@ -460,7 +498,7 @@ export default function AiChatBubble({ tahun, user }) {
                   <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Simpan untuk:</label>
                   <select
                     value={importBulan}
-                    onChange={e => setImportBulan(Number(e.target.value))}
+                    onChange={e => { setImportBulan(Number(e.target.value)); setPreviewStale(true); }}
                     className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-gray-50"
                     aria-label="Bulan import (untuk tabel bulanan)"
                   >
@@ -470,7 +508,7 @@ export default function AiChatBubble({ tahun, user }) {
                   </select>
                   <select
                     value={importTahun}
-                    onChange={e => setImportTahun(Number(e.target.value))}
+                    onChange={e => { setImportTahun(Number(e.target.value)); setPreviewStale(true); }}
                     className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-gray-50"
                     aria-label="Tahun import"
                   >
@@ -478,6 +516,15 @@ export default function AiChatBubble({ tahun, user }) {
                       <option key={y} value={y}>{y}</option>
                     ))}
                   </select>
+                  {previewStale && (
+                    <button
+                      onClick={async () => { await recomputePreview(); setPreviewStale(false); }}
+                      disabled={recomputing}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-800 bg-amber-100 hover:bg-amber-200 rounded-lg disabled:opacity-50"
+                    >
+                      {recomputing ? 'Menghitung...' : '↻ Hitung ulang preview'}
+                    </button>
+                  )}
                 </div>
                 <div className="flex gap-3 w-full sm:w-auto">
                   <button
@@ -491,7 +538,8 @@ export default function AiChatBubble({ tahun, user }) {
                     return (
                       <button
                         onClick={confirmImport}
-                        disabled={totalSelected === 0}
+                        disabled={totalSelected === 0 || previewStale}
+                        title={previewStale ? 'Klik "Hitung ulang preview" dulu setelah ganti periode' : undefined}
                         className="flex-1 sm:flex-none px-5 py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-xl shadow-lg shadow-green-500/30 transition-all active:scale-95"
                       >
                         Simpan {totalSelected > 0 ? `${totalSelected} baris` : ''}

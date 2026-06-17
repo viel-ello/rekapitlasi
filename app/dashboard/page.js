@@ -13,6 +13,9 @@ import { timeAgo } from '@/lib/time';
 import { useYears } from '@/lib/useYears';
 import { useRouter } from 'next/navigation';
 import DashboardToolbar from '@/components/DashboardToolbar';
+import TodoTodayPanel from '@/components/TodoTodayPanel';
+import ConfirmModal from '@/components/ConfirmModal';
+import { useToast } from '@/lib/useToast';
 import DusunBarChart from '@/components/charts/DusunBarChart';
 import KaderDonut from '@/components/charts/KaderDonut';
 import StackedBumilBar from '@/components/charts/StackedBumilBar';
@@ -139,6 +142,9 @@ export default function DashboardPage() {
   const [downloading, setDownloading] = useState(null);
   const [downloadingTemplate, setDownloadingTemplate] = useState(null);
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
+  const [confirmExport, setConfirmExport] = useState(null);
+  const [fetchError, setFetchError] = useState(false);
+  const { showToast } = useToast();
   const { years } = useYears();
 
   // Jika tahun aktif saat ini tidak ada dalam daftar, pilih tahun pertama
@@ -154,6 +160,7 @@ export default function DashboardPage() {
 
   const fetchRekap = async () => {
     setLoading(true);
+    setFetchError(false);
     try {
       const params = new URLSearchParams({
         tahun: String(tahun),
@@ -167,6 +174,7 @@ export default function DashboardPage() {
         fetch(`/api/rekap?${params.toString()}`),
         fetch(trendUrl),
       ]);
+      if (!resRekap.ok) throw new Error('Gagal memuat rekap');
       setRekap(await resRekap.json());
       const trendJson = await resTrend.json();
       // Backward-compat: kalau aggregate-only, response = array
@@ -179,17 +187,12 @@ export default function DashboardPage() {
       }
     } catch (err) {
       console.error('Failed to fetch:', err);
+      setFetchError(true);
     }
     setLoading(false);
   };
 
-  const handleDownload = async (type) => {
-    const needsCheck = rekap?.completeness?.needsCheck || 0;
-    const incomplete = rekap?.completeness?.incomplete || 0;
-    if ((needsCheck > 0 || incomplete > 0) && !window.confirm(`Masih ada ${needsCheck} dusun perlu dicek dan ${incomplete} dusun belum lengkap. Tetap export laporan?`)) {
-      return;
-    }
-
+  const _performDownload = async (type) => {
     setDownloading(type);
     try {
       const res = await fetch(`/api/export/${type}?tahun=${tahun}`);
@@ -207,9 +210,20 @@ export default function DashboardPage() {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Download error:', err);
-      alert('Terjadi kesalahan saat mengunduh file.');
+      showToast({ type: 'error', message: 'Terjadi kesalahan saat mengunduh file.' });
     }
     setDownloading(null);
+  };
+
+  const handleDownload = async (type) => {
+    const needsCheck = rekap?.completeness?.needsCheck || 0;
+    const incomplete = rekap?.completeness?.incomplete || 0;
+    if (needsCheck > 0 || incomplete > 0) {
+      // Konfirmasi via Dialog (ganti window.confirm).
+      setConfirmExport({ type, needsCheck, incomplete });
+      return;
+    }
+    await _performDownload(type);
   };
 
   const handleDownloadTemplate = async (table, label) => {
@@ -229,7 +243,7 @@ export default function DashboardPage() {
       setShowTemplateMenu(false);
     } catch (err) {
       console.error('Template download error:', err);
-      alert('Terjadi kesalahan saat mengunduh template.');
+      showToast({ type: 'error', message: 'Terjadi kesalahan saat mengunduh template.' });
     }
     setDownloadingTemplate(null);
   };
@@ -302,6 +316,26 @@ export default function DashboardPage() {
       transition={{ duration: 0.4 }}
       className="space-y-6"
     >
+      <ConfirmModal
+        isOpen={!!confirmExport}
+        type="warning"
+        title="Tetap export laporan?"
+        message={`Masih ada ${confirmExport?.needsCheck || 0} dusun perlu dicek dan ${confirmExport?.incomplete || 0} dusun belum lengkap. Tetap export laporan?`}
+        confirmText="Ya, export"
+        cancelText="Batal"
+        onConfirm={() => { const t = confirmExport?.type; setConfirmExport(null); if (t) _performDownload(t); }}
+        onCancel={() => setConfirmExport(null)}
+      />
+      {fetchError && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <span className="flex items-center gap-2">
+            <ExclamationCircle className="w-4 h-4" /> Gagal memuat data dashboard.
+          </span>
+          <button onClick={fetchRekap} className="px-3 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg">
+            Coba lagi
+          </button>
+        </div>
+      )}
       {/* Header & Quick Actions */}
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
         <div>
@@ -321,6 +355,9 @@ export default function DashboardPage() {
           />
         </div>
       </div>
+
+      {/* Yang perlu tindakan hari ini (role-based) */}
+      <TodoTodayPanel completeness={rekap?.completeness} />
 
       {/* Operational KPI Cards */}
       <motion.div 

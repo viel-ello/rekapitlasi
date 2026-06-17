@@ -30,6 +30,11 @@ export async function GET(request) {
     if (!user) return requireAuth.deny();
 
     const isAdmin = user.role === 'admin';
+    const { searchParams } = new URL(request.url);
+    const fTahun = searchParams.get('tahun');
+    const fBulan = searchParams.get('bulan');
+    const fTable = searchParams.get('table_name');
+    const fStatus = searchParams.get('status');
 
     let query = supabase
       .from('report_periods')
@@ -37,12 +42,17 @@ export async function GET(request) {
       .order('updated_at', { ascending: false });
 
     if (isAdmin) {
-      // Admin: fokus pada yang menunggu review.
-      query = query.eq('status', 'submitted');
+      // Admin: default fokus pada yang menunggu review, tapi bisa override via filter status.
+      query = query.eq('status', fStatus || 'submitted');
     } else {
       // Operator: periode yang dia ajukan.
       query = query.eq('submitted_by', user.userId);
+      if (fStatus) query = query.eq('status', fStatus);
     }
+
+    if (fTahun) query = query.eq('tahun', Number(fTahun));
+    if (fBulan) query = query.eq('bulan', Number(fBulan));
+    if (fTable) query = query.eq('table_name', fTable);
 
     const { data, error } = await query.limit(200);
     if (error) {

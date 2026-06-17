@@ -143,7 +143,8 @@ describe('app/dashboard/admin/page.js — panel admin pakai label "Dusun"', () =
   });
 
   test('audit log header pakai "Dusun"', () => {
-    expect(content).toMatch(/<th>Dusun<\/th>/);
+    const logsContent = readFile('app/dashboard/admin/_components/LogsTab.jsx');
+    expect(logsContent).toMatch(/<th>Dusun<\/th>/);
   });
 
   test('subtitle admin pakai "dusun"', () => {

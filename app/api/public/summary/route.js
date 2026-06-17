@@ -123,6 +123,31 @@ export async function GET(request) {
       incomplete: perDusun.filter((p) => p.status === COMPLETENESS_STATUS.INCOMPLETE).length,
     };
 
+    // Terakhir diperbarui: ambil updated_at terbaru dari data_umum periode ini.
+    let lastUpdated = null;
+    try {
+      let upQ = supabase
+        .from('data_umum')
+        .select('updated_at')
+        .eq('tahun', tahun)
+        .eq('bulan', bulan)
+        .order('updated_at', { ascending: false })
+        .limit(1);
+      const { data: upRows } = await upQ;
+      lastUpdated = upRows?.[0]?.updated_at || null;
+    } catch { /* silent */ }
+
+    // Data ringkas per dusun untuk chart publik sederhana (KK & jiwa).
+    const umumByUnit = tableMaps.data_umum || {};
+    const perDusunChart = (dusunList || []).map((d) => {
+      const u = umumByUnit[d.id] || {};
+      return {
+        nama: d.nama,
+        kk: Number(u.jml_kk || 0),
+        jiwa: Number(u.jml_jiwa_l || 0) + Number(u.jml_jiwa_p || 0),
+      };
+    });
+
     return NextResponse.json({
       tahun,
       bulan,
@@ -130,6 +155,8 @@ export async function GET(request) {
       totalDesa: totalDusun, // alias
       totals,
       completeness,
+      lastUpdated,
+      perDusunChart,
       dusun: perDusun,
       desa: perDusun, // alias backward-compat
       tables: PUBLIC_TABLES,

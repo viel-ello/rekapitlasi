@@ -10,6 +10,7 @@ import { validateRow, countIssues } from '@/lib/validation';
 import { useKeyboardShortcut } from '@/lib/useKeyboardShortcut';
 import PeriodWorkflowBadge from '@/components/PeriodWorkflowBadge';
 import EditModeSwitcher from '@/components/EditModeSwitcher';
+import ConfirmModal from '@/components/ConfirmModal';
 import DensityToggle from '@/components/DensityToggle';
 import TableSkeleton from '@/components/TableSkeleton';
 import AutoGrowTextarea from '@/components/AutoGrowTextarea';
@@ -146,6 +147,7 @@ export default function BumilDataPage({ config }) {
   const [monthsWithData, setMonthsWithData] = useState(() => new Set());
   const [initialLoading, setInitialLoading] = useState(true);
   const [onlyIssues, setOnlyIssues] = useState(false);
+  const [confirmSaveAll, setConfirmSaveAll] = useState(null);
 
   const { years } = useYears();
 
@@ -296,12 +298,9 @@ export default function BumilDataPage({ config }) {
     setTimeout(() => setSaveStatus((prev) => ({ ...prev, [dusunId]: null })), 5000);
   }, [data, prevData, tahun, bulan, canEdit, config, visibleColumns]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const saveAll = async () => {
-    if (!canEdit) return;
+  const _performSaveAll = async () => {
     const scrollSnapshot = captureScrollState();
     const targets = userDusunId != null ? dusun.filter((d) => d.id === Number(userDusunId)) : dusun;
-    const warningCount = targets.reduce((sum, d) => sum + getRowIssueCount(d.id), 0);
-    if (warningCount > 0 && !window.confirm(`Ada ${warningCount} peringatan validasi. Tetap simpan semua?`)) return;
     setSaving('all');
     let ok = 0, fail = 0;
     for (const d of targets) {
@@ -319,6 +318,17 @@ export default function BumilDataPage({ config }) {
     if (ok > 0) setMonthsWithData((prev) => new Set(prev).add(bulan));
     setToast({ type: fail === 0 ? 'success' : 'error', message: `Berhasil ${ok}${fail > 0 ? `, gagal ${fail}` : ''}` });
     setTimeout(() => setToast(null), 4000);
+  };
+
+  const saveAll = async () => {
+    if (!canEdit) return;
+    const targets = userDusunId != null ? dusun.filter((d) => d.id === Number(userDusunId)) : dusun;
+    const warningCount = targets.reduce((sum, d) => sum + getRowIssueCount(d.id), 0);
+    if (warningCount > 0) {
+      setConfirmSaveAll({ warningCount });
+      return;
+    }
+    await _performSaveAll();
   };
 
   useKeyboardShortcut({ 'ctrl+s': saveAll }, { enabled: canEdit });
@@ -418,6 +428,16 @@ export default function BumilDataPage({ config }) {
 
   return (
     <div>
+      <ConfirmModal
+        isOpen={!!confirmSaveAll}
+        type="warning"
+        title="Simpan semua perubahan?"
+        message={`Ada ${confirmSaveAll?.warningCount || 0} peringatan validasi. Tetap simpan semua?`}
+        confirmText="Ya, simpan semua"
+        cancelText="Batal"
+        onConfirm={() => { setConfirmSaveAll(null); _performSaveAll(); }}
+        onCancel={() => setConfirmSaveAll(null)}
+      />
       {toast && (
         <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 ${
           toast.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' :

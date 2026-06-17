@@ -47,7 +47,7 @@ describe('Audit log — canonical dusun_nama dengan fallback desa_nama', () => {
   });
 
   test('UI admin page tampilkan dusun_nama (fallback ke desa_nama)', () => {
-    const content = readFile('app/dashboard/admin/page.js');
+    const content = readFile('app/dashboard/admin/_components/LogsTab.jsx');
     // Header table: 'Dusun'
     expect(content).toMatch(/<th>Dusun<\/th>/);
     // Field render fallback chain

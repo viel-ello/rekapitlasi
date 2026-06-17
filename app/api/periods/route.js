@@ -97,6 +97,15 @@ export async function POST(request) {
       );
     }
 
+    // Aksi "return" (kembalikan ke draft untuk revisi) wajib menyertakan alasan.
+    const trimmedNotes = typeof notes === 'string' ? notes.trim() : '';
+    if (action === 'return' && trimmedNotes.length < 3) {
+      return NextResponse.json(
+        { error: 'Alasan revisi wajib diisi (minimal 3 karakter) saat mengembalikan periode.' },
+        { status: 400 }
+      );
+    }
+
     const bulanValue = bulan === undefined || bulan === null ? null : Number(bulan);
     const now = new Date().toISOString();
 
@@ -136,7 +145,7 @@ export async function POST(request) {
       tahun: Number(tahun),
       bulan: bulanValue,
       status: nextStatus,
-      notes: notes || null,
+      notes: trimmedNotes || null,
       updated_at: now,
     };
 

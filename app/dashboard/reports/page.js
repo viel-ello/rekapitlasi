@@ -5,6 +5,7 @@ import { ChartPie, Download, FileLines, ArrowRight, ArrowLeft, CheckCircle, Excl
 import { DATA_PAGES } from '@/lib/dataPages';
 import { useYears } from '@/lib/useYears';
 import { getDusunCached } from '@/lib/fetchDusun';
+import { useToast } from '@/lib/useToast';
 import { applyColumnOverrides } from '@/lib/columnOverrides';
 
 const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
@@ -20,6 +21,7 @@ const PRESET_KEY = 'report-builder-preset';
 
 export default function ReportsPage() {
   const { years } = useYears();
+  const { showToast } = useToast();
   const currentYear = new Date().getFullYear();
 
   const [step, setStep] = useState(1);
@@ -165,7 +167,7 @@ export default function ReportsPage() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        alert(err.error || 'Gagal membangun laporan');
+        showToast({ type: 'error', message: err.error || 'Gagal membangun laporan' });
       } else {
         const blob = await res.blob();
         const url = window.URL.createObjectURL(blob);
@@ -178,9 +180,10 @@ export default function ReportsPage() {
         a.remove();
         window.URL.revokeObjectURL(url);
         savePreset();
+        showToast({ type: 'success', message: 'Laporan berhasil diunduh' });
       }
     } catch {
-      alert('Gagal menghubungi server');
+      showToast({ type: 'error', message: 'Gagal menghubungi server' });
     }
     setBuilding(false);
   };

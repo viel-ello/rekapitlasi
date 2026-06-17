@@ -10,11 +10,13 @@ import { useKeyboardShortcut } from '@/lib/useKeyboardShortcut';
 import PeriodWorkflowBadge from '@/components/PeriodWorkflowBadge';
 import EditModeSwitcher from '@/components/EditModeSwitcher';
 import AutoGrowTextarea from '@/components/AutoGrowTextarea';
+import ConfirmModal from '@/components/ConfirmModal';
 import TableSkeleton from '@/components/TableSkeleton';
 import { useEditMode } from '@/lib/useEditMode';
 import { MONTHS } from '@/lib/dataPages';
 import { captureScrollState, restoreScrollState } from '@/lib/preserveScroll';
 import { getDusunCached } from '@/lib/fetchDusun';
+import { resolveTree, annotate, flattenLeaves, buildHeaderRows } from '@/lib/nestedTable';
 
 /**
  * Komponen generic untuk tabel dengan multi-row header arbitrary depth.
@@ -27,90 +29,6 @@ import { getDusunCached } from '@/lib/fetchDusun';
  *   - titleBlock: opsional, JSX untuk title block di atas tabel (e.g., DATA UMUM + identity)
  *   - rotateThreshold: opsional, jumlah kolom min yang akan trigger vertical text (default: pakai vertical flag explicit di leaf)
  */
-
-// Resolve tree: skip hidden columns; apply override label
-function resolveTree(nodes, byKey) {
-  const out = [];
-  for (const node of nodes) {
-    if (node.kind === 'leaf') {
-      const col = byKey.get(node.key);
-      if (!col || col.hidden) continue;
-      out.push({
-        ...node,
-        ...col,
-        label: col.renamed ? col.label : node.label,
-        fullLabel: col.label,
-      });
-    } else {
-      const children = resolveTree(node.children, byKey);
-      if (children.length === 0) continue;
-      out.push({ kind: 'group', label: node.label, children });
-    }
-  }
-  return out;
-}
-
-// Annotate _leafCount dan _maxDepth pada setiap node
-function annotate(nodes) {
-  let totalLeaves = 0;
-  let maxDepth = 1;
-  function walk(n, depth) {
-    if (n.kind === 'leaf') {
-      n._leafCount = 1;
-      n._depth = depth;
-      maxDepth = Math.max(maxDepth, depth);
-      totalLeaves += 1;
-      return 1;
-    }
-    let sum = 0;
-    let mDepth = depth;
-    for (const c of n.children) {
-      sum += walk(c, depth + 1);
-      mDepth = Math.max(mDepth, c._maxDepth ?? c._depth ?? depth + 1);
-    }
-    n._leafCount = sum;
-    n._depth = depth;
-    n._maxDepth = mDepth;
-    maxDepth = Math.max(maxDepth, mDepth);
-    return sum;
-  }
-  for (const n of nodes) walk(n, 1);
-  return { totalLeaves, maxDepth };
-}
-
-function flattenLeaves(nodes) {
-  const leaves = [];
-  for (const n of nodes) {
-    if (n.kind === 'leaf') leaves.push(n);
-    else leaves.push(...flattenLeaves(n.children));
-  }
-  return leaves;
-}
-
-// Build header rows: rows[level - 1] = [{node, rowSpan, colSpan}, ...]
-function buildHeaderRows(nodes, totalDepth) {
-  const rows = Array.from({ length: totalDepth }, () => []);
-  function visit(n, level) {
-    if (n.kind === 'leaf') {
-      // leaf di-render di `level` dengan rowSpan = (totalDepth - level + 1)
-      // supaya tembus ke baris terakhir header.
-      rows[level - 1].push({
-        node: n,
-        rowSpan: totalDepth - level + 1,
-        colSpan: 1,
-      });
-      return;
-    }
-    rows[level - 1].push({
-      node: n,
-      rowSpan: 1,
-      colSpan: n._leafCount,
-    });
-    for (const c of n.children) visit(c, level + 1);
-  }
-  for (const n of nodes) visit(n, 1);
-  return rows;
-}
 
 function VerticalText({ children, height = 130 }) {
   return (
@@ -178,6 +96,7 @@ export default function NestedDataPage({
   const [searchQuery, setSearchQuery] = useState('');
   // Filter "hanya bermasalah" — hanya tampilkan dusun dengan error/warning.
   const [onlyIssues, setOnlyIssues] = useState(false);
+  const [confirmSaveAll, setConfirmSaveAll] = useState(null);
   // State expanded mobile card di parent supaya tidak reset tiap re-render
   // (kalau di local MobileCard, akan unmount setiap kali parent re-render
   // karena MobileCard di-define inline → React anggap component baru).
@@ -388,12 +307,9 @@ export default function NestedDataPage({
     setTimeout(() => setSaveStatus((prev) => ({ ...prev, [dusunId]: null })), 5000);
   }, [data, prevYearData, tahun, bulan, canEdit, config, leaves, hasMonth]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const saveAll = async () => {
-    if (!canEdit) return;
+  const _performSaveAll = async () => {
     const scrollSnapshot = captureScrollState();
     const targets = userDusunId != null ? dusun.filter((d) => d.id === Number(userDusunId)) : dusun;
-    const warningCount = targets.reduce((sum, d) => sum + getRowIssueCount(d.id), 0);
-    if (warningCount > 0 && !window.confirm(`Ada ${warningCount} peringatan validasi. Tetap simpan semua?`)) return;
     setSaving('all');
     let ok = 0, fail = 0;
     for (const d of targets) {
@@ -405,6 +321,17 @@ export default function NestedDataPage({
     if (hasMonth && ok > 0) { setMonthsWithData((prev) => new Set(prev).add(bulan)); }
     setToast({ type: fail === 0 ? 'success' : 'error', message: `Berhasil ${ok}${fail > 0 ? `, gagal ${fail}` : ''}` });
     setTimeout(() => setToast(null), 4000);
+  };
+
+  const saveAll = async () => {
+    if (!canEdit) return;
+    const targets = userDusunId != null ? dusun.filter((d) => d.id === Number(userDusunId)) : dusun;
+    const warningCount = targets.reduce((sum, d) => sum + getRowIssueCount(d.id), 0);
+    if (warningCount > 0) {
+      setConfirmSaveAll({ warningCount });
+      return;
+    }
+    await _performSaveAll();
   };
 
   useKeyboardShortcut({ 'ctrl+s': saveAll }, { enabled: canEdit });
@@ -548,6 +475,16 @@ export default function NestedDataPage({
 
   return (
     <div>
+      <ConfirmModal
+        isOpen={!!confirmSaveAll}
+        type="warning"
+        title="Simpan semua perubahan?"
+        message={`Ada ${confirmSaveAll?.warningCount || 0} peringatan validasi. Tetap simpan semua?`}
+        confirmText="Ya, simpan semua"
+        cancelText="Batal"
+        onConfirm={() => { setConfirmSaveAll(null); _performSaveAll(); }}
+        onCancel={() => setConfirmSaveAll(null)}
+      />
       {toast && (
         <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 ${
           toast.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' :

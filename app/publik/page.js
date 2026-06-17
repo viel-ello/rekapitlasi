@@ -84,6 +84,11 @@ export default function PublikPage() {
           <p className="text-sm text-gray-600 mt-1">
             Ringkasan agregat per dusun. Data pribadi/individu tidak ditampilkan.
           </p>
+          {!loading && summary?.lastUpdated && (
+            <p className="text-xs text-gray-400 mt-1">
+              Terakhir diperbarui: {new Date(summary.lastUpdated).toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' })}
+            </p>
+          )}
         </div>
 
         {/* Filter */}
@@ -124,6 +129,33 @@ export default function PublikPage() {
             </div>
           ))}
         </div>
+
+        {/* Narasi ringkas */}
+        {!loading && summary && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 mb-6">
+            <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide mb-2">Ringkasan Kondisi</h2>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              Pada periode <strong>{MONTHS[bulan - 1]} {tahun}</strong>, TP PKK Desa Belikurip
+              mencatat <strong>{Number(totals.total_kk || 0).toLocaleString('id-ID')} KK</strong> dan
+              {' '}<strong>{Number(totals.total_jiwa || 0).toLocaleString('id-ID')} jiwa</strong> di
+              {' '}{summary.totalDusun ?? 0} dusun.
+              {' '}Dari sisi kelengkapan data, <strong>{completeness.complete}</strong> dusun sudah lengkap
+              {completeness.needsCheck > 0 && <>, <strong>{completeness.needsCheck}</strong> perlu dicek</>}
+              {completeness.incomplete > 0 && <>, dan <strong>{completeness.incomplete}</strong> belum lengkap</>}.
+              {(completeness.needsCheck > 0 || completeness.incomplete > 0)
+                ? ' Dusun yang belum lengkap akan dilengkapi oleh kader pada periode berjalan.'
+                : ' Seluruh dusun telah melengkapi data periode ini.'}
+            </p>
+          </div>
+        )}
+
+        {/* Chart sederhana: KK per dusun */}
+        {!loading && (summary?.perDusunChart || []).some((d) => d.kk > 0 || d.jiwa > 0) && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 mb-6">
+            <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide mb-3">Jumlah KK per Dusun</h2>
+            <PublicBarChart data={summary.perDusunChart} />
+          </div>
+        )}
 
         {/* Indikator agregat */}
         <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 mb-6">
@@ -186,6 +218,19 @@ export default function PublikPage() {
           </div>
         </div>
 
+        {/* Definisi istilah */}
+        <div className="mt-6 bg-white rounded-2xl border border-gray-100 p-4 sm:p-5">
+          <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide mb-3">Definisi Istilah</h2>
+          <dl className="grid sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+            <div><dt className="font-semibold text-gray-700 inline">Dasa Wisma</dt><dd className="text-gray-600 inline"> — kelompok ±10 rumah tetangga sebagai unit pembinaan PKK terkecil.</dd></div>
+            <div><dt className="font-semibold text-gray-700 inline">KK</dt><dd className="text-gray-600 inline"> — Kepala Keluarga / jumlah keluarga.</dd></div>
+            <div><dt className="font-semibold text-gray-700 inline">Posyandu</dt><dd className="text-gray-600 inline"> — Pos Pelayanan Terpadu untuk kesehatan ibu & anak.</dd></div>
+            <div><dt className="font-semibold text-gray-700 inline">JKN/BPJS</dt><dd className="text-gray-600 inline"> — kepesertaan Jaminan Kesehatan Nasional.</dd></div>
+            <div><dt className="font-semibold text-gray-700 inline">Rumah Sehat</dt><dd className="text-gray-600 inline"> — rumah memenuhi kriteria sanitasi & kesehatan dasar.</dd></div>
+            <div><dt className="font-semibold text-gray-700 inline">Ibu Hamil</dt><dd className="text-gray-600 inline"> — jumlah ibu hamil yang tercatat pada periode.</dd></div>
+          </dl>
+        </div>
+
         {/* Note */}
         <div className="mt-6 rounded-2xl border border-blue-100 bg-blue-50 p-3 text-xs text-blue-800">
           <strong>Catatan:</strong> Data yang ditampilkan adalah agregat (jumlah/total) per dusun.
@@ -199,6 +244,31 @@ export default function PublikPage() {
           <Link href="/login" className="hover:text-primary-700">Masuk Aplikasi</Link>
         </div>
       </footer>
+    </div>
+  );
+}
+
+/** Bar chart horizontal sederhana (tanpa lib) untuk KK per dusun. */
+function PublicBarChart({ data }) {
+  const rows = (data || []).filter((d) => Number(d.kk) > 0);
+  if (rows.length === 0) {
+    return <p className="text-sm text-gray-400">Belum ada data KK untuk periode ini.</p>;
+  }
+  const max = Math.max(...rows.map((d) => d.kk), 1);
+  return (
+    <div className="space-y-1.5">
+      {rows.map((d) => (
+        <div key={d.nama} className="flex items-center gap-2">
+          <div className="w-28 shrink-0 text-xs text-gray-600 truncate" title={d.nama}>{d.nama}</div>
+          <div className="flex-1 bg-gray-100 rounded-full h-4 overflow-hidden">
+            <div
+              className="h-full bg-primary-500 rounded-full"
+              style={{ width: `${(d.kk / max) * 100}%` }}
+            />
+          </div>
+          <div className="w-14 shrink-0 text-right text-xs font-semibold text-gray-700">{d.kk.toLocaleString('id-ID')}</div>
+        </div>
+      ))}
     </div>
   );
 }

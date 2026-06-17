@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Lock, FloppyDisk, Search, ExclamationCircle, CheckCircle } from 'flowbite-react-icons/outline';
+import ConfirmModal from '@/components/ConfirmModal';
 import { validateRow, countIssues } from '@/lib/validation';
 import { applyColumnOverrides } from '@/lib/columnOverrides';
 import { useYears } from '@/lib/useYears';
@@ -43,6 +44,8 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
   const [searchQuery, setSearchQuery] = useState('');
   // Filter "hanya bermasalah" — tampilkan dusun yang punya error/warning saja.
   const [onlyIssues, setOnlyIssues] = useState(false);
+  // Konfirmasi simpan-semua saat ada peringatan validasi (ganti window.confirm).
+  const [confirmSaveAll, setConfirmSaveAll] = useState(null);
   // Loading state untuk skeleton saat fetch awal.
   const [initialLoading, setInitialLoading] = useState(true);
   // Expanded state per dusun di parent — supaya tidak reset tiap re-render.
@@ -217,15 +220,9 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
     setTimeout(() => setSaveStatus((prev) => ({ ...prev, [dusunId]: null })), 5000);
   }, [data, prevYearData, tahun, apiEndpoint, columns, effectiveColumns, canEdit, dynamicColumns]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const saveAll = async () => {
-    if (!canEdit) return;
+  const _performSaveAll = async () => {
     const scrollSnapshot = captureScrollState();
     const targets = userDusunId != null ? dusun.filter((d) => d.id === Number(userDusunId)) : dusun;
-    const warningCount = targets.reduce((sum, d) => sum + getRowIssueCount(d.id), 0);
-    if (warningCount > 0 && !window.confirm(`Ada ${warningCount} peringatan validasi. Tetap simpan semua perubahan?`)) {
-      return;
-    }
-
     setSaving('all');
     let successCount = 0;
     let failCount = 0;
@@ -249,6 +246,18 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
       setToast({ type: 'error', message: `Berhasil ${successCount}, Gagal ${failCount}` });
     }
     setTimeout(() => setToast(null), 4000);
+  };
+
+  const saveAll = async () => {
+    if (!canEdit) return;
+    const targets = userDusunId != null ? dusun.filter((d) => d.id === Number(userDusunId)) : dusun;
+    const warningCount = targets.reduce((sum, d) => sum + getRowIssueCount(d.id), 0);
+    if (warningCount > 0) {
+      // Tampilkan konfirmasi via Dialog (bukan window.confirm).
+      setConfirmSaveAll({ warningCount });
+      return;
+    }
+    await _performSaveAll();
   };
 
   useKeyboardShortcut({ 'ctrl+s': saveAll }, { enabled: canEdit });
@@ -426,6 +435,16 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
 
   return (
     <div>
+      <ConfirmModal
+        isOpen={!!confirmSaveAll}
+        type="warning"
+        title="Simpan semua perubahan?"
+        message={`Ada ${confirmSaveAll?.warningCount || 0} peringatan validasi. Tetap simpan semua perubahan?`}
+        confirmText="Ya, simpan semua"
+        cancelText="Batal"
+        onConfirm={() => { setConfirmSaveAll(null); _performSaveAll(); }}
+        onCancel={() => setConfirmSaveAll(null)}
+      />
       {/* Toast */}
       {toast && (
         <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-medium animate-in fade-in slide-in-from-top-2 flex items-center gap-2 ${

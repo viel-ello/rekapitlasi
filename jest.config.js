@@ -26,7 +26,13 @@ const config = {
       moduleNameMapper: {
         '^@/(.*)$': '<rootDir>/$1',
       },
-      setupFiles: ['<rootDir>/jest.setup.js'],
+      setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+      transformIgnorePatterns: [
+        'node_modules/(?!(jose|flowbite-react-icons|framer-motion)/)',
+      ],
+      transform: {
+        '^.+\\.(js|jsx)$': ['babel-jest', { presets: ['next/babel'] }],
+      },
     },
   ],
 };
