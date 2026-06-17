@@ -21,9 +21,11 @@ import {
   mergeStatus,
 } from '@/lib/dataQuality';
 import { toNumericValue } from '@/lib/chartStats';
+import { queryWithOptionalMonth } from '@/lib/monthlyFallback';
 
 // Tabel canonical untuk completeness check (dedup yang `aliasOf`-nya canonical).
 const ALL_TABLES = OPERATIONAL_TABLES.filter((item) => !item.aliasOf).map((item) => item.table);
+const MONTHLY_TABLES = new Set(['data_bumil', 'data_rekap_dawis', 'data_umum']);
 
 async function getHiddenKeysPerTable() {
   const { data } = await supabase
@@ -64,20 +66,22 @@ export async function GET(request) {
     const totalDusun = dusunList.length;
 
     // Fetch data_umum — per-bulan sejak v12, filter agar total tidak ter-multiply 12x.
-    const { data: umumList, error: umumError } = await supabase
-      .from('data_umum')
-      .select('*')
-      .eq('tahun', tahun)
-      .eq('bulan', bulan);
+    const { data: umumList, error: umumError } = await queryWithOptionalMonth(
+      () => supabase
+        .from('data_umum')
+        .select('*')
+        .eq('tahun', tahun),
+      bulan
+    );
     if (umumError) throw umumError;
 
     const dataUmum = (umumList || []).reduce(
       (acc, curr) => {
-        acc.total_kk += curr.jml_kk || 0;
-        acc.total_jiwa_l += curr.jml_jiwa_l || 0;
-        acc.total_jiwa_p += curr.jml_jiwa_p || 0;
-        acc.total_krt += curr.jml_krt || 0;
-        acc.total_dasa_wisma += curr.jml_dasa_wisma || 0;
+        acc.total_kk += toNumericValue(curr.jml_kk);
+        acc.total_jiwa_l += toNumericValue(curr.jml_jiwa_l);
+        acc.total_jiwa_p += toNumericValue(curr.jml_jiwa_p);
+        acc.total_krt += toNumericValue(curr.jml_krt);
+        acc.total_dasa_wisma += toNumericValue(curr.jml_dasa_wisma);
         return acc;
       },
       { total_kk: 0, total_jiwa_l: 0, total_jiwa_p: 0, total_krt: 0, total_dasa_wisma: 0 }
@@ -88,9 +92,9 @@ export async function GET(request) {
       return {
         nama: d.nama,
         nomor_urut: d.nomor_urut,
-        jiwa_l: du.jml_jiwa_l || 0,
-        jiwa_p: du.jml_jiwa_p || 0,
-        kk: du.jml_kk || 0,
+        jiwa_l: toNumericValue(du.jml_jiwa_l),
+        jiwa_p: toNumericValue(du.jml_jiwa_p),
+        kk: toNumericValue(du.jml_kk),
       };
     });
 
@@ -101,7 +105,7 @@ export async function GET(request) {
     // Pokja I
     const { data: p1List } = await supabase.from('data_pokja1').select('*').eq('tahun', tahun);
     const kaderPokja1 = (p1List || []).reduce(
-      (sum, c) => sum + (c.kader_pkbn || 0) + (c.kader_pkdrt || 0) + (c.kader_pola_asuh || 0),
+      (sum, c) => sum + toNumericValue(c.kader_pkbn) + toNumericValue(c.kader_pkdrt) + toNumericValue(c.kader_pola_asuh),
       0
     );
 
@@ -120,7 +124,7 @@ export async function GET(request) {
     // Pokja III
     const { data: p3List } = await supabase.from('data_pokja3').select('*').eq('tahun', tahun);
     const kaderPokja3 = (p3List || []).reduce(
-      (sum, c) => sum + (c.kader_pangan || 0) + (c.kader_sandang || 0) + (c.kader_tata_laksana_rt || 0),
+      (sum, c) => sum + toNumericValue(c.kader_pangan) + toNumericValue(c.kader_sandang) + toNumericValue(c.kader_tata_laksana_rt),
       0
     );
     const rumahSehatTotal = (p3List || []).reduce((sum, c) => sum + toNumericValue(c.rumah_sehat), 0);
@@ -128,29 +132,37 @@ export async function GET(request) {
     // Pokja IV
     const { data: p4List } = await supabase.from('data_pokja4').select('*').eq('tahun', tahun);
     const kaderPokja4 = (p4List || []).reduce(
-      (sum, c) => sum + (c.kader_posyandu || 0) + (c.kader_gizi || 0) + (c.kader_kesling || 0) + (c.kader_kb || 0),
+      (sum, c) => sum + toNumericValue(c.kader_posyandu) + toNumericValue(c.kader_gizi) + toNumericValue(c.kader_kesling) + toNumericValue(c.kader_kb),
       0
     );
-    const posyanduTotal = (p4List || []).reduce((sum, c) => sum + (c.posyandu_jumlah || 0), 0);
+    const posyanduTotal = (p4List || []).reduce((sum, c) => sum + toNumericValue(c.posyandu_jumlah), 0);
 
     // Bumil
-    const { data: bumilList } = await supabase.from('data_bumil').select('ibu_hamil, ibu_melahirkan, bayi_lahir_l, bayi_lahir_p').eq('tahun', tahun);
+    const { data: bumilList } = await queryWithOptionalMonth(
+      () => supabase
+        .from('data_bumil')
+        .select('tahun, dusun_id, ibu_hamil, ibu_melahirkan, ibu_nifas, bayi_lahir_l, bayi_lahir_p')
+        .eq('tahun', tahun),
+      bulan
+    );
     const bumilSummary = (bumilList || []).reduce(
       (acc, curr) => {
-        acc.total_hamil += curr.ibu_hamil || 0;
-        acc.total_melahirkan += curr.ibu_melahirkan || 0;
-        acc.total_bayi_lahir += (curr.bayi_lahir_l || 0) + (curr.bayi_lahir_p || 0);
+        acc.total_hamil += toNumericValue(curr.ibu_hamil);
+        acc.total_melahirkan += toNumericValue(curr.ibu_melahirkan);
+        acc.total_bayi_lahir += toNumericValue(curr.bayi_lahir_l) + toNumericValue(curr.bayi_lahir_p);
         return acc;
       },
       { total_hamil: 0, total_melahirkan: 0, total_bayi_lahir: 0 }
     );
 
     // Rekap Dawis (sebelumnya kegiatan_warga) — per-bulan sejak v10
-    const { data: dawisList } = await supabase
-      .from('data_rekap_dawis')
-      .select('*')
-      .eq('tahun', tahun)
-      .eq('bulan', bulan);
+    const { data: dawisList } = await queryWithOptionalMonth(
+      () => supabase
+        .from('data_rekap_dawis')
+        .select('*')
+        .eq('tahun', tahun),
+      bulan
+    );
     const rekapDawisSummary = (dawisList || []).reduce(
       (acc, row) => {
         acc.anggota += toNumericValue(row.jml_anggota_l) + toNumericValue(row.jml_anggota_p);
@@ -255,15 +267,17 @@ export async function GET(request) {
         const hidden = hiddenKeysPerTable[tableName] || new Set();
         const keys = allKeys.filter((k) => !hidden.has(k));
 
-        let currentQuery = supabase.from(tableName).select('*').eq('tahun', tahun);
-        let previousQuery = supabase.from(tableName).select('*').eq('tahun', Number(tahun) - 1);
+        const fetchRows = (year) => {
+          const buildQuery = () => supabase.from(tableName).select('*').eq('tahun', year);
+          return MONTHLY_TABLES.has(tableName)
+            ? queryWithOptionalMonth(buildQuery, bulan)
+            : buildQuery();
+        };
 
-        if (tableName === 'data_bumil' || tableName === 'data_rekap_dawis' || tableName === 'data_umum') {
-          currentQuery = currentQuery.eq('bulan', bulan);
-          previousQuery = previousQuery.eq('bulan', bulan);
-        }
-
-        const [{ data: currentRows }, { data: previousRows }] = await Promise.all([currentQuery, previousQuery]);
+        const [{ data: currentRows }, { data: previousRows }] = await Promise.all([
+          fetchRows(tahun),
+          fetchRows(Number(tahun) - 1),
+        ]);
         const currentMap = {};
         const previousMap = {};
 
