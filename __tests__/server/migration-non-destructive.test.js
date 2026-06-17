@@ -99,6 +99,23 @@ describe('supabase_schema_updates_v11.sql - canonical dusun indexes', () => {
   });
 });
 
+describe('supabase_schema_updates_v13.sql - report_periods uniqueness', () => {
+  const sql = readFile('supabase_schema_updates_v13.sql');
+  const active = stripCommentLines(sql);
+
+  test('Tidak ada operasi destruktif aktif (DELETE/TRUNCATE hanya di komentar)', () => {
+    expect(active).not.toMatch(/\bTRUNCATE\b/i);
+    expect(active).not.toMatch(/\bDELETE\s+FROM\b/i);
+  });
+
+  test('Membuat partial unique index tahunan & bulanan', () => {
+    expect(sql).toMatch(/report_periods_yearly_uniq/i);
+    expect(sql).toMatch(/report_periods_monthly_uniq/i);
+    expect(sql).toMatch(/WHERE\s+bulan\s+IS\s+NULL/i);
+    expect(sql).toMatch(/WHERE\s+bulan\s+IS\s+NOT\s+NULL/i);
+  });
+});
+
 describe('Destructive scripts tersedia sebagai file terpisah', () => {
   test('supabase_schema_updates_v5_destructive.sql ada', () => {
     expect(

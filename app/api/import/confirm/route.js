@@ -10,7 +10,7 @@ import { writeLog } from '@/lib/audit';
 import { ROLE_TABLE_MAP } from '@/lib/excel/sheetMap';
 import { importToSupabase } from '@/lib/excel/importToSupabase';
 import { buildImportDiff, sheetsFromDiff } from '@/lib/excel/previewDiff';
-import { parseYear, validateImportPayload } from '@/lib/requestValidation';
+import { parseYear, parseMonth, validateImportPayload } from '@/lib/requestValidation';
 
 export async function POST(request) {
   try {
@@ -18,7 +18,7 @@ export async function POST(request) {
     if (!user) return requireAuth.deny();
 
     const body = await request.json();
-    const { parsedData, tahun } = body;
+    const { parsedData, tahun, bulan } = body;
     const selectedRaw = body.selectedDusunIds ?? body.selectedDesaIds;
 
     if (!Array.isArray(parsedData) || !tahun) {
@@ -31,12 +31,19 @@ export async function POST(request) {
     }
     const targetYear = year.value;
 
+    let bulanValue = null;
+    if (bulan !== undefined && bulan !== null && bulan !== '') {
+      const month = parseMonth(bulan);
+      if (month.error) return NextResponse.json({ error: month.error }, { status: 400 });
+      bulanValue = month.value;
+    }
+
     const importPayload = validateImportPayload(parsedData);
     if (importPayload.error) {
       return NextResponse.json({ error: importPayload.error }, { status: 400 });
     }
 
-    const { diff, dusunList } = await buildImportDiff(parsedData, targetYear, user);
+    const { diff, dusunList } = await buildImportDiff(parsedData, targetYear, user, bulanValue);
 
     // Validasi & sanitize selection: { [tableName]: number[] }
     let selection = null;
@@ -67,7 +74,7 @@ export async function POST(request) {
     }
 
     const allowedTables = ROLE_TABLE_MAP[user.role] || [];
-    const results = await importToSupabase(sheetsToImport, targetYear, allowedTables, dusunList, user);
+    const results = await importToSupabase(sheetsToImport, targetYear, allowedTables, dusunList, user, bulanValue);
     const totalSuccess = results.reduce((sum, result) => sum + (result.success || 0), 0);
     const totalFailed = results.reduce((sum, result) => sum + (result.failed || 0), 0);
 
@@ -78,7 +85,7 @@ export async function POST(request) {
           username: user.username,
           action: 'import',
           tableName: result.table,
-          detail: `Import Excel sheet "${result.sheet}" tahun ${targetYear}: ${result.success} baris${result.rowLevelSkipped ? ` (${result.rowLevelSkipped} baris dusun lain ditolak)` : ''}`,
+          detail: `Import Excel sheet "${result.sheet}" tahun ${targetYear}${bulanValue ? ` bulan ${bulanValue}` : ''}: ${result.success} baris${result.rowLevelSkipped ? ` (${result.rowLevelSkipped} baris dusun lain ditolak)` : ''}`,
         });
       } else if (result.skipped) {
         await writeLog({

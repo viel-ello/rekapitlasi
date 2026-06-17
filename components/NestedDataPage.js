@@ -176,6 +176,8 @@ export default function NestedDataPage({
   const [userDusunId, setUserDusunId] = useState(null);
   const [overrides, setOverrides] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  // Filter "hanya bermasalah" — hanya tampilkan dusun dengan error/warning.
+  const [onlyIssues, setOnlyIssues] = useState(false);
   // State expanded mobile card di parent supaya tidak reset tiap re-render
   // (kalau di local MobileCard, akan unmount setiap kali parent re-render
   // karena MobileCard di-define inline → React anggap component baru).
@@ -407,7 +409,8 @@ export default function NestedDataPage({
 
   useKeyboardShortcut({ 'ctrl+s': saveAll }, { enabled: canEdit });
 
-  const filteredDusun = dusun.filter((d) => d.nama.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredDusun = dusun.filter((d) => d.nama.toLowerCase().includes(searchQuery.toLowerCase()))
+    .filter((d) => !onlyIssues || getRowIssueCount(d.id) > 0);
   const dirtyCount = dirtyIds.size;
 
   // Peringatkan user sebelum menutup/refresh tab kalau masih ada perubahan
@@ -600,10 +603,22 @@ export default function NestedDataPage({
       {/* Title block (custom per page) */}
       {titleBlock && titleBlock(tahun, hasMonth ? bulan : undefined)}
 
-      <div className="mb-4 relative max-w-sm">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Search className="h-4 w-4 text-gray-400" /></div>
-        <input type="text" placeholder={`Cari ${unitLabel.toLowerCase()}...`} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none shadow-sm" />
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="relative max-w-sm flex-1 min-w-[200px]">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Search className="h-4 w-4 text-gray-400" /></div>
+          <input type="text" placeholder={`Cari ${unitLabel.toLowerCase()}...`} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none shadow-sm" />
+        </div>
+        <button
+          type="button"
+          onClick={() => setOnlyIssues((v) => !v)}
+          aria-pressed={onlyIssues}
+          className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border transition-colors ${
+            onlyIssues ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+          }`}
+        >
+          <ExclamationCircle className="w-4 h-4" /> Hanya bermasalah
+        </button>
       </div>
 
       {canEdit && dirtyCount > 0 && (
@@ -647,7 +662,7 @@ export default function NestedDataPage({
         {filteredDusun.length === 0 && <div className="text-center py-8 text-gray-500 bg-white rounded-xl border border-gray-100">{unitLabel} tidak ditemukan</div>}
       </div>
 
-      <div className="hidden md:block bg-white rounded-2xl border border-gray-100 p-3 shadow-sm">
+      <div className="hidden md:block nested-table bg-white rounded-2xl border border-gray-100 p-3 shadow-sm">
         {canEdit && (
           <div className="flex items-center justify-end gap-2 mb-2">
             <span className="text-[11px] text-gray-400">Total di bawah dihitung dari data yang sudah disimpan.</span>

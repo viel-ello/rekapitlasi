@@ -23,6 +23,7 @@ export default function AiChatBubble({ tahun, user }) {
   const [pendingFile, setPendingFile] = useState(null);
   const [importPreviewData, setImportPreviewData] = useState(null);
   const [importTahun, setImportTahun] = useState(tahun || new Date().getFullYear());
+  const [importBulan, setImportBulan] = useState(new Date().getMonth() + 1);
   const { years } = useYears();
   const [privacyDismissed, setPrivacyDismissed] = useState(true);
   const [toastMsg, setToastMsg] = useState(null);
@@ -116,7 +117,7 @@ export default function AiChatBubble({ tahun, user }) {
         const diffRes = await fetch('/api/import/preview', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ parsedData: data.parsedData, tahun: importTahun })
+          body: JSON.stringify({ parsedData: data.parsedData, tahun: importTahun, bulan: importBulan })
         });
         const diffData = await diffRes.json();
         
@@ -169,7 +170,7 @@ export default function AiChatBubble({ tahun, user }) {
       const res = await fetch('/api/import/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ parsedData, tahun: importTahun, selectedDesaIds }),
+        body: JSON.stringify({ parsedData, tahun: importTahun, bulan: importBulan, selectedDesaIds }),
       });
       const data = await res.json();
 
@@ -455,12 +456,23 @@ export default function AiChatBubble({ tahun, user }) {
               </div>
 
               <div className="p-4 sm:p-6 bg-white border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-3 w-full sm:w-auto">
-                  <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Simpan untuk Tahun:</label>
+                <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                  <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Simpan untuk:</label>
+                  <select
+                    value={importBulan}
+                    onChange={e => setImportBulan(Number(e.target.value))}
+                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-gray-50"
+                    aria-label="Bulan import (untuk tabel bulanan)"
+                  >
+                    {['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'].map((m, i) => (
+                      <option key={m} value={i + 1}>{m}</option>
+                    ))}
+                  </select>
                   <select
                     value={importTahun}
                     onChange={e => setImportTahun(Number(e.target.value))}
                     className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-gray-50"
+                    aria-label="Tahun import"
                   >
                     {(years && years.length > 0 ? years : [2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030]).map(y => (
                       <option key={y} value={y}>{y}</option>

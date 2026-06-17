@@ -555,7 +555,10 @@ function ImportTab({ toast, setToast }) {
   const [confirmingImport, setConfirmingImport] = useState(false);
   const [importPreview, setImportPreview] = useState(null);
   const [importTahun, setImportTahun] = useState(new Date().getFullYear());
+  const [importBulan, setImportBulan] = useState(new Date().getMonth() + 1);
   const { years: yearOptions } = useYears();
+
+  const IMPORT_MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
   useEffect(() => {
     if (yearOptions.length > 0 && !yearOptions.includes(importTahun)) {
@@ -570,6 +573,7 @@ function ImportTab({ toast, setToast }) {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('tahun', importTahun);
+    formData.append('bulan', importBulan);
     try {
       const res = await fetch('/api/import/excel', { method: 'POST', body: formData });
       const data = await res.json();
@@ -592,7 +596,7 @@ function ImportTab({ toast, setToast }) {
       const res = await fetch('/api/import/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ parsedData: importPreview.parsedData, tahun: importTahun }),
+        body: JSON.stringify({ parsedData: importPreview.parsedData, tahun: importTahun, bulan: importBulan }),
       });
       const data = await res.json();
       setToast({ type: res.ok ? 'success' : 'error', message: data.message || data.error || 'Import selesai' });
@@ -611,6 +615,8 @@ function ImportTab({ toast, setToast }) {
           preview={importPreview}
           tahun={importTahun}
           setTahun={setImportTahun}
+          bulan={importBulan}
+          monthLabel={IMPORT_MONTHS[importBulan - 1]}
           yearOptions={yearOptions}
           confirming={confirmingImport}
           onCancel={() => setImportPreview(null)}
@@ -634,6 +640,18 @@ function ImportTab({ toast, setToast }) {
           >
             {(yearOptions.length > 0 ? yearOptions : Array.from({ length: 11 }, (_, i) => 2020 + i)).map(y => <option key={y} value={y}>{y}</option>)}
           </select>
+          <label className="block text-xs font-medium text-gray-500 mb-1" htmlFor="import-month">Bulan import (untuk Data Umum, Rekap Dawis, Bumil)</label>
+          <select
+            id="import-month"
+            value={importBulan}
+            onChange={(e) => setImportBulan(Number(e.target.value))}
+            className="w-full mb-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+          >
+            {IMPORT_MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+          </select>
+          <p className="text-[11px] text-amber-600 mb-3">
+            Data tabel bulanan akan disimpan ke <strong>{IMPORT_MONTHS[importBulan - 1]} {importTahun}</strong>. Pastikan bulan benar sebelum import.
+          </p>
           <label className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-xl transition-colors cursor-pointer">
             {importing ? '⏳ Memproses...' : <><Upload className="w-4 h-4" /> Pilih File Excel</>}
             <input type="file" accept=".xlsx" onChange={handleImport} className="hidden" disabled={importing} />
@@ -693,7 +711,7 @@ function ImportTab({ toast, setToast }) {
   );
 }
 
-function ImportPreviewModal({ preview, tahun, setTahun, yearOptions, confirming, onCancel, onConfirm }) {
+function ImportPreviewModal({ preview, tahun, setTahun, bulan, monthLabel, yearOptions, confirming, onCancel, onConfirm }) {
   const totals = (preview.diff || []).reduce((acc, sheet) => {
     acc.insert += sheet.counts?.insert || 0;
     acc.update += sheet.counts?.update || 0;
@@ -710,6 +728,7 @@ function ImportPreviewModal({ preview, tahun, setTahun, yearOptions, confirming,
           <div>
             <h3 className="text-lg font-bold text-gray-800">Preview Import Excel</h3>
             <p className="text-sm text-gray-500">{preview.fileName} - data belum disimpan</p>
+            <p className="text-xs text-amber-600 mt-0.5">Target periode tabel bulanan: <strong>{monthLabel} {tahun}</strong></p>
           </div>
           <button onClick={onCancel} className="self-start sm:self-auto px-3 py-1.5 text-sm bg-white border border-gray-200 rounded-lg hover:bg-gray-50" aria-label="Tutup preview import">
             Tutup

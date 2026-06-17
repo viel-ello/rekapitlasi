@@ -149,9 +149,22 @@ export async function POST(request) {
       payload.approved_at = now;
     }
 
-    const { error: upsertError } = await supabase
-      .from('report_periods')
-      .upsert(payload, { onConflict: 'table_name,tahun,bulan' });
+    // Insert/update eksplisit berdasarkan row existing (di-fetch di atas).
+    // Hindari upsert onConflict karena partial unique index (bulan IS NULL)
+    // tidak bisa jadi conflict target yang reliable di PostgREST.
+    let upsertError = null;
+    if (existing?.id) {
+      const { error } = await supabase
+        .from('report_periods')
+        .update(payload)
+        .eq('id', existing.id);
+      upsertError = error;
+    } else {
+      const { error } = await supabase
+        .from('report_periods')
+        .insert(payload);
+      upsertError = error;
+    }
 
     if (upsertError) throw upsertError;
 

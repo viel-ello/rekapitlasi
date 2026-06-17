@@ -708,3 +708,38 @@
 .dark ::-webkit-scrollbar-thumb:hover {
   background: #34d399;
 }
+
+
+/* ---- Dark mode: NestedDataPage (inline-styled tables) ---- */
+/* NestedDataPage memakai inline background putih pada sticky cell & footer.
+   Inline style menang atas CSS biasa, jadi override pakai !important hanya
+   di dark mode. Light mode tidak terpengaruh. */
+.dark .nested-table {
+  background-color: #111c18 !important;
+  border-color: #1f2a25 !important;
+}
+.dark .nested-table table td,
+.dark .nested-table table th {
+  border-color: #1f2a25 !important;
+}
+/* Sticky No/Nama cell & body cell yang di-set putih inline */
+.dark .nested-table table tbody td[style*="background"] {
+  background-color: #111c18 !important;
+  color: #d1fae5 !important;
+}
+.dark .nested-table table tbody tr:hover td {
+  background-color: #15201b !important;
+}
+/* Input di dalam nested table */
+.dark .nested-table table input,
+.dark .nested-table table textarea {
+  background-color: #15201b !important;
+  color: #e5e7eb !important;
+  border-color: #2d3a33 !important;
+}
+/* Footer JUMLAH row (light green inline) */
+.dark .nested-table table tbody tr[style*="f0fdf4"] td,
+.dark .nested-table table tbody tr[style*="F0FDF4"] td {
+  background-color: #14463a !important;
+  color: #6ee7b7 !important;
+}

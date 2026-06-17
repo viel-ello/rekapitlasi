@@ -12,6 +12,7 @@ import { useState } from 'react';
 import {
   Download, Upload, FileLines, ClipboardList, DotsHorizontal,
 } from 'flowbite-react-icons/outline';
+import Dialog from '@/components/ui/Dialog';
 
 const TEMPLATES = [
   { key: 'data_umum', label: 'Data Umum' },
@@ -101,30 +102,31 @@ export default function DashboardToolbar({
       </div>
 
       {/* Template dialog (overlay) */}
-      {showTemplate && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4" role="dialog" aria-label="Pilih template">
-          <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" onClick={() => setShowTemplate(false)} />
-          <div className="relative z-10 w-full max-w-sm bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-gray-800">Unduh Template Excel</h3>
-              <button onClick={() => setShowTemplate(false)} className="text-gray-400 hover:text-gray-700" aria-label="Tutup">✕</button>
-            </div>
-            <div className="py-1">
-              {TEMPLATES.map(t => (
-                <button
-                  key={t.key}
-                  onClick={async () => { await onDownloadTemplate(t.key, t.label); setShowTemplate(false); }}
-                  disabled={downloadingTemplate === t.key}
-                  className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700 flex items-center justify-between border-b border-gray-50 last:border-0"
-                >
-                  <span className="flex items-center gap-2"><ClipboardList className="w-4 h-4 text-gray-400" /> {t.label}</span>
-                  {downloadingTemplate === t.key ? <Spinner /> : <Download className="w-4 h-4 text-gray-400" />}
-                </button>
-              ))}
-            </div>
-          </div>
+      <Dialog
+        open={showTemplate}
+        onClose={() => setShowTemplate(false)}
+        title="Unduh Template Excel"
+        containerClassName="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+        panelClassName="relative z-10 w-full max-w-sm bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
+      >
+        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+          <h3 className="text-sm font-bold text-gray-800">Unduh Template Excel</h3>
+          <button onClick={() => setShowTemplate(false)} className="text-gray-400 hover:text-gray-700" aria-label="Tutup">✕</button>
         </div>
-      )}
+        <div className="py-1">
+          {TEMPLATES.map(t => (
+            <button
+              key={t.key}
+              onClick={async () => { await onDownloadTemplate(t.key, t.label); setShowTemplate(false); }}
+              disabled={downloadingTemplate === t.key}
+              className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700 flex items-center justify-between border-b border-gray-50 last:border-0"
+            >
+              <span className="flex items-center gap-2"><ClipboardList className="w-4 h-4 text-gray-400" /> {t.label}</span>
+              {downloadingTemplate === t.key ? <Spinner /> : <Download className="w-4 h-4 text-gray-400" />}
+            </button>
+          ))}
+        </div>
+      </Dialog>
     </div>
   );
 }

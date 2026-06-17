@@ -41,6 +41,8 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
   const [overrides, setOverrides] = useState([]);
 
   const [searchQuery, setSearchQuery] = useState('');
+  // Filter "hanya bermasalah" — tampilkan dusun yang punya error/warning saja.
+  const [onlyIssues, setOnlyIssues] = useState(false);
   // Loading state untuk skeleton saat fetch awal.
   const [initialLoading, setInitialLoading] = useState(true);
   // Expanded state per dusun di parent — supaya tidak reset tiap re-render.
@@ -268,7 +270,8 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
     }, 0);
   };
 
-  const filteredDusun = dusun.filter((d) => d.nama.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredDusun = dusun.filter((d) => d.nama.toLowerCase().includes(searchQuery.toLowerCase()))
+    .filter((d) => !onlyIssues || getRowIssueCount(d.id) > 0);
   const dirtyCount = Object.values(saveStatus).filter((s) => s === 'dirty').length;
   const validationSummary = filteredDusun.reduce(
     (acc, d) => {
@@ -489,17 +492,29 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
       </div>
 
       {/* Tools Row */}
-      <div className="mb-4 relative max-w-sm">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <Search className="h-4 w-4 text-gray-400" />
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="relative max-w-sm flex-1 min-w-[200px]">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="h-4 w-4 text-gray-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Cari dusun..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none shadow-sm"
+          />
         </div>
-        <input
-          type="text"
-          placeholder="Cari dusun..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none shadow-sm"
-        />
+        <button
+          type="button"
+          onClick={() => setOnlyIssues((v) => !v)}
+          aria-pressed={onlyIssues}
+          className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border transition-colors ${
+            onlyIssues ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+          }`}
+        >
+          <ExclamationCircle className="w-4 h-4" /> Hanya bermasalah
+        </button>
       </div>
 
       {(validationSummary.errors > 0 || validationSummary.warnings > 0 || validationSummary.infos > 0) && (

@@ -145,6 +145,7 @@ export default function BumilDataPage({ config }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [monthsWithData, setMonthsWithData] = useState(() => new Set());
   const [initialLoading, setInitialLoading] = useState(true);
+  const [onlyIssues, setOnlyIssues] = useState(false);
 
   const { years } = useYears();
 
@@ -322,7 +323,8 @@ export default function BumilDataPage({ config }) {
 
   useKeyboardShortcut({ 'ctrl+s': saveAll }, { enabled: canEdit });
 
-  const filteredDusun = dusun.filter((d) => d.nama.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredDusun = dusun.filter((d) => d.nama.toLowerCase().includes(searchQuery.toLowerCase()))
+    .filter((d) => !onlyIssues || getRowIssueCount(d.id) > 0);
   const dirtyCount = Object.values(saveStatus).filter((s) => s === 'dirty').length;
 
   // Peringatkan sebelum menutup tab kalau masih ada perubahan belum disimpan.
@@ -475,10 +477,22 @@ export default function BumilDataPage({ config }) {
         </div>
       </div>
 
-      <div className="mb-4 relative max-w-sm">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Search className="h-4 w-4 text-gray-400" /></div>
-        <input type="text" placeholder="Cari dusun..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none shadow-sm" />
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="relative max-w-sm flex-1 min-w-[200px]">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Search className="h-4 w-4 text-gray-400" /></div>
+          <input type="text" placeholder="Cari dusun..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none shadow-sm" />
+        </div>
+        <button
+          type="button"
+          onClick={() => setOnlyIssues((v) => !v)}
+          aria-pressed={onlyIssues}
+          className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border transition-colors ${
+            onlyIssues ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+          }`}
+        >
+          <ExclamationCircle className="w-4 h-4" /> Hanya bermasalah
+        </button>
       </div>
 
       <div className="mb-4 rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm">

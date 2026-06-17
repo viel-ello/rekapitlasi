@@ -6,21 +6,15 @@
  */
 
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
 import { requireAuth } from '@/lib/auth';
+import { getActiveDusun } from '@/lib/server/dusunCache';
 
 export async function GET(request) {
   try {
     const user = await requireAuth(request);
     if (!user) return requireAuth.deny();
 
-    const { data: dusun, error } = await supabase
-      .from('dusun')
-      .select('id, nama, nomor_urut, is_active')
-      .eq('is_active', 1)
-      .order('nomor_urut', { ascending: true });
-
-    if (error) throw error;
+    const dusun = await getActiveDusun();
 
     return NextResponse.json(dusun);
   } catch (error) {

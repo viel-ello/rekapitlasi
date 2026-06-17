@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase';
 import { requireAuth } from '@/lib/auth';
 import { parseExcel } from '@/lib/excel/parseExcel';
 import { buildImportDiff } from '@/lib/excel/previewDiff';
-import { parseYear } from '@/lib/requestValidation';
+import { parseYear, parseMonth } from '@/lib/requestValidation';
 
 const MAX_UPLOAD_SIZE = 5 * 1024 * 1024;
 
@@ -20,6 +20,7 @@ export async function POST(request) {
     const formData = await request.formData();
     const file = formData.get('file');
     const tahunResult = parseYear(formData.get('tahun') || new Date().getFullYear());
+    const bulanRaw = formData.get('bulan');
 
     if (!file) {
       return NextResponse.json({ error: 'File Excel harus diunggah' }, { status: 400 });
@@ -27,6 +28,13 @@ export async function POST(request) {
 
     if (tahunResult.error) {
       return NextResponse.json({ error: tahunResult.error }, { status: 400 });
+    }
+
+    let bulanValue = null;
+    if (bulanRaw !== undefined && bulanRaw !== null && bulanRaw !== '') {
+      const month = parseMonth(bulanRaw);
+      if (month.error) return NextResponse.json({ error: month.error }, { status: 400 });
+      bulanValue = month.value;
     }
 
     if (file.size > MAX_UPLOAD_SIZE) {
@@ -54,12 +62,13 @@ export async function POST(request) {
     if (dusunError) throw dusunError;
 
     const parsed = await parseExcel(buffer, dusunList || []);
-    const { diff } = await buildImportDiff(parsed.sheets, tahun, user);
+    const { diff } = await buildImportDiff(parsed.sheets, tahun, user, bulanValue);
 
     return NextResponse.json({
       type: 'import_preview',
       fileName: file.name,
       parsedData: parsed.sheets,
+      bulan: bulanValue,
       diff,
       parseErrors: parsed.errors || [],
       message: 'Preview import berhasil dibuat. Data belum disimpan.',

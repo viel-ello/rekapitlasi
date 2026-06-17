@@ -40,8 +40,15 @@ export default function Topbar({ user, onMobileMenuToggle, onOpenPasswordModal }
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setShowDropdown(false);
       if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotif(false);
     };
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') { setShowDropdown(false); setShowNotif(false); }
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
   }, []);
 
   const getInitials = (name) => {
@@ -117,6 +124,8 @@ export default function Topbar({ user, onMobileMenuToggle, onOpenPasswordModal }
             onClick={() => { setShowNotif(!showNotif); if (!showNotif) fetchNotifications(); }}
             className="relative p-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
             title="Notifikasi"
+            aria-haspopup="true"
+            aria-expanded={showNotif}
             aria-label={`Notifikasi${unreadCount > 0 ? ` (${unreadCount} belum dibaca)` : ''}`}
           >
             <Bell className="w-5 h-5" />
@@ -170,6 +179,7 @@ export default function Topbar({ user, onMobileMenuToggle, onOpenPasswordModal }
             onClick={() => setShowDropdown(!showDropdown)}
             className="flex items-center gap-2.5 py-1.5 px-2 rounded-xl hover:bg-gray-50 transition-colors"
             aria-label="Menu profil"
+            aria-haspopup="true"
             aria-expanded={showDropdown}
           >
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-600 to-primary-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">

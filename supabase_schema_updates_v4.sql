@@ -17,9 +17,18 @@ CREATE TABLE IF NOT EXISTS report_periods (
   approved_at TIMESTAMPTZ,
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE (table_name, tahun, bulan)
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Uniqueness periode (v13): partial index supaya periode tahunan (bulan NULL)
+-- tetap unik. Constraint UNIQUE(table_name,tahun,bulan) biasa TIDAK menjamin ini
+-- karena NULL dianggap berbeda di PostgreSQL.
+CREATE UNIQUE INDEX IF NOT EXISTS report_periods_yearly_uniq
+  ON report_periods (table_name, tahun)
+  WHERE bulan IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS report_periods_monthly_uniq
+  ON report_periods (table_name, tahun, bulan)
+  WHERE bulan IS NOT NULL;
 
 -- Index untuk query status
 CREATE INDEX IF NOT EXISTS idx_report_periods_lookup

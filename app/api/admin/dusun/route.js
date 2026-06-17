@@ -7,6 +7,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { requireAdmin } from '@/lib/auth';
+import { invalidateDusunServerCache } from '@/lib/server/dusunCache';
 
 export async function GET(request) {
   try {
@@ -49,6 +50,7 @@ export async function PUT(request) {
     if (Object.keys(updates).length > 0) {
       const { error } = await supabase.from('dusun').update(updates).eq('id', dusunId);
       if (error) throw error;
+      invalidateDusunServerCache();
     }
 
     return NextResponse.json({ success: true });

@@ -6,8 +6,9 @@ import { usePathname } from 'next/navigation';
 import {
   ChartPie, ClipboardList, Shield, BookOpen,
   Users, Cog, AngleRight, AngleLeft, Lock,
-  ArrowRightToBracket, Swatchbook, Heart, UserCircle, ChartLineUp
+  ArrowRightToBracket, Swatchbook, Heart, UserCircle, ChartLineUp, PaperPlane
 } from 'flowbite-react-icons/outline';
+import Dialog from '@/components/ui/Dialog';
 
 const menuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: ChartPie },
@@ -18,6 +19,7 @@ const menuItems = [
   { href: '/dashboard/pokja4', label: 'Pokja IV', icon: Heart, sub: 'Kesehatan & Lingkungan' },
   { href: '/dashboard/rekap-dawis', label: 'Rekapitulasi Dawis', icon: Users },
   { href: '/dashboard/bumil', label: 'Data Bumil', icon: UserCircle },
+  { href: '/dashboard/approval', label: 'Persetujuan', icon: PaperPlane, sub: 'Workflow & pekerjaan saya' },
   { href: '/dashboard/reports', label: 'Report Builder', icon: ChartLineUp, sub: 'Laporan kustom' },
 ];
 
@@ -171,36 +173,37 @@ export default function Sidebar({ user, onLogout, collapsed, onToggle, mobileOpe
       </div>
 
       {/* Password Modal */}
-      {showPwModal && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowPwModal(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Ganti Password</h3>
-            {pwMsg && (
-              <div className={`p-3 rounded-lg mb-4 text-sm ${pwMsg.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                {pwMsg.text}
-              </div>
-            )}
-            <form onSubmit={handlePwSubmit} className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">Password Lama</label>
-                <input type="password" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" value={pwForm.old} onChange={e => setPwForm({...pwForm, old: e.target.value})} required />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">Password Baru</label>
-                <input type="password" minLength={12} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" value={pwForm.new} onChange={e => setPwForm({...pwForm, new: e.target.value})} required />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">Konfirmasi Password</label>
-                <input type="password" minLength={12} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" value={pwForm.confirm} onChange={e => setPwForm({...pwForm, confirm: e.target.value})} required />
-              </div>
-              <div className="flex gap-2 pt-2">
-                <button type="submit" className="flex-1 bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-lg text-sm font-medium transition-colors">Simpan</button>
-                <button type="button" onClick={() => { setShowPwModal(false); setPwMsg(null); }} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 py-2 rounded-lg text-sm font-medium transition-colors">Batal</button>
-              </div>
-            </form>
+      <Dialog
+        open={showPwModal}
+        onClose={() => { setShowPwModal(false); setPwMsg(null); }}
+        title="Ganti Password"
+        panelClassName="relative z-10 bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6"
+      >
+        <h3 className="text-lg font-bold text-gray-800 mb-4">Ganti Password</h3>
+        {pwMsg && (
+          <div className={`p-3 rounded-lg mb-4 text-sm ${pwMsg.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+            {pwMsg.text}
           </div>
-        </div>
-      )}
+        )}
+        <form onSubmit={handlePwSubmit} className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-1">Password Lama</label>
+            <input type="password" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" value={pwForm.old} onChange={e => setPwForm({...pwForm, old: e.target.value})} required />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-1">Password Baru</label>
+            <input type="password" minLength={12} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" value={pwForm.new} onChange={e => setPwForm({...pwForm, new: e.target.value})} required />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-1">Konfirmasi Password</label>
+            <input type="password" minLength={12} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" value={pwForm.confirm} onChange={e => setPwForm({...pwForm, confirm: e.target.value})} required />
+          </div>
+          <div className="flex gap-2 pt-2">
+            <button type="submit" className="flex-1 bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-lg text-sm font-medium transition-colors">Simpan</button>
+            <button type="button" onClick={() => { setShowPwModal(false); setPwMsg(null); }} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 py-2 rounded-lg text-sm font-medium transition-colors">Batal</button>
+          </div>
+        </form>
+      </Dialog>
     </aside>
   );
 }
