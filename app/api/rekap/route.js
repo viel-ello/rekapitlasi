@@ -95,6 +95,76 @@ export async function GET(request) {
     });
 
     // ── Per-dusun aggregation untuk dashboard charts ──
+    // Dipindah ke bawah (setelah semua fetch p1List/p3List/p4List/bumilList/dawisList)
+    // supaya tidak terjadi ReferenceError (temporal dead zone).
+
+    // Pokja I
+    const { data: p1List } = await supabase.from('data_pokja1').select('*').eq('tahun', tahun);
+    const kaderPokja1 = (p1List || []).reduce(
+      (sum, c) => sum + (c.kader_pkbn || 0) + (c.kader_pkdrt || 0) + (c.kader_pola_asuh || 0),
+      0
+    );
+
+    // Pokja II
+    const { data: p2List } = await supabase.from('data_pokja2').select('*').eq('tahun', tahun);
+    const pokja2Summary = (p2List || []).reduce(
+      (acc, row) => {
+        acc.paket += toNumericValue(row.paket_a_wrg) + toNumericValue(row.paket_b_wrg) + toNumericValue(row.paket_c_wrg);
+        acc.up2k += toNumericValue(row.up2k_pemula_psrt) + toNumericValue(row.up2k_madya_psrt) + toNumericValue(row.up2k_utama_psrt) + toNumericValue(row.up2k_mandiri_psrt);
+        acc.koperasi += toNumericValue(row.koperasi_berbadan_hukum_angg);
+        return acc;
+      },
+      { paket: 0, up2k: 0, koperasi: 0 }
+    );
+
+    // Pokja III
+    const { data: p3List } = await supabase.from('data_pokja3').select('*').eq('tahun', tahun);
+    const kaderPokja3 = (p3List || []).reduce(
+      (sum, c) => sum + (c.kader_pangan || 0) + (c.kader_sandang || 0) + (c.kader_tata_laksana_rt || 0),
+      0
+    );
+    const rumahSehatTotal = (p3List || []).reduce((sum, c) => sum + toNumericValue(c.rumah_sehat), 0);
+
+    // Pokja IV
+    const { data: p4List } = await supabase.from('data_pokja4').select('*').eq('tahun', tahun);
+    const kaderPokja4 = (p4List || []).reduce(
+      (sum, c) => sum + (c.kader_posyandu || 0) + (c.kader_gizi || 0) + (c.kader_kesling || 0) + (c.kader_kb || 0),
+      0
+    );
+    const posyanduTotal = (p4List || []).reduce((sum, c) => sum + (c.posyandu_jumlah || 0), 0);
+
+    // Bumil
+    const { data: bumilList } = await supabase.from('data_bumil').select('ibu_hamil, ibu_melahirkan, bayi_lahir_l, bayi_lahir_p').eq('tahun', tahun);
+    const bumilSummary = (bumilList || []).reduce(
+      (acc, curr) => {
+        acc.total_hamil += curr.ibu_hamil || 0;
+        acc.total_melahirkan += curr.ibu_melahirkan || 0;
+        acc.total_bayi_lahir += (curr.bayi_lahir_l || 0) + (curr.bayi_lahir_p || 0);
+        return acc;
+      },
+      { total_hamil: 0, total_melahirkan: 0, total_bayi_lahir: 0 }
+    );
+
+    // Rekap Dawis (sebelumnya kegiatan_warga) — per-bulan sejak v10
+    const { data: dawisList } = await supabase
+      .from('data_rekap_dawis')
+      .select('*')
+      .eq('tahun', tahun)
+      .eq('bulan', bulan);
+    const rekapDawisSummary = (dawisList || []).reduce(
+      (acc, row) => {
+        acc.anggota += toNumericValue(row.jml_anggota_l) + toNumericValue(row.jml_anggota_p);
+        acc.balita += toNumericValue(row.balita_l) + toNumericValue(row.balita_p);
+        acc.pus += toNumericValue(row.pus);
+        acc.lansia += toNumericValue(row.lansia);
+        acc.rumahSehat += toNumericValue(row.rumah_sehat);
+        acc.jknBpjs += toNumericValue(row.jkn_bpjs);
+        return acc;
+      },
+      { anggota: 0, balita: 0, pus: 0, lansia: 0, rumahSehat: 0, jknBpjs: 0 }
+    );
+
+    // ── Per-dusun aggregation untuk dashboard charts ──
     // v6: kolom data sekarang TEXT — coerce via toNumericValue (string non-numerik = 0).
     const perDusunMetrics = dusunList.map((d) => {
       const du = (umumList || []).find((u) => unitIdOf(u) === d.id) || {};
@@ -162,72 +232,6 @@ export async function GET(request) {
       }
       return acc;
     })();
-
-    // Pokja I
-    const { data: p1List } = await supabase.from('data_pokja1').select('*').eq('tahun', tahun);
-    const kaderPokja1 = (p1List || []).reduce(
-      (sum, c) => sum + (c.kader_pkbn || 0) + (c.kader_pkdrt || 0) + (c.kader_pola_asuh || 0),
-      0
-    );
-
-    // Pokja II
-    const { data: p2List } = await supabase.from('data_pokja2').select('*').eq('tahun', tahun);
-    const pokja2Summary = (p2List || []).reduce(
-      (acc, row) => {
-        acc.paket += toNumericValue(row.paket_a_wrg) + toNumericValue(row.paket_b_wrg) + toNumericValue(row.paket_c_wrg);
-        acc.up2k += toNumericValue(row.up2k_pemula_psrt) + toNumericValue(row.up2k_madya_psrt) + toNumericValue(row.up2k_utama_psrt) + toNumericValue(row.up2k_mandiri_psrt);
-        acc.koperasi += toNumericValue(row.koperasi_berbadan_hukum_angg);
-        return acc;
-      },
-      { paket: 0, up2k: 0, koperasi: 0 }
-    );
-
-    // Pokja III
-    const { data: p3List } = await supabase.from('data_pokja3').select('*').eq('tahun', tahun);
-    const kaderPokja3 = (p3List || []).reduce(
-      (sum, c) => sum + (c.kader_pangan || 0) + (c.kader_sandang || 0) + (c.kader_tata_laksana_rt || 0),
-      0
-    );
-    const rumahSehatTotal = (p3List || []).reduce((sum, c) => sum + toNumericValue(c.rumah_sehat), 0);
-
-    // Pokja IV
-    const { data: p4List } = await supabase.from('data_pokja4').select('*').eq('tahun', tahun);
-    const kaderPokja4 = (p4List || []).reduce(
-      (sum, c) => sum + (c.kader_posyandu || 0) + (c.kader_gizi || 0) + (c.kader_kesling || 0) + (c.kader_kb || 0),
-      0
-    );
-    const posyanduTotal = (p4List || []).reduce((sum, c) => sum + (c.posyandu_jumlah || 0), 0);
-
-    // Bumil
-    const { data: bumilList } = await supabase.from('data_bumil').select('ibu_hamil, ibu_melahirkan, bayi_lahir_l, bayi_lahir_p').eq('tahun', tahun);
-    const bumilSummary = (bumilList || []).reduce(
-      (acc, curr) => {
-        acc.total_hamil += curr.ibu_hamil || 0;
-        acc.total_melahirkan += curr.ibu_melahirkan || 0;
-        acc.total_bayi_lahir += (curr.bayi_lahir_l || 0) + (curr.bayi_lahir_p || 0);
-        return acc;
-      },
-      { total_hamil: 0, total_melahirkan: 0, total_bayi_lahir: 0 }
-    );
-
-    // Rekap Dawis (sebelumnya kegiatan_warga) — per-bulan sejak v10
-    const { data: dawisList } = await supabase
-      .from('data_rekap_dawis')
-      .select('*')
-      .eq('tahun', tahun)
-      .eq('bulan', bulan);
-    const rekapDawisSummary = (dawisList || []).reduce(
-      (acc, row) => {
-        acc.anggota += toNumericValue(row.jml_anggota_l) + toNumericValue(row.jml_anggota_p);
-        acc.balita += toNumericValue(row.balita_l) + toNumericValue(row.balita_p);
-        acc.pus += toNumericValue(row.pus);
-        acc.lansia += toNumericValue(row.lansia);
-        acc.rumahSehat += toNumericValue(row.rumah_sehat);
-        acc.jknBpjs += toNumericValue(row.jkn_bpjs);
-        return acc;
-      },
-      { anggota: 0, balita: 0, pus: 0, lansia: 0, rumahSehat: 0, jknBpjs: 0 }
-    );
 
     const dashboardIndicators = [
       { label: 'KK', value: dataUmum.total_kk, category: 'Data Umum', tone: 'primary' },
