@@ -135,7 +135,7 @@ export default function ApprovalPage() {
       {returnTarget && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" onClick={() => setReturnTarget(null)} />
-          <div className="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-2xl p-5" role="dialog" aria-modal="true" aria-label="Alasan revisi">
+          <div className="relative z-10 w-full max-w-md bg-white rounded-3xl shadow-modal p-5" role="dialog" aria-modal="true" aria-label="Alasan revisi">
             <h3 className="text-lg font-bold text-gray-800 mb-1">Kembalikan untuk Revisi</h3>
             <p className="text-sm text-gray-500 mb-3">{periodeLabel(returnTarget)}</p>
             <label className="block text-xs font-medium text-gray-600 mb-1">Alasan revisi (wajib)</label>
@@ -205,7 +205,7 @@ export default function ApprovalPage() {
           {[1, 2, 3].map((i) => <div key={i} className="skeleton h-16 rounded-xl" />)}
         </div>
       ) : items.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-2xl border border-gray-100">
+        <div className="text-center py-12 glass rounded-3xl">
           <CheckCircle className="w-10 h-10 text-green-400 mx-auto mb-2" />
           <p className="text-gray-500 text-sm">
             {isAdmin ? 'Tidak ada periode yang cocok dengan filter.' : 'Belum ada periode yang Anda ajukan.'}
@@ -216,7 +216,7 @@ export default function ApprovalPage() {
           {items.map((p) => {
             const cfg = STATUS_CONFIG[p.status] || STATUS_CONFIG.draft;
             return (
-              <div key={p.id} className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div key={p.id} className="glass rounded-3xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="min-w-0">
                   <div className="font-semibold text-gray-800">{periodeLabel(p)}</div>
                   <div className="mt-1 flex flex-wrap items-center gap-2">

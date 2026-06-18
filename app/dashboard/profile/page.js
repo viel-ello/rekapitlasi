@@ -124,7 +124,7 @@ export default function ProfilePage() {
         <p className="text-sm text-gray-500 mt-0.5">Informasi akun dan pengaturan keamanan</p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+      <div className="glass rounded-3xl p-6">
         <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide mb-4">Informasi Akun</h2>
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
@@ -162,7 +162,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+      <div className="glass rounded-3xl p-6">
         <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide mb-4">Aktivitas 30 Hari Terakhir</h2>
         {activityLoading ? (
           <div className="text-sm text-gray-400">Memuat...</div>
@@ -192,7 +192,7 @@ export default function ProfilePage() {
         )}
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+      <div className="glass rounded-3xl p-6">
         <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide mb-4 flex items-center gap-2">
           <Lock className="w-4 h-4" /> Ganti Kata Sandi
         </h2>

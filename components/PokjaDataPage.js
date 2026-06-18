@@ -324,7 +324,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
     const dusunEditable = isDusunEditable(d.id);
 
     return (
-      <div id={`dusun-card-${d.id}`} className={`bg-white rounded-xl border ${isDirty ? 'border-amber-200' : 'border-gray-200'} mb-3 shadow-sm overflow-hidden`}>
+      <div id={`dusun-card-${d.id}`} className={`bg-white rounded-2xl border ${isDirty ? 'border-amber-200' : 'border-gray-100'} mb-3 shadow-card overflow-hidden`}>
         <button
           onClick={() => toggleExpanded(d.id)}
           className="w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-gray-50 active:bg-gray-100 transition-colors text-left"
@@ -600,7 +600,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
       </div>
 
       {/* Desktop Table View (>=768px) */}
-      <div className="hidden md:block bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+      <div className="hidden md:block glass rounded-3xl p-4">
         <div className="data-table-wrapper" style={{ maxHeight: '75vh' }}>
           <table className={`data-table relative ${isWord ? 'mode-word' : ''} ${isCompact ? 'density-compact' : ''}`}>
             <thead className="sticky top-0 z-20">

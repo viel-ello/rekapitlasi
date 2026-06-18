@@ -67,7 +67,9 @@ export default function PublikPage() {
   ]), [totals]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="relative min-h-screen bg-gray-50">
+      <div className="glass-ambient" aria-hidden="true" />
+      <div className="relative z-[1]">
       <PublicHeader />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
@@ -92,7 +94,7 @@ export default function PublikPage() {
         </div>
 
         {/* Filter */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-3 sm:p-4 mb-6 flex flex-wrap items-center gap-3">
+        <div className="glass rounded-3xl p-3 sm:p-4 mb-6 flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <label htmlFor="pubtahun" className="text-xs font-semibold text-gray-600">Tahun</label>
             <select
@@ -120,8 +122,8 @@ export default function PublikPage() {
         {/* KPI */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
           {kpi.map((k) => (
-            <div key={k.label} className="bg-white rounded-2xl border border-gray-100 p-4">
-              <div className="text-2xl font-bold text-gray-800">
+            <div key={k.label} className="glass rounded-3xl p-4">
+              <div className="text-2xl font-bold text-gray-800 tabular-nums">
                 {loading ? '—' : <AnimatedCounter value={Number(k.value || 0)} />}
               </div>
               <div className="text-xs font-semibold text-gray-700 mt-0.5">{k.label}</div>
@@ -132,7 +134,7 @@ export default function PublikPage() {
 
         {/* Narasi ringkas */}
         {!loading && summary && (
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 mb-6">
+          <div className="glass rounded-3xl p-4 sm:p-5 mb-6">
             <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide mb-2">Ringkasan Kondisi</h2>
             <p className="text-sm text-gray-600 leading-relaxed">
               Pada periode <strong>{MONTHS[bulan - 1]} {tahun}</strong>, TP PKK Desa Belikurip
@@ -151,19 +153,19 @@ export default function PublikPage() {
 
         {/* Chart sederhana: KK per dusun */}
         {!loading && (summary?.perDusunChart || []).some((d) => d.kk > 0 || d.jiwa > 0) && (
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 mb-6">
+          <div className="glass rounded-3xl p-4 sm:p-5 mb-6">
             <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide mb-3">Jumlah KK per Dusun</h2>
             <PublicBarChart data={summary.perDusunChart} />
           </div>
         )}
 
         {/* Indikator agregat */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 mb-6">
+        <div className="glass rounded-3xl p-4 sm:p-5 mb-6">
           <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide mb-3">Indikator Agregat</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {indicators.map((it) => (
-              <div key={it.label} className="rounded-xl border border-gray-100 p-3">
-                <div className="text-lg font-bold text-gray-800">
+              <div key={it.label} className="rounded-2xl border border-white/50 bg-white/40 p-3">
+                <div className="text-lg font-bold text-gray-800 tabular-nums">
                   {loading ? '—' : <AnimatedCounter value={Number(it.value || 0)} />}
                 </div>
                 <div className="text-xs text-gray-600 truncate">{it.label}</div>
@@ -173,8 +175,8 @@ export default function PublikPage() {
         </div>
 
         {/* Tabel dusun */}
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          <div className="px-4 sm:px-5 py-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
+        <div className="glass rounded-3xl overflow-hidden">
+          <div className="px-4 sm:px-5 py-3 border-b border-white/40 flex items-center justify-between flex-wrap gap-2">
             <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide">Per Dusun</h2>
             <span className="text-xs text-gray-500">Klik dusun untuk detail publik</span>
           </div>
@@ -219,7 +221,7 @@ export default function PublikPage() {
         </div>
 
         {/* Definisi istilah */}
-        <div className="mt-6 bg-white rounded-2xl border border-gray-100 p-4 sm:p-5">
+        <div className="mt-6 glass rounded-3xl p-4 sm:p-5">
           <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide mb-3">Definisi Istilah</h2>
           <dl className="grid sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
             <div><dt className="font-semibold text-gray-700 inline">Dasa Wisma</dt><dd className="text-gray-600 inline"> — kelompok ±10 rumah tetangga sebagai unit pembinaan PKK terkecil.</dd></div>
@@ -244,6 +246,7 @@ export default function PublikPage() {
           <Link href="/login" className="hover:text-primary-700">Masuk Aplikasi</Link>
         </div>
       </footer>
+      </div>
     </div>
   );
 }

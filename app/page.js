@@ -66,7 +66,7 @@ export default function WelcomePage() {
             </Link>
             <Link
               href="/login"
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-full transition-colors shadow-sm"
             >
               <ArrowRightToBracket className="w-4 h-4" /> Masuk
             </Link>
@@ -102,13 +102,13 @@ export default function WelcomePage() {
             <div className="mt-6 flex flex-col sm:flex-row gap-3">
               <Link
                 href="/login"
-                className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-xl shadow-md transition-colors"
+                className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-full shadow-md transition-colors"
               >
                 <ArrowRightToBracket className="w-4 h-4" /> Masuk Aplikasi
               </Link>
               <Link
                 href="/publik"
-                className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold rounded-xl border border-gray-200 transition-colors"
+                className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-white/70 backdrop-blur hover:bg-white text-gray-700 text-sm font-semibold rounded-full border border-gray-200 transition-colors"
               >
                 <Globe className="w-4 h-4" /> Lihat Data Publik
               </Link>
@@ -140,8 +140,8 @@ export default function WelcomePage() {
         <h2 className="text-base sm:text-lg font-bold text-gray-800 mb-6">Yang dilakukan aplikasi ini</h2>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {FEATURES.map(({ icon: Icon, title, desc }) => (
-            <div key={title} className="rounded-2xl border border-gray-100 bg-white p-5 hover:border-primary-200 transition-colors">
-              <div className="w-10 h-10 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center mb-3">
+            <div key={title} className="rounded-3xl border border-gray-100 bg-white p-5 hover:border-primary-200 hover:shadow-card-hover transition-all">
+              <div className="w-10 h-10 rounded-2xl bg-primary-50 text-primary-600 flex items-center justify-center mb-3">
                 <Icon className="w-5 h-5" />
               </div>
               <h3 className="text-sm font-bold text-gray-800 mb-1">{title}</h3>
@@ -179,7 +179,7 @@ function KpiTile({ label, value, sub, icon: Icon, tone = 'primary' }) {
         <Icon className="w-4 h-4" />
       </div>
       <div className="min-w-0">
-        <div className="text-xl font-bold text-gray-800">
+        <div className="text-xl font-bold text-gray-800 tabular-nums">
           {typeof value === 'number' ? <AnimatedCounter value={value} /> : (value ?? '—')}
         </div>
         <div className="text-xs text-gray-500 truncate">{label}{sub ? <span className="ml-1 text-gray-400">{sub}</span> : null}</div>

@@ -367,7 +367,7 @@ export default function BumilDataPage({ config }) {
     const dusunEditable = isDusunEditable(d.id);
 
     return (
-      <div id={`dusun-card-${d.id}`} className="bg-white rounded-xl border border-gray-200 p-4 mb-4 shadow-sm">
+      <div id={`dusun-card-${d.id}`} className="bg-white rounded-2xl border border-gray-100 p-4 mb-4 shadow-card">
         <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-100">
           <div>
             <span className="text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md mr-2">{i + 1}</span>
@@ -570,7 +570,7 @@ export default function BumilDataPage({ config }) {
         {filteredDusun.length === 0 && <div className="text-center py-8 text-gray-500 bg-white rounded-xl border border-gray-100">Dusun tidak ditemukan</div>}
       </div>
 
-      <div className="hidden md:block bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+      <div className="hidden md:block glass rounded-3xl p-4">
         <div className="data-table-wrapper" style={{ maxHeight: '75vh' }}>
           <table className={`data-table ${isWord ? 'mode-word' : ''} ${isCompact ? 'density-compact' : ''}`}>
             <thead>

@@ -6,7 +6,7 @@ Panduan operasional harian untuk admin & operator.
 
 ## 1. Rotasi / Ganti Password Admin
 
-Seed awal: **`admin` / `admin123`** (bootstrap). **WAJIB diganti sebelum online.**
+
 
 ### Ganti via aplikasi (disarankan)
 1. Login sebagai admin.

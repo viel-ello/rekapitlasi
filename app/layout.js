@@ -1,19 +1,27 @@
 import './globals.css';
-import { Fira_Sans, Fira_Code } from 'next/font/google';
+import { Plus_Jakarta_Sans, Lora, Fira_Code } from 'next/font/google';
 import ThemeProvider from '@/components/ThemeProvider';
 
 // Self-host Google Fonts via next/font — menghilangkan render-blocking @import
 // di CSS dan mencegah layout shift (FOUT). Exposed sebagai CSS variable.
-const firaSans = Fira_Sans({
+const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
-  variable: '--font-fira-sans',
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-sans',
   display: 'swap',
 });
+
+const lora = Lora({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-serif',
+  display: 'swap',
+});
+
 const firaCode = Fira_Code({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
-  variable: '--font-fira-code',
+  variable: '--font-mono',
   display: 'swap',
 });
 
@@ -47,7 +55,7 @@ const themeInitScript = `
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="id" className={`light ${firaSans.variable} ${firaCode.variable}`}>
+    <html lang="id" className={`light ${plusJakartaSans.variable} ${lora.variable} ${firaCode.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>

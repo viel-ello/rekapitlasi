@@ -47,10 +47,10 @@ export default function AdminPage() {
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                 tab === t.id
                   ? 'bg-primary-600 text-white shadow-sm shadow-primary-500/20'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                  : 'bg-white/70 backdrop-blur text-gray-600 border border-gray-200 hover:bg-white'
               }`}
             >
               <Icon className="w-4 h-4" /> {t.label}

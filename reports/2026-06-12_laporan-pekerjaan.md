@@ -245,3 +245,4 @@ Mengacu ke `UI_UX_AND_FEATURE_GAPS.md`. Audit menunjukkan 2 dari 3 item FASE 1 *
 - Tidak ada SQL baru.
 - FASE 1, 2, 3 dari backlog `UI_UX_AND_FEATURE_GAPS.md` selesai (banyak item FASE 1 & 3 sudah ada sebelumnya; FASE 2 dikerjakan di batch ini).
 - Password `admin123` tetap (sesuai permintaan user).
+

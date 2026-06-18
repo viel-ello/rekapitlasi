@@ -51,15 +51,16 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative bg-gradient-to-br from-primary-50 via-white to-emerald-50 px-4 py-8">
-      {/* Subtle bg pattern, tidak pakai motion blob — terlalu berat di mobile */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden hidden sm:block" aria-hidden="true">
+    <div className="min-h-screen flex items-center justify-center relative bg-gradient-to-br from-primary-100 via-white to-emerald-100 px-4 py-8">
+      {/* Ambient emerald blobs untuk nuansa liquid glass */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
+        <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-primary-300/40 blur-3xl" />
+        <div className="absolute -bottom-32 -right-16 w-[28rem] h-[28rem] rounded-full bg-emerald-200/50 blur-3xl" />
         <img
           src="/bg-baturetno.png"
           alt=""
-          className="absolute inset-0 w-full h-full object-cover opacity-30 motion-safe:opacity-40"
+          className="absolute inset-0 w-full h-full object-cover opacity-20 hidden sm:block"
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-white/80 via-white/60 to-primary-50/80" />
       </div>
 
       {/* Back link */}
@@ -76,16 +77,16 @@ export default function LoginPage() {
         transition={{ duration: 0.4, ease: 'easeOut' }}
         className="relative z-10 w-full max-w-md"
       >
-        <div className="bg-white rounded-2xl shadow-xl shadow-gray-900/5 border border-gray-100 p-6 sm:p-8">
+        <div className="glass-strong rounded-3xl p-6 sm:p-8">
           <div className="text-center mb-6">
-            <div className="mx-auto w-16 h-16 mb-3 rounded-full bg-white shadow-md ring-2 ring-primary-100 flex items-center justify-center overflow-hidden">
+            <div className="mx-auto w-16 h-16 mb-3 rounded-full bg-white/70 shadow-md ring-2 ring-primary-200 flex items-center justify-center overflow-hidden">
               <img
                 src="/logo.png"
                 alt="Logo TP PKK Desa Belikurip"
                 className="w-full h-full object-cover"
               />
             </div>
-            <h1 className="text-lg font-bold text-gray-800">Masuk Aplikasi</h1>
+            <h1 className="text-lg font-bold text-primary-800">Masuk Aplikasi</h1>
             <p className="text-xs text-gray-500 mt-1">
               Lumbung Data PKK<br />
               Desa Belikurip, Kecamatan Baturetno, Wonogiri
@@ -146,7 +147,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 rounded-xl shadow-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 rounded-full shadow-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>

@@ -223,7 +223,7 @@ export default function ReportsPage() {
       </div>
 
       {/* Step content */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 min-h-[300px]">
+      <div className="glass rounded-3xl p-4 sm:p-6 min-h-[300px]">
         {step === 1 && <Step1Tables tables={tables} setTables={setTables} />}
         {step === 2 && <Step2Period tahunFrom={tahunFrom} setTahunFrom={setTahunFrom} tahunTo={tahunTo} setTahunTo={setTahunTo} years={years} bulan={bulan} setBulan={setBulan} hasMonth={tables.includes('data_bumil')} />}
         {step === 3 && <Step3DesaCols desaList={desaList} desaIds={desaIds} setDesaIds={setDesaIds} tables={tables} effectiveCols={effectiveCols} columns={columns} setColumns={setColumns} />}

@@ -348,7 +348,7 @@ export default function AiChatBubble({ tahun, user }) {
             <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" onClick={cancelImport}></div>
             <motion.div
               initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col relative z-10"
+              className="bg-white rounded-3xl shadow-modal w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col relative z-10"
             >
               <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-4 flex items-center justify-between">
                 <div>
@@ -555,7 +555,7 @@ export default function AiChatBubble({ tahun, user }) {
 
       {/* Chat Panel */}
       <div className={`fixed bottom-20 right-4 sm:right-6 z-40 transition-all duration-300 ${open ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
-        <div className="w-[340px] sm:w-[380px] max-h-[520px] bg-white rounded-2xl shadow-2xl shadow-black/15 border border-gray-200 flex flex-col overflow-hidden relative">
+        <div className="w-[340px] sm:w-[380px] max-h-[520px] bg-white rounded-3xl shadow-modal border border-gray-200 flex flex-col overflow-hidden relative">
           {/* Mini toast inside chat */}
           {toastMsg && (
             <div className="absolute top-14 left-1/2 -translate-x-1/2 z-50 px-3 py-1.5 bg-gray-800 text-white text-xs rounded-lg shadow-lg animate-in fade-in">
@@ -757,7 +757,7 @@ export default function AiChatBubble({ tahun, user }) {
         onClick={() => setOpen(!open)}
         className={`fixed bottom-4 right-4 sm:right-6 z-40 w-14 h-14 rounded-full shadow-lg shadow-primary-500/30 flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 ${
           open
-            ? 'bg-gray-700 hover:bg-gray-800 rotate-0'
+            ? 'bg-primary-800 hover:bg-primary-900 rotate-0'
             : 'bg-gradient-to-br from-primary-500 to-primary-700 hover:from-primary-600 hover:to-primary-800'
         }`}
         title="PKK Assistant"

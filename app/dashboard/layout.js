@@ -78,7 +78,10 @@ export default function DashboardLayout({ children }) {
 
   return (
     <ToastProvider>
-      <div className="min-h-screen bg-dashboard dark:bg-gray-950 text-gray-800 dark:text-gray-100">
+      <div className="relative min-h-screen bg-dashboard dark:bg-gray-950 text-gray-800 dark:text-gray-100">
+        {/* Ambient gradient backdrop — basis efek liquid glass (kartu translucent
+            di atasnya jadi terlihat "frosted"). Fixed + pointer-events-none. */}
+        <div className="glass-ambient" aria-hidden="true" />
         {/* Mobile overlay backdrop */}
         {mobileOpen && (
           <div
@@ -99,7 +102,7 @@ export default function DashboardLayout({ children }) {
         />
 
         <main
-          className="transition-[margin-left] duration-300 ease-in-out flex flex-col min-h-screen"
+          className="relative z-[1] transition-[margin-left] duration-300 ease-in-out flex flex-col min-h-screen"
           style={{ marginLeft: mainMargin }}
         >
           <Topbar user={user} onMobileMenuToggle={() => setMobileOpen(!mobileOpen)} />

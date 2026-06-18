@@ -75,16 +75,16 @@ function MiniTrendCard({ label, rows, field, tone = 'primary' }) {
   return (
     <motion.div
       variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}
-      className={`bg-white rounded-xl border ${colors.border} p-4 shadow-sm`}
+      className={`glass rounded-3xl p-4 hover:shadow-card-hover transition-shadow`}
     >
       <div className="flex items-start justify-between gap-3 mb-2">
         <div>
           <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</div>
-          <div className="text-xl font-bold text-gray-800 mt-1">
+          <div className="text-xl font-bold text-gray-900 mt-1">
             <AnimatedCounter value={last} />
           </div>
         </div>
-        <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${colors.bg} ${colors.text}`}>
+        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${colors.bg} ${colors.text}`}>
           <AnimatedCounter value={diff} prefix={diff >= 0 ? '+' : ''} duration={1.2} />
         </span>
       </div>
@@ -252,15 +252,15 @@ export default function DashboardPage() {
     return (
       <div className="space-y-6">
         <div className="space-y-2">
-          <div className="h-7 w-3/5 rounded-xl bg-gray-200 animate-pulse" />
+          <div className="h-8 w-3/5 rounded-2xl bg-gray-200 animate-pulse" />
           <div className="h-4 w-2/5 rounded-lg bg-gray-100 animate-pulse" />
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => <div key={i} className="h-28 rounded-2xl bg-gray-100 animate-pulse" />)}
+          {[...Array(4)].map((_, i) => <div key={i} className="h-32 rounded-3xl bg-gray-100 animate-pulse" />)}
         </div>
         <div className="grid md:grid-cols-2 gap-4">
-          <div className="h-72 rounded-2xl bg-gray-100 animate-pulse" />
-          <div className="h-72 rounded-2xl bg-gray-100 animate-pulse" />
+          <div className="h-72 rounded-3xl bg-gray-100 animate-pulse" />
+          <div className="h-72 rounded-3xl bg-gray-100 animate-pulse" />
         </div>
       </div>
     );
@@ -337,10 +337,10 @@ export default function DashboardPage() {
         </div>
       )}
       {/* Header & Quick Actions */}
-      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-dashboard font-mono">Dashboard Operasional</h1>
-          <p className="text-sm text-primary-600 mt-0.5">TP PKK Desa Belikurip — Tahun {tahun}</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">Dashboard Operasional</h1>
+          <p className="text-sm text-gray-500 mt-1">TP PKK Desa Belikurip · Tahun {tahun}</p>
         </div>
         <div className="md:max-w-2xl w-full md:w-auto">
           <DashboardToolbar
@@ -370,19 +370,19 @@ export default function DashboardPage() {
           return (
             <motion.div 
               key={i} variants={{ hidden: { opacity: 0, y: 15 }, show: { opacity: 1, y: 0 } }}
-              className={`bg-white rounded-xl border ${card.border} p-5 shadow-sm`}
+              className="rounded-3xl p-5 transition-shadow glass hover:shadow-card-hover"
             >
-              <div className="flex justify-between items-start mb-2">
-                <div className={`p-2 rounded-lg ${card.bg}`}>
+              <div className="flex justify-between items-start mb-3">
+                <div className="p-2.5 rounded-2xl bg-white/50">
                   <Icon className={`w-5 h-5 ${card.color}`} />
                 </div>
               </div>
               <div>
-                <div className="text-2xl font-bold text-gray-800">
+                <div className="text-2xl font-bold tabular-nums text-gray-900">
                   {card.isText ? card.value : <AnimatedCounter value={card.value} />}
                 </div>
-                <div className="text-sm font-medium text-gray-600 mt-0.5">{card.label}</div>
-                <div className="text-xs text-gray-400 mt-1 truncate" title={card.subTitle || (typeof card.sub === 'string' ? card.sub : undefined)}>{card.sub}</div>
+                <div className="text-sm font-semibold mt-0.5 text-gray-700">{card.label}</div>
+                <div className="text-xs mt-1 truncate text-gray-500" title={card.subTitle || (typeof card.sub === 'string' ? card.sub : undefined)}>{card.sub}</div>
               </div>
             </motion.div>
           );
@@ -390,8 +390,8 @@ export default function DashboardPage() {
       </motion.div>
 
       <div className="grid xl:grid-cols-3 gap-6">
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-          <h3 className="flex items-center gap-2 text-sm font-bold text-gray-800 uppercase tracking-wide mb-4">
+        <div className="glass rounded-3xl p-5">
+          <h3 className="flex items-center gap-2 text-sm font-bold text-gray-800 mb-4">
             <ChartPie className="w-4 h-4 text-primary-600" /> Status Kelengkapan
           </h3>
           <div className="space-y-4">
@@ -409,9 +409,9 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="xl:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+        <div className="xl:col-span-2 glass rounded-3xl p-5">
           <div className="flex items-center justify-between gap-3 mb-4">
-            <h3 className="flex items-center gap-2 text-sm font-bold text-gray-800 uppercase tracking-wide">
+            <h3 className="flex items-center gap-2 text-sm font-bold text-gray-800">
               <Chart className="w-4 h-4 text-primary-600" /> Ringkasan Indikator
             </h3>
             <span className="text-xs text-gray-400">Data Umum - Bumil</span>
@@ -482,8 +482,8 @@ export default function DashboardPage() {
       <div className="grid lg:grid-cols-3 gap-6">
         
         {/* Status Kelengkapan Matrix */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+        <div className="lg:col-span-2 glass rounded-3xl overflow-hidden">
+          <div className="p-4 border-b border-white/40 bg-white/30 flex justify-between items-center">
             <h3 className="font-semibold text-gray-800 flex items-center gap-2">
               <ClipboardList className="w-4 h-4 text-primary-600" /> Matrix Kelengkapan Data
             </h3>
@@ -495,7 +495,7 @@ export default function DashboardPage() {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="bg-white border-b border-gray-100 text-xs text-gray-500 uppercase">
+              <thead className="bg-white/30 border-b border-white/40 text-xs text-gray-500 uppercase">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Dusun</th>
                   {activeTables.map(t => (
@@ -553,8 +553,8 @@ export default function DashboardPage() {
 
         {/* Demographics Summary */}
         <div className="space-y-6">
-          <div className="bg-white rounded-xl border border-primary-100 p-5 shadow-sm">
-            <h3 className="flex items-center gap-2 text-sm font-bold font-mono text-dashboard mb-4 uppercase tracking-wide">
+          <div className="glass rounded-3xl p-5">
+            <h3 className="flex items-center gap-2 text-sm font-bold text-gray-800 mb-4">
               <ChartPie className="w-4 h-4 text-accent-500" /> Komposisi Jiwa (L/P)
             </h3>
             <div className="flex items-center justify-between gap-4">
@@ -596,9 +596,9 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-primary-100 p-5 shadow-sm overflow-hidden">
+          <div className="glass rounded-3xl p-5 overflow-hidden">
             <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-              <h3 className="flex items-center gap-2 text-sm font-bold font-mono text-dashboard uppercase tracking-wide">
+              <h3 className="flex items-center gap-2 text-sm font-bold text-gray-800">
                 <ChartLineUp className="w-4 h-4 text-accent-500" /> Tren Penduduk
               </h3>
               <DesaCompareSelector

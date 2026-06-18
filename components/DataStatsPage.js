@@ -45,17 +45,17 @@ function KpiCard({ label, value, sub, icon: Icon, tone = 'primary' }) {
   return (
     <motion.div
       variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}
-      className={`rounded-xl border p-4 bg-white ${tones[tone] || tones.primary}`}
+      className={`glass rounded-3xl p-4`}
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-2xl font-bold text-gray-800">
+          <div className="text-2xl font-bold text-gray-800 tabular-nums">
             <AnimatedCounter value={value} />
           </div>
           <div className="text-sm font-semibold text-gray-700 mt-0.5">{label}</div>
           <div className="text-xs text-gray-500 mt-1">{sub}</div>
         </div>
-        <div className={`rounded-lg p-2 ${tones[tone] || tones.primary}`}>
+        <div className={`rounded-2xl p-2 ${tones[tone] || tones.primary}`}>
           <Icon className="w-5 h-5" />
         </div>
       </div>
@@ -225,7 +225,7 @@ export default function DataStatsPage({ config }) {
           <button
             type="button"
             onClick={() => setEditModeOpen(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-full transition-colors shadow-sm"
           >
             <Pen className="w-4 h-4" /> Edit Data
           </button>
@@ -263,9 +263,9 @@ export default function DataStatsPage({ config }) {
       </motion.div>
 
       <div className="grid xl:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="p-4 border-b border-gray-100 bg-gray-50">
-            <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide">Total Semua Indikator</h2>
+        <div className="glass rounded-3xl overflow-hidden">
+          <div className="p-4 border-b border-white/40 bg-white/30">
+            <h2 className="text-sm font-bold text-gray-800">Total Semua Indikator</h2>
             <p className="text-xs text-gray-500 mt-1">Akumulasi per kolom untuk tahun terpilih</p>
           </div>
           <div className="p-4 space-y-3 max-h-[560px] overflow-y-auto">
@@ -289,10 +289,10 @@ export default function DataStatsPage({ config }) {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="p-4 border-b border-gray-100 bg-gray-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="glass rounded-3xl overflow-hidden">
+          <div className="p-4 border-b border-white/40 bg-white/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide">Ranking Dusun</h2>
+              <h2 className="text-sm font-bold text-gray-800">Ranking Dusun</h2>
               <p className="text-xs text-gray-500 mt-1">Perbandingan dusun berdasarkan indikator fokus</p>
             </div>
             <select

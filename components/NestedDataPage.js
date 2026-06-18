@@ -395,7 +395,7 @@ export default function NestedDataPage({
     const filledCount = leaves.filter((c) => Number(rowData[c.key] || 0) > 0).length;
 
     return (
-      <div className={`bg-white rounded-xl border ${isDirty ? 'border-amber-200' : 'border-gray-200'} mb-3 shadow-sm overflow-hidden`} id={`dusun-card-${d.id}`}>
+      <div className={`bg-white rounded-2xl border ${isDirty ? 'border-amber-200' : 'border-gray-100'} mb-3 shadow-card overflow-hidden`} id={`dusun-card-${d.id}`}>
         <button onClick={() => toggleExpanded(d.id)} className="w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-gray-50 active:bg-gray-100 transition-colors text-left" style={{ minHeight: 56 }}>
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md">{i + 1}</span>
@@ -599,7 +599,7 @@ export default function NestedDataPage({
         {filteredDusun.length === 0 && <div className="text-center py-8 text-gray-500 bg-white rounded-xl border border-gray-100">{unitLabel} tidak ditemukan</div>}
       </div>
 
-      <div className="hidden md:block nested-table bg-white rounded-2xl border border-gray-100 p-3 shadow-sm">
+      <div className="hidden md:block nested-table glass rounded-3xl p-3">
         {canEdit && (
           <div className="flex items-center justify-end gap-2 mb-2">
             <span className="text-[11px] text-gray-400">Total di bawah dihitung dari data yang sudah disimpan.</span>

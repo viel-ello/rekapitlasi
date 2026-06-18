@@ -104,7 +104,7 @@ export default function TodoTodayPanel({ completeness }) {
   };
 
   return (
-    <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+    <div className="glass rounded-3xl p-5">
       <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
         <CheckCircle className="w-4 h-4 text-primary-600" /> Yang perlu tindakan hari ini
       </h2>

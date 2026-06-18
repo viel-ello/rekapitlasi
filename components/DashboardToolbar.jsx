@@ -107,7 +107,7 @@ export default function DashboardToolbar({
         onClose={() => setShowTemplate(false)}
         title="Unduh Template Excel"
         containerClassName="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-        panelClassName="relative z-10 w-full max-w-sm bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
+        panelClassName="relative z-10 w-full max-w-sm bg-white rounded-2xl shadow-modal border border-gray-100 overflow-hidden"
       >
         <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
           <h3 className="text-sm font-bold text-gray-800">Unduh Template Excel</h3>

@@ -31,7 +31,7 @@ export default function Dialog({
   describedBy,
   children,
   closeOnBackdrop = true,
-  panelClassName = 'relative z-10 w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-200',
+  panelClassName = 'relative z-10 w-full max-w-md bg-white rounded-2xl shadow-modal border border-gray-200',
   backdropClassName = 'fixed inset-0 bg-gray-900/40 backdrop-blur-sm',
   containerClassName = 'fixed inset-0 z-[100] flex items-center justify-center p-4',
   initialFocusRef,

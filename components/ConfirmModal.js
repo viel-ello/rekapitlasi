@@ -23,7 +23,7 @@ export default function ConfirmModal({
       title={title}
       describedBy={descId}
       containerClassName="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-0"
-      panelClassName="relative z-10 bg-white rounded-2xl shadow-xl w-full max-w-md p-6 overflow-hidden"
+      panelClassName="relative z-10 bg-white rounded-2xl shadow-modal w-full max-w-md p-6 overflow-hidden"
     >
       <div className="flex flex-col items-center text-center">
         <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${type === 'danger' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>

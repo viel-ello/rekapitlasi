@@ -74,7 +74,7 @@ export default function Sidebar({ user, onLogout, collapsed, onToggle, mobileOpe
               />
             </div>
             <div className="brand-text min-w-0">
-              <h3 className="text-sm font-bold text-gray-800 truncate">Lumbung PKK</h3>
+              <h3 className="text-sm font-bold text-primary-700 truncate">Lumbung PKK</h3>
               <span className="text-[0.65rem] text-gray-400">Desa Belikurip</span>
             </div>
             <button className="sidebar-toggle" onClick={onToggle} aria-label="Tutup sidebar">
@@ -177,7 +177,7 @@ export default function Sidebar({ user, onLogout, collapsed, onToggle, mobileOpe
         open={showPwModal}
         onClose={() => { setShowPwModal(false); setPwMsg(null); }}
         title="Ganti Password"
-        panelClassName="relative z-10 bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6"
+        panelClassName="relative z-10 bg-white rounded-2xl shadow-modal w-full max-w-sm p-6"
       >
         <h3 className="text-lg font-bold text-gray-800 mb-4">Ganti Password</h3>
         {pwMsg && (

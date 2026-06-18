@@ -106,7 +106,7 @@ export default function Topbar({ user, onMobileMenuToggle, onOpenPasswordModal }
   };
 
   return (
-    <header className="flex items-center justify-between px-4 md:px-6 py-3 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-100 dark:border-gray-800 sticky top-0 z-30">
+    <header className="flex items-center justify-between px-4 md:px-6 py-3 bg-white/60 dark:bg-gray-900/50 backdrop-blur-xl backdrop-saturate-150 border-b border-white/40 dark:border-white/10 sticky top-0 z-30">
       <div className="flex items-center gap-3 flex-1">
         <button
           className="md:hidden p-2 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-500"
@@ -137,7 +137,7 @@ export default function Topbar({ user, onMobileMenuToggle, onOpenPasswordModal }
           </button>
 
           {showNotif && (
-            <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+            <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-gray-100 rounded-2xl shadow-modal z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
               <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                 <span className="text-sm font-semibold text-gray-800">Notifikasi</span>
                 {unreadCount > 0 && (
@@ -195,7 +195,7 @@ export default function Topbar({ user, onMobileMenuToggle, onOpenPasswordModal }
           </button>
 
           {showDropdown && (
-            <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+            <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-modal z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
               <div className="flex items-center gap-3 p-4 border-b border-gray-50 dark:border-gray-800">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-600 to-primary-500 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
                   {getInitials(user?.nama_lengkap)}
