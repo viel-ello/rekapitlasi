@@ -67,20 +67,26 @@ describe('app/dashboard/reports/page.js — Report Builder pakai "dusun"', () =>
   });
 });
 
-describe('components/AiChatBubble.js — prompt example pakai "dusun"', () => {
-  const content = readFile('components/AiChatBubble.js');
+describe('AiChatBubble (refactored) — prompt example & header pakai "dusun"', () => {
+  // Setelah refactor: prompt contoh ada di hooks/useAiChat.js,
+  // header tabel preview ada di components/ai-chat/ImportPreviewModal.jsx.
+  const hookContent = readFile('hooks/useAiChat.js');
+  const modalContent = readFile('components/ai-chat/ImportPreviewModal.jsx');
+  const combined = hookContent + '\n' + modalContent + '\n'
+    + readFile('components/AiChatBubble.js')
+    + readFile('components/ai-chat/ChatMessageList.jsx');
 
   test('tidak ada prompt contoh "per desa"', () => {
-    expect(content).not.toMatch(/per desa\b/i);
+    expect(combined).not.toMatch(/per desa\b/i);
   });
 
   test('tidak ada prompt contoh "Desa mana"', () => {
-    expect(content).not.toMatch(/Desa mana\b/i);
+    expect(combined).not.toMatch(/Desa mana\b/i);
   });
 
   test('header tabel preview import memakai "Dusun"', () => {
-    expect(content).toMatch(/>Dusun</);
-    expect(content).not.toMatch(/>Desa</);
+    expect(modalContent).toMatch(/>Dusun</);
+    expect(modalContent).not.toMatch(/>Desa</);
   });
 });
 
