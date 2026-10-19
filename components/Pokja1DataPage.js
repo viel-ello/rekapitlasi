@@ -98,7 +98,9 @@ function TitleBlock(tahun) {
 }
 
 const POKJA1_THEME = {
-  bg: '#16a34a',  // hijau (matching gambar)
+  // green-700. #16a34a (green-600) hanya 3.30:1 dengan teks putih — di bawah
+  // ambang WCAG AA 4.5:1. Nilai ini 5.02:1 dan tetap hijau seperti gambar acuan.
+  bg: '#15803d',
   fg: '#ffffff',
   borderColor: '#ffffff',
 };

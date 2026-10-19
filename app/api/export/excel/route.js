@@ -47,6 +47,17 @@ function unitIdOf(row) {
  *   - dengan `bulan`: filter ke bulan itu, return row per dusun.
  *   - tanpa `bulan`: aggregate sum semua bulan jadi 1 row per dusun.
  */
+const METADATA_KEYS = new Set(['id', 'dusun_id', 'desa_id', 'tahun', 'bulan', 'created_at', 'updated_at', 'keterangan']);
+
+function sanitizeCellText(val) {
+  if (val == null) return '';
+  if (typeof val === 'number') return val;
+  const str = String(val);
+  if (!isNaN(Number(str)) && str.trim() !== '') return str;
+  if (/^[=+\-@\t\r]/.test(str)) return `'${str}`;
+  return str;
+}
+
 async function fetchDusunData(table, tahun, bulan = null, dusunByName) {
   const TABLES_WITH_MONTH = new Set(['data_bumil', 'data_rekap_dawis', 'data_umum']);
   const isMonthly = TABLES_WITH_MONTH.has(table);
@@ -69,8 +80,14 @@ async function fetchDusunData(table, tahun, bulan = null, dusunByName) {
       // Aggregate semua bulan
       const existing = map[dusunName];
       for (const [k, v] of Object.entries(row)) {
-        if (typeof v === 'number') {
-          existing[k] = (existing[k] || 0) + v;
+        if (METADATA_KEYS.has(k)) {
+          if (existing[k] == null) existing[k] = v;
+          continue;
+        }
+        const trimmed = typeof v === 'string' ? v.trim() : v;
+        const num = Number(trimmed);
+        if (trimmed !== '' && trimmed !== null && !isNaN(num) && Number.isFinite(num)) {
+          existing[k] = (Number(existing[k]) || 0) + num;
         } else if (existing[k] == null) {
           existing[k] = v;
         }
@@ -185,7 +202,7 @@ function buildBumilSheet(wb, tahun, bulan, dusunListSorted, dataMap, rekapDawisM
     ws.getCell(r, 15).value = data.bayi_meninggal_p ?? 0;
     ws.getCell(r, 16).value = data.balita_meninggal_l ?? 0;
     ws.getCell(r, 17).value = data.balita_meninggal_p ?? 0;
-    ws.getCell(r, 18).value = data.keterangan ?? '';
+    ws.getCell(r, 18).value = sanitizeCellText(data.keterangan ?? '');
   });
 
   // 6. Total row (row 19)
@@ -275,7 +292,7 @@ function buildPokja1Sheet(wb, tahun, dusunListSorted, dataMap) {
     ws.getCell(r, 16).value = data.gr_keagamaan ?? 0;
     ws.getCell(r, 17).value = data.gr_jimpitan ?? 0;
     ws.getCell(r, 18).value = data.gr_arisan ?? 0;
-    ws.getCell(r, 19).value = data.keterangan ?? '';
+    ws.getCell(r, 19).value = sanitizeCellText(data.keterangan ?? '');
   });
 
   // 6. Total row (row 20)
@@ -328,8 +345,7 @@ function buildPokja2Sheet(wb, tahun, dusunListSorted, dataMap) {
   ws.mergeCells('J8:K8'); ws.getCell('J8').value = 'KF';
   ws.mergeCells('L8:L10'); ws.getCell('L8').value = 'PAUD SEJENIS';
   ws.mergeCells('M8:M10'); ws.getCell('M8').value = 'JML TAMAN BACAAN';
-  ws.mergeCells('N8:N10'); ws.getCell('N8').value = 'JML KLP PEMBACA';
-  ws.mergeCells('O8:Q8'); ws.getCell('O8').value = 'BKB';
+  ws.mergeCells('N8:Q8'); ws.getCell('N8').value = 'BKB';
   ws.mergeCells('R8:V8'); ws.getCell('R8').value = 'KADER KHUSUS';
   ws.mergeCells('W8:Y8'); ws.getCell('W8').value = 'YG SDH DI LATIH';
   ws.mergeCells('Z8:AG8'); ws.getCell('Z8').value = 'PRA KOPERASI/USAHA BERSAMA/UP2K';
@@ -341,9 +357,9 @@ function buildPokja2Sheet(wb, tahun, dusunListSorted, dataMap) {
       ws.mergeCells(9, 4 + i, 10, 4 + i);
       ws.getCell(9, 4 + i).value = label;
     });
-  ['JML KLP', 'Jml APE Set', 'Jml APE Set'].forEach((label, i) => {
-    ws.mergeCells(9, 15 + i, 10, 15 + i);
-    ws.getCell(9, 15 + i).value = label;
+  ['JML KLP', 'JML IBU PESERTA', 'Jml APE Set A', 'Jml APE Set B'].forEach((label, i) => {
+    ws.mergeCells(9, 14 + i, 10, 14 + i);
+    ws.getCell(9, 14 + i).value = label;
   });
   // KADER KHUSUS sub: TUTOR (R-S), BKB (T), KOPERASI (U), KETRAMPILAN (V)
   ws.mergeCells('R9:S9'); ws.getCell('R9').value = 'TUTOR';
@@ -390,8 +406,8 @@ function buildPokja2Sheet(wb, tahun, dusunListSorted, dataMap) {
     ws.getCell(r, 11).value = data.kf_wrg ?? 0;
     ws.getCell(r, 12).value = data.paud_sejenis ?? 0;
     ws.getCell(r, 13).value = data.taman_bacaan ?? 0;
-    ws.getCell(r, 14).value = data.klp_pembaca ?? 0;
-    ws.getCell(r, 15).value = data.bkb_klp ?? 0;
+    ws.getCell(r, 14).value = data.bkb_klp ?? 0;
+    ws.getCell(r, 15).value = data.bkb_jml_ibu_peserta ?? 0;
     ws.getCell(r, 16).value = data.bkb_ape_set_a ?? 0;
     ws.getCell(r, 17).value = data.bkb_ape_set_b ?? 0;
     ws.getCell(r, 18).value = data.kader_tutor_kf ?? 0;
@@ -412,7 +428,7 @@ function buildPokja2Sheet(wb, tahun, dusunListSorted, dataMap) {
     ws.getCell(r, 33).value = data.up2k_mandiri_psrt ?? 0;
     ws.getCell(r, 34).value = data.koperasi_berbadan_hukum_kop ?? 0;
     ws.getCell(r, 35).value = data.koperasi_berbadan_hukum_angg ?? 0;
-    ws.getCell(r, 36).value = data.keterangan ?? '';
+    ws.getCell(r, 36).value = sanitizeCellText(data.keterangan ?? '');
   });
 
   // 6. Total (row 21)
@@ -502,7 +518,7 @@ function buildPokja3Sheet(wb, tahun, dusunListSorted, dataMap) {
     ws.getCell(r, 16).value = data.industri_jasa ?? 0;
     ws.getCell(r, 17).value = data.rumah_sehat ?? 0;
     ws.getCell(r, 18).value = data.rumah_kurang_sehat ?? 0;
-    ws.getCell(r, 19).value = data.keterangan ?? '';
+    ws.getCell(r, 19).value = sanitizeCellText(data.keterangan ?? '');
   });
 
   // Total (row 20)
@@ -613,7 +629,7 @@ function buildPokja4Sheet(wb, tahun, dusunListSorted, dataMap) {
     ws.getCell(r, 23).value = data.akseptor_kb_l ?? 0;
     ws.getCell(r, 24).value = data.akseptor_kb_p ?? 0;
     ws.getCell(r, 25).value = data.kk_tabungan ?? 0;
-    ws.getCell(r, 26).value = data.keterangan ?? '';
+    ws.getCell(r, 26).value = sanitizeCellText(data.keterangan ?? '');
   });
 
   // Total (row 21)
@@ -911,7 +927,7 @@ function buildDataUmumSheet(wb, tahun, bulan, dusunListSorted, dataMap) {
     ws.getCell(r, 2).value = dusun.nama;
     leaves.forEach((leaf, ci) => {
       const colIdx = 3 + ci;
-      ws.getCell(r, colIdx).value = leaf.isText ? (data[leaf.key] || '') : (data[leaf.key] ?? 0);
+      ws.getCell(r, colIdx).value = leaf.isText ? sanitizeCellText(data[leaf.key] || '') : (data[leaf.key] ?? 0);
     });
   });
 

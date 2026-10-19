@@ -26,11 +26,11 @@ export default function DusunBarChart({ data = [], metrics, defaultMetric, title
   const total = sorted.reduce((s, d) => s + Number(d[active.key] || 0), 0);
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-      <div className="p-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between gap-3 flex-wrap">
+    <div className="glass rounded-3xl p-5 overflow-hidden">
+      <div className="pb-4 border-b border-white/60 dark:border-white/10 flex items-center justify-between gap-3 flex-wrap">
         <div className="min-w-0">
-          <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide truncate">{title}</h3>
-          {subtitle && <p className="text-xs text-gray-500 mt-0.5 truncate">{subtitle}</p>}
+          <h3 className="text-sm font-bold text-gray-800 dark:text-gray-100 uppercase tracking-wide truncate">{title}</h3>
+          {subtitle && <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5 truncate">{subtitle}</p>}
         </div>
         <div className="flex items-center gap-1 flex-wrap">
           {metrics.map((m) => (
@@ -39,8 +39,8 @@ export default function DusunBarChart({ data = [], metrics, defaultMetric, title
               onClick={() => setActiveKey(m.key)}
               className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
                 m.key === active.key
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                  ? 'bg-primary-600 text-white shadow-sm'
+                  : 'glass-pill text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
               }`}
               aria-pressed={m.key === active.key}
             >
@@ -49,13 +49,13 @@ export default function DusunBarChart({ data = [], metrics, defaultMetric, title
           ))}
         </div>
       </div>
-      <div className="p-4 space-y-2">
-        <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
+      <div className="pt-4 space-y-2">
+        <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-300 mb-1">
           <span>Per dusun</span>
           <span>Total: <AnimatedCounter value={total} duration={1.1} /></span>
         </div>
         {sorted.length === 0 ? (
-          <div className="text-center text-xs text-gray-400 py-6">Belum ada data</div>
+          <div className="text-center text-xs text-gray-600 dark:text-gray-300 py-6">Belum ada data</div>
         ) : (
           sorted.map((d, i) => {
             const value = Number(d[active.key] || 0);
@@ -68,12 +68,12 @@ export default function DusunBarChart({ data = [], metrics, defaultMetric, title
                 transition={{ delay: i * 0.04, duration: 0.35 }}
                 className="grid grid-cols-[1.2rem_minmax(0,1fr)_4rem] items-center gap-2"
               >
-                <span className="text-[10px] font-bold text-gray-400 text-right">{i + 1}</span>
+                <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 text-right">{i + 1}</span>
                 <div className="min-w-0">
                   <div className="flex items-center justify-between gap-2 mb-1">
-                    <span className="text-xs font-medium text-gray-700 truncate">{d.nama}</span>
+                    <span className="text-xs font-medium text-gray-700 dark:text-gray-200 truncate">{d.nama}</span>
                   </div>
-                  <div className="h-2.5 rounded-full bg-gray-100 overflow-hidden">
+                  <div className="h-2.5 rounded-full bg-gray-100 dark:bg-surface-dark-elevated overflow-hidden">
                     <motion.div
                       key={`${active.key}-${d.id || d.nama}`}
                       initial={{ width: 0 }}
@@ -84,7 +84,7 @@ export default function DusunBarChart({ data = [], metrics, defaultMetric, title
                     />
                   </div>
                 </div>
-                <span className="text-xs font-bold text-gray-900 text-right tabular-nums">
+                <span className="text-xs font-bold text-gray-900 dark:text-gray-100 text-right tabular-nums">
                   <AnimatedCounter value={value} duration={1.0} />
                 </span>
               </motion.div>

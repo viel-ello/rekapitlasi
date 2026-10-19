@@ -9,7 +9,7 @@ import { TableRow } from 'flowbite-react-icons/outline';
 export default function DensityToggle({ density, onChange }) {
   return (
     <div
-      className="hidden md:inline-flex items-center rounded-xl border border-gray-200 bg-white p-0.5 shadow-sm"
+      className="hidden md:inline-flex items-center rounded-xl glass-pill p-0.5"
       role="group"
       aria-label="Kepadatan tabel"
     >
@@ -19,7 +19,7 @@ export default function DensityToggle({ density, onChange }) {
         aria-pressed={density === 'comfortable'}
         title="Tata letak nyaman (padding lega)"
         className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-          density === 'comfortable' ? 'bg-primary-600 text-white' : 'text-gray-500 hover:text-gray-700'
+          density === 'comfortable' ? 'bg-primary-600 text-white shadow-sm' : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
         }`}
       >
         <TableRow className="w-3.5 h-3.5" /> Nyaman
@@ -30,7 +30,7 @@ export default function DensityToggle({ density, onChange }) {
         aria-pressed={density === 'compact'}
         title="Tata letak ringkas (lebih banyak baris terlihat)"
         className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-          density === 'compact' ? 'bg-primary-600 text-white' : 'text-gray-500 hover:text-gray-700'
+          density === 'compact' ? 'bg-primary-600 text-white shadow-sm' : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
         }`}
       >
         <TableRow className="w-3.5 h-3.5" /> Ringkas

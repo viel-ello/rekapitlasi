@@ -11,6 +11,7 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { hashPassword, requireAdmin, ROLE_TO_DUSUN_NAME } from '@/lib/auth';
 import { VALID_ROLES } from '@/lib/requestValidation';
+import { writeLog } from '@/lib/audit';
 
 const MIN_PASSWORD_LENGTH = 12;
 const USERNAME_PATTERN = /^[a-zA-Z0-9_.-]{3,32}$/;
@@ -136,8 +137,17 @@ export async function POST(request) {
 
     if (error) throw error;
 
+    await writeLog({
+      userId: admin.userId,
+      username: admin.username,
+      action: 'create_user',
+      tableName: 'users',
+      detail: `Membuat pengguna baru "${validUsername.value}" (role: ${nextRole})`,
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error('[Admin Users POST Error]:', error);
     return NextResponse.json({ error: 'Gagal menambahkan pengguna' }, { status: 500 });
   }
 }
@@ -178,8 +188,11 @@ export async function DELETE(request) {
       return NextResponse.json({ error: 'Minimal harus ada satu admin aktif' }, { status: 400 });
     }
 
-    // Hindari error foreign key dengan mengosongkan user_id di audit_logs
+    // Hindari error foreign key dengan mengosongkan relasi foreign key
     await supabase.from('audit_logs').update({ user_id: null }).eq('user_id', targetId);
+    await supabase.from('report_periods').update({ submitted_by: null }).eq('submitted_by', targetId);
+    await supabase.from('report_periods').update({ approved_by: null }).eq('approved_by', targetId);
+    await supabase.from('notifications').update({ user_id: null }).eq('user_id', targetId);
 
     const { error } = await supabase
       .from('users')
@@ -188,8 +201,17 @@ export async function DELETE(request) {
 
     if (error) throw error;
 
+    await writeLog({
+      userId: admin.userId,
+      username: admin.username,
+      action: 'delete_user',
+      tableName: 'users',
+      detail: `Menghapus pengguna "${targetUser.username}" (role: ${targetUser.role})`,
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error('[Admin Users DELETE Error]:', error);
     return NextResponse.json({ error: 'Gagal menghapus pengguna' }, { status: 500 });
   }
 }
@@ -251,10 +273,19 @@ export async function PUT(request) {
     if (Object.keys(updates).length > 0) {
       const { error } = await supabase.from('users').update(updates).eq('id', targetId);
       if (error) throw error;
+
+      await writeLog({
+        userId: admin.userId,
+        username: admin.username,
+        action: 'update_user',
+        tableName: 'users',
+        detail: `Memperbarui data pengguna "${targetUser.username}" (${Object.keys(updates).join(', ')})`,
+      });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error('[Admin Users PUT Error]:', error);
     return NextResponse.json({ error: 'Gagal memperbarui pengguna' }, { status: 500 });
   }
 }

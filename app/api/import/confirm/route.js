@@ -11,6 +11,7 @@ import { ROLE_TABLE_MAP } from '@/lib/excel/sheetMap';
 import { importToSupabase } from '@/lib/excel/importToSupabase';
 import { buildImportDiff, sheetsFromDiff } from '@/lib/excel/previewDiff';
 import { parseYear, parseMonth, validateImportPayload } from '@/lib/requestValidation';
+import { checkPeriodLock } from '@/lib/periodLock';
 
 export async function POST(request) {
   try {
@@ -71,6 +72,17 @@ export async function POST(request) {
         results: [],
         diff,
       }, { status: failed > 0 ? 400 : 200 });
+    }
+
+    if (user.role !== 'admin') {
+      for (const sheet of sheetsToImport) {
+        const lock = await checkPeriodLock(sheet.table, targetYear, bulanValue);
+        if (lock.locked) {
+          return NextResponse.json({
+            error: `Periode ${targetYear}${bulanValue ? `/${bulanValue}` : ''} untuk ${sheet.sheetName || sheet.table} sedang ${lock.status}. Hubungi admin untuk membuka kembali.`,
+          }, { status: 403 });
+        }
+      }
     }
 
     const allowedTables = ROLE_TABLE_MAP[user.role] || [];

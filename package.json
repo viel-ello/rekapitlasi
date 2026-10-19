@@ -9,7 +9,11 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:server": "jest --selectProjects server",
-    "test:client": "jest --selectProjects client"
+    "test:client": "jest --selectProjects client",
+    "e2e": "playwright test",
+    "e2e:smoke": "playwright test smoke",
+    "e2e:report": "node e2e/report.mjs",
+    "e2e:show": "playwright show-report e2e-artifacts/html-report"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -27,7 +31,7 @@
     "flowbite-react-icons": "^1.3.1",
     "framer-motion": "^12.38.0",
     "jose": "^6.2.3",
-    "next": "16.2.5",
+    "next": "16.4.0",
     "pdfkit": "^0.18.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
@@ -36,11 +40,14 @@
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@babel/preset-env": "^7.29.5",
+    "@playwright/test": "^1.62.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "autoprefixer": "^10.5.0",
     "babel-jest": "^30.3.0",
+    "dotenv": "^17.4.2",
     "jest": "^30.3.0",
     "jest-environment-jsdom": "^30.3.0",
     "postcss": "^8.5.14",

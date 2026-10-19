@@ -33,14 +33,14 @@ export default function KaderDonut({ segments = [] }) {
   });
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-      <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide mb-4">
+    <div className="glass rounded-3xl p-5">
+      <h3 className="text-sm font-bold text-gray-800 dark:text-gray-100 uppercase tracking-wide mb-4">
         Distribusi Kader
       </h3>
       <div className="flex items-center justify-between gap-4">
         <svg viewBox="0 0 100 100" className="w-32 h-32 shrink-0">
           {/* Background ring */}
-          <circle cx="50" cy="50" r="40" fill="none" stroke="#f3f4f6" strokeWidth="14" />
+          <circle cx="50" cy="50" r="40" fill="none" className="stroke-gray-100 dark:stroke-surface-dark-elevated" strokeWidth="14" />
           {/* Animated segments */}
           {arcs.map((a, i) => (
             <motion.circle
@@ -59,10 +59,10 @@ export default function KaderDonut({ segments = [] }) {
               strokeDashoffset={a.offset}
             />
           ))}
-          <text x="50" y="48" textAnchor="middle" fill="#1f2937" fontSize="10" fontWeight="700">
+          <text x="50" y="48" textAnchor="middle" className="fill-gray-900 dark:fill-gray-100" fontSize="10" fontWeight="700">
             <AnimatedCounter as="tspan" value={total} duration={1.1} />
           </text>
-          <text x="50" y="60" textAnchor="middle" fill="#6b7280" fontSize="6">
+          <text x="50" y="60" textAnchor="middle" className="fill-gray-600 dark:fill-gray-300" fontSize="6">
             kader total
           </text>
         </svg>
@@ -80,10 +80,10 @@ export default function KaderDonut({ segments = [] }) {
                 <span className="w-2.5 h-2.5 rounded-sm mt-1 shrink-0" style={{ background: a.color }} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium text-gray-700 truncate">{a.label}</span>
-                    <span className="text-gray-400 text-[10px] tabular-nums">{pct.toFixed(0)}%</span>
+                    <span className="font-medium text-gray-700 dark:text-gray-200 truncate">{a.label}</span>
+                    <span className="text-gray-500 dark:text-gray-400 text-[10px] tabular-nums">{pct.toFixed(0)}%</span>
                   </div>
-                  <div className="font-bold text-gray-900 tabular-nums">
+                  <div className="font-bold text-gray-900 dark:text-gray-100 tabular-nums">
                     <AnimatedCounter value={a.value} duration={1.0} />
                   </div>
                 </div>

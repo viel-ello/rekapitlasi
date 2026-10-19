@@ -451,18 +451,18 @@ export default function BumilDataPage({ config }) {
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
             <DataPageIcon name={config.icon} className="w-7 h-7" /> {config.title}
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5 flex items-center gap-2">
+          <p className="text-sm text-gray-600 dark:text-gray-300 mt-0.5 flex items-center gap-2">
             {config.subtitle}
             {!canEdit && userRole && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-600 text-xs font-medium rounded-full border border-amber-200">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 text-xs font-medium rounded-full border border-amber-200 dark:border-amber-800">
                 <Lock className="w-3 h-3" /> Hanya Lihat
               </span>
             )}
             {userDusunId != null && canEdit && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary-50 text-primary-700 text-xs font-medium rounded-full border border-primary-200">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary-50 text-primary-700 dark:bg-primary-950/40 dark:text-primary-300 text-xs font-medium rounded-full border border-primary-200 dark:border-primary-800">
                 Scope: {dusun.find((d) => d.id === Number(userDusunId))?.nama || `Dusun #${userDusunId}`}
               </span>
             )}
@@ -488,39 +488,39 @@ export default function BumilDataPage({ config }) {
               Simpan Semua
             </button>
           )}
-          <select value={bulan} onChange={(e) => setBulan(Number(e.target.value))} className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none" aria-label="Pilih bulan" title="Bulan bertanda ● sudah memiliki data">
-            {MONTHS.map((b, i) => <option key={b} value={i + 1}>{monthsWithData.has(i + 1) ? `● ${b}` : b}</option>)}
+          <select value={bulan} onChange={(e) => setBulan(Number(e.target.value))} className="px-3 py-2 glass-pill rounded-xl text-sm font-semibold text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 outline-none" aria-label="Pilih bulan" title="Bulan bertanda ● sudah memiliki data">
+            {MONTHS.map((b, i) => <option key={b} value={i + 1} className="bg-white dark:bg-surface-dark text-gray-800 dark:text-gray-100">{monthsWithData.has(i + 1) ? `● ${b}` : b}</option>)}
           </select>
-          <select value={tahun} onChange={(e) => setTahun(Number(e.target.value))} className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none" aria-label="Pilih tahun">
-            {years.map((y) => <option key={y} value={y}>{y}</option>)}
+          <select value={tahun} onChange={(e) => setTahun(Number(e.target.value))} className="px-3 py-2 glass-pill rounded-xl text-sm font-semibold text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 outline-none" aria-label="Pilih tahun">
+            {years.map((y) => <option key={y} value={y} className="bg-white dark:bg-surface-dark text-gray-800 dark:text-gray-100">{y}</option>)}
           </select>
         </div>
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="relative max-w-sm flex-1 min-w-[200px]">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Search className="h-4 w-4 text-gray-400" /></div>
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Search className="h-4 w-4 text-gray-500 dark:text-gray-400" /></div>
           <input type="text" placeholder="Cari dusun..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none shadow-sm" />
+            className="w-full pl-10 pr-4 py-2 glass-input rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none" />
         </div>
         <button
           type="button"
           onClick={() => setOnlyIssues((v) => !v)}
           aria-pressed={onlyIssues}
-          className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border transition-colors ${
-            onlyIssues ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+          className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${
+            onlyIssues ? 'bg-amber-500 text-white shadow-sm' : 'glass-pill text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
           }`}
         >
           <ExclamationCircle className="w-4 h-4" /> Hanya bermasalah
         </button>
       </div>
 
-      <div className="mb-4 rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm">
-        <div className="text-center text-sm font-bold uppercase leading-snug text-gray-900">
+      <div className="mb-4 rounded-3xl glass px-4 py-4">
+        <div className="text-center text-sm font-bold uppercase leading-snug text-gray-900 dark:text-gray-100">
           <div>{BUMIL_FORM_TITLE}</div>
           <div>{BUMIL_ORG_TITLE}</div>
         </div>
-        <div className="mt-4 grid max-w-xs grid-cols-[4.5rem_1rem_1fr] gap-y-1 text-sm font-semibold text-gray-700">
+        <div className="mt-4 grid max-w-xs grid-cols-[4.5rem_1rem_1fr] gap-y-1 text-sm font-semibold text-gray-700 dark:text-gray-300">
           <span>BULAN</span>
           <span>:</span>
           <span>{MONTHS[bulan - 1]}</span>
@@ -575,8 +575,8 @@ export default function BumilDataPage({ config }) {
           <table className={`data-table ${isWord ? 'mode-word' : ''} ${isCompact ? 'density-compact' : ''}`}>
             <thead>
               <tr>
-                <th rowSpan={3} style={{ position: 'sticky', left: 0, zIndex: 4, background: '#f9fafb', minWidth: 40 }}>NO</th>
-                <th rowSpan={3} style={{ position: 'sticky', left: 40, zIndex: 4, background: '#f9fafb', minWidth: 150 }}>Nama Dusun</th>
+                <th rowSpan={3} style={{ position: 'sticky', left: 0, zIndex: 4, minWidth: 40 }} className="bg-gray-50 dark:bg-surface-dark-elevated text-gray-700 dark:text-gray-200">NO</th>
+                <th rowSpan={3} style={{ position: 'sticky', left: 40, zIndex: 4, minWidth: 150 }} className="bg-gray-50 dark:bg-surface-dark-elevated text-gray-700 dark:text-gray-200">Nama Dusun</th>
                 {bumilGroups.map((group) => (
                   <th key={group.title} colSpan={group.colSpan} className="text-center">{group.title}</th>
                 ))}
@@ -606,11 +606,11 @@ export default function BumilDataPage({ config }) {
                 {Array.from({ length: visibleColumns.length + 3 }, (_, index) => (
                   <th
                     key={`bumil-number-${index + 1}`}
-                    className="text-center text-[10px] text-gray-500"
+                    className={`text-center text-[10px] ${index === 0 || index === 1 ? 'bg-gray-50 dark:bg-surface-dark-elevated text-gray-700 dark:text-gray-200' : 'text-gray-600 dark:text-gray-400'}`}
                     style={index === 0
-                      ? { position: 'sticky', left: 0, zIndex: 4, background: '#f9fafb', minWidth: 40 }
+                      ? { position: 'sticky', left: 0, zIndex: 4, minWidth: 40 }
                       : index === 1
-                        ? { position: 'sticky', left: 40, zIndex: 4, background: '#f9fafb', minWidth: 150 }
+                        ? { position: 'sticky', left: 40, zIndex: 4, minWidth: 150 }
                         : undefined}
                   >
                     {index + 1}
@@ -630,8 +630,8 @@ export default function BumilDataPage({ config }) {
                   saveStatus[d.id] === 'error' ? 'Gagal simpan' : '';
                 return (
                   <tr key={d.id} className="group">
-                    <td style={{ position: 'sticky', left: 0, background: '#fff', zIndex: 1, textAlign: 'center' }} className="group-hover:bg-primary-50/50">{i + 1}</td>
-                    <td className="col-desa group-hover:bg-primary-50/50" style={{ left: 40 }}>{d.nama}</td>
+                    <td style={{ position: 'sticky', left: 0, zIndex: 1, textAlign: 'center' }} className="bg-white dark:bg-surface-dark text-gray-800 dark:text-gray-100 group-hover:bg-primary-50/50 dark:group-hover:bg-primary-950/30 transition-colors">{i + 1}</td>
+                    <td className="col-desa group-hover:bg-primary-50/50 dark:group-hover:bg-primary-950/30 transition-colors" style={{ left: 40 }}>{d.nama}</td>
                     {visibleColumns.map((col) => {
                       const valObj = validation[col.key] || { valid: true };
                       const hasError = valObj.severity === 'error';
@@ -658,7 +658,7 @@ export default function BumilDataPage({ config }) {
                               <input type="text" inputMode="decimal" placeholder="0" className={inputClass} value={rowData[col.key] ?? ''} onChange={(e) => handleChange(d.id, col.key, e.target.value)} onBlur={() => saveRow(d.id)} title={valObj.warning || ''} aria-label={`${d.nama} ${col.fullLabel || col.label}`} />
                             )
                           ) : (
-                            <span className="block text-center px-2 py-1 text-gray-500" title={valObj.warning || ''}>
+                            <span className="block text-center px-2 py-1 text-gray-600 dark:text-gray-300" title={valObj.warning || ''}>
                               {isText ? (rowData[col.key] || '-') : (rowData[col.key] ?? '-')}
                               {hasWarning && <ExclamationCircle className="w-3 h-3 text-amber-500 inline ml-1" />}
                             </span>
@@ -666,10 +666,10 @@ export default function BumilDataPage({ config }) {
                         </td>
                       );
                     })}
-                    <td className={`text-center text-xs font-medium ${
-                      saveStatus[d.id] === 'saved' ? 'text-green-600' :
-                      saveStatus[d.id] === 'dirty' ? 'text-amber-700' :
-                      saveStatus[d.id] === 'error' ? 'text-red-600' : 'text-gray-400'
+                    <td className={`text-center text-xs font-semibold ${
+                      saveStatus[d.id] === 'saved' ? 'text-green-700 dark:text-green-300' :
+                      saveStatus[d.id] === 'dirty' ? 'text-amber-700 dark:text-amber-300' :
+                      saveStatus[d.id] === 'error' ? 'text-red-700 dark:text-red-300' : 'text-gray-500 dark:text-gray-400'
                     }`}>
                       {rowStatus}
                     </td>
@@ -678,15 +678,15 @@ export default function BumilDataPage({ config }) {
               })}
               {filteredDusun.length === 0 && (
                 <tr>
-                  <td colSpan={visibleColumns.length + 3} className="text-center py-8 text-gray-500">Dusun tidak ditemukan</td>
+                  <td colSpan={visibleColumns.length + 3} className="text-center py-8 text-gray-600 dark:text-gray-300">Dusun tidak ditemukan</td>
                 </tr>
               )}
               {filteredDusun.length > 0 && (
-                <tr className="row-total">
-                  <td style={{ position: 'sticky', left: 0, background: '#f0fdf4', zIndex: 1 }}></td>
-                  <td className="col-desa" style={{ left: 40, background: '#f0fdf4' }}>JUMLAH</td>
+                <tr className="row-total sticky bottom-0 z-20 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
+                  <td style={{ position: 'sticky', left: 0, zIndex: 30 }} className="bg-emerald-50 dark:bg-emerald-950/60 font-bold"></td>
+                  <td className="col-desa bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 font-bold" style={{ left: 40, zIndex: 30 }}>JUMLAH</td>
                   {visibleColumns.map((col) => <td key={col.key} className="text-center font-bold">{col.type === 'text' ? '-' : getTotal(col.key).toLocaleString('id-ID')}</td>)}
-                  <td></td>
+                  <td className="bg-emerald-50 dark:bg-emerald-950/60"></td>
                 </tr>
               )}
             </tbody>

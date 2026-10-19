@@ -44,7 +44,7 @@ function dataCell(text, opts = {}) {
   });
 }
 
-function numCell(text, opts = {}) {
+function numCell(text) {
   return new TableCell({
     children: [new Paragraph({
       children: [new TextRun({ text: String(text), size: 20, font: 'Times New Roman', bold: false, color: '000000' })],
@@ -56,19 +56,62 @@ function numCell(text, opts = {}) {
   });
 }
 
-/* ─── POKJA DEFINITIONS with multi-row header groups ─── */
-// Each pokja defines:
-//   title: Pokja subtitle in header
-//   table: DB table name
-//   groups: array of header groups for multi-row headers
-//     { label, colSpan, subGroups?: [...], columns?: [{key, label}] }
-//   flatCols: flat list of {key, label} in order
+/* ─── SECTION DEFINITIONS ─── */
 
-const POKJA_DEFS = [
+export const DATA_UMUM_DEF = {
+  name: 'DATA UMUM',
+  mainTitle: 'DATA UMUM TP PKK',
+  table: 'data_umum',
+  headerRow1: [
+    { label: 'No', rowSpan: 3 },
+    { label: 'NAMA DUSUN', rowSpan: 3 },
+    { label: 'JUMLAH KELOMPOK', colSpan: 3 },
+    { label: 'JUMLAH', colSpan: 2 },
+    { label: 'JUMLAH JIWA', colSpan: 2 },
+    { label: 'JUMLAH KADER', colSpan: 6 },
+    { label: 'JUMLAH TENAGA SEKARANG', colSpan: 4 },
+    { label: 'KET', rowSpan: 3 },
+  ],
+  headerRow2: [
+    { label: 'PKK RW', rowSpan: 2 },
+    { label: 'PKK RT', rowSpan: 2 },
+    { label: 'DAWIS', rowSpan: 2 },
+    { label: 'KK', rowSpan: 2 },
+    { label: 'KRT', rowSpan: 2 },
+    { label: 'L', rowSpan: 2 },
+    { label: 'P', rowSpan: 2 },
+    { label: 'ANG TP PKK', colSpan: 2 },
+    { label: 'UMUM', colSpan: 2 },
+    { label: 'KHUSUS', colSpan: 2 },
+    { label: 'HONORER', colSpan: 2 },
+    { label: 'BANTUAN', colSpan: 2 },
+  ],
+  headerRow3: [
+    { label: 'L' }, { label: 'P' },
+    { label: 'L' }, { label: 'P' },
+    { label: 'L' }, { label: 'P' },
+    { label: 'L' }, { label: 'P' },
+    { label: 'L' }, { label: 'P' },
+  ],
+  flatKeys: [
+    'jml_pkk_rw', 'jml_pkk_rt', 'jml_dasa_wisma',
+    'jml_kk', 'jml_krt',
+    'jml_jiwa_l', 'jml_jiwa_p',
+    'jml_kader_tp_pkk_l', 'jml_kader_tp_pkk_p',
+    'jml_kader_umum_l', 'jml_kader_umum_p',
+    'jml_kader_khusus_l', 'jml_kader_khusus_p',
+    'jml_tenaga_honorer_l', 'jml_tenaga_honorer_p',
+    'jml_tenaga_bantuan_l', 'jml_tenaga_bantuan_p',
+  ],
+  hasKet: true,
+  totalCols: 20,
+};
+
+export const POKJA_DEFS = [
   {
     name: 'POKJA I',
+    mainTitle: 'DATA KEGIATAN PKK',
     table: 'data_pokja1',
-    // Row 1 groups
     headerRow1: [
       { label: 'No', rowSpan: 3 },
       { label: 'NAMA DUSUN', rowSpan: 3 },
@@ -77,42 +120,31 @@ const POKJA_DEFS = [
       { label: 'GOTONG ROYONG', colSpan: 5 },
       { label: 'KET', rowSpan: 3 },
     ],
-    // Row 2 sub-groups
     headerRow2: [
-      // under JUMLAH KADER:
       { label: 'PKBN', rowSpan: 2 },
       { label: 'PKDRT', rowSpan: 2 },
       { label: 'POLA ASUH', rowSpan: 2 },
-      // under PENGHAYATAN DAN PENGAMALAN PANCASILA:
       { label: 'PKBN', colSpan: 2 },
       { label: 'PKDRT', colSpan: 2 },
       { label: 'POLA ASUH', colSpan: 2 },
       { label: 'LANSIA', colSpan: 2 },
-      // under GOTONG ROYONG:
       { label: 'JUMLAH KELOMPOK', colSpan: 5 },
     ],
-    // Row 3 bottom-level cols
     headerRow3: [
-      // PKBN sub
       { label: 'JML.KLP SIMULASI' },
       { label: 'JML ANG' },
-      // PKDRT sub
       { label: 'JML.KLP SIMULASI' },
       { label: 'JML ANG' },
-      // POLA ASUH sub
       { label: 'JML KLP SIMULASI' },
       { label: 'JML ANG' },
-      // LANSIA sub
       { label: 'JML KLP SIMULASI' },
       { label: 'JML ANG' },
-      // GOTONG ROYONG -> JUMLAH KELOMPOK sub
       { label: 'KERJA BAKTI' },
       { label: 'RUKUN KEMATIAN' },
       { label: 'KEAGAMAAN' },
       { label: 'JIMPITAN' },
       { label: 'ARISAN' },
     ],
-    // Flat column keys matching order left to right (excluding No, Nama, Ket)
     flatKeys: [
       'kader_pkbn', 'kader_pkdrt', 'kader_pola_asuh',
       'pkbn_jml_klp_simulasi', 'pkbn_jml_anggota',
@@ -122,68 +154,75 @@ const POKJA_DEFS = [
       'gr_kerja_bakti', 'gr_rukun_kematian',
       'gr_keagamaan', 'gr_jimpitan', 'gr_arisan',
     ],
-    totalCols: 19, // No + Nama + 16 data cols + Ket
+    hasKet: true,
+    totalCols: 19,
   },
   {
     name: 'POKJA II',
+    mainTitle: 'DATA KEGIATAN PKK',
     table: 'data_pokja2',
     headerRow1: [
       { label: 'No', rowSpan: 3 },
       { label: 'NAMA DUSUN', rowSpan: 3 },
-      { label: 'JUMLAH KADER', colSpan: 2, rowSpan: 2 },
-      { label: 'PENDIDIKAN & KETERAMPILAN', colSpan: 10 },
-      { label: 'PENGEMBANGAN KEHIDUPAN BERKOPERASI', colSpan: 13 },
+      { label: 'PENDIDIKAN DAN KETRAMPILAN', colSpan: 23 },
+      { label: 'PENGEMBANGAN KEHIDUPAN BERKOPERASI', colSpan: 10 },
       { label: 'KET', rowSpan: 3 },
     ],
     headerRow2: [
+      { label: '3 BUTA', rowSpan: 2 },
       { label: 'PAKET A', colSpan: 2 },
       { label: 'PAKET B', colSpan: 2 },
       { label: 'PAKET C', colSpan: 2 },
+      { label: 'KF', colSpan: 2 },
+      { label: 'PAUD SEJENIS', rowSpan: 2 },
       { label: 'TAMAN BACAAN', rowSpan: 2 },
-      { label: 'KLP PEMBACA', rowSpan: 2 },
-      { label: 'RUMAH DILAN', rowSpan: 2 },
-      { label: 'KAMPUNG MANDIRI', rowSpan: 2 },
-      { label: 'USAHA MIKRO', rowSpan: 2 },
+      { label: 'BKB', colSpan: 4 },
+      { label: 'KADER KHUSUS', colSpan: 5 },
+      { label: 'PELATIHAN', colSpan: 3 },
       { label: 'UP2K PEMULA', colSpan: 2 },
       { label: 'UP2K MADYA', colSpan: 2 },
       { label: 'UP2K UTAMA', colSpan: 2 },
       { label: 'UP2K MANDIRI', colSpan: 2 },
-      { label: 'TOKO PKK', rowSpan: 2 },
-      { label: 'KOP NON-BH', colSpan: 2 },
-      { label: 'KOP BH', colSpan: 2 },
+      { label: 'KOP BERBADAN HUKUM', colSpan: 2 },
     ],
     headerRow3: [
-      { label: 'KOPERASI' },
-      { label: 'KETRAMPILAN' },
       { label: 'KLP' }, { label: 'WRG' },
       { label: 'KLP' }, { label: 'WRG' },
       { label: 'KLP' }, { label: 'WRG' },
+      { label: 'KLP' }, { label: 'WRG' },
+      { label: 'KLP' }, { label: 'IBU' }, { label: 'APE A' }, { label: 'APE B' },
+      { label: 'TUTOR KF' }, { label: 'TUTOR PAUD' }, { label: 'BKB' }, { label: 'KOP' }, { label: 'KTRMPL' },
+      { label: 'LP3PKK' }, { label: 'TP3PKK' }, { label: 'DAMAS' },
       { label: 'KLP' }, { label: 'PSRT' },
       { label: 'KLP' }, { label: 'PSRT' },
       { label: 'KLP' }, { label: 'PSRT' },
       { label: 'KLP' }, { label: 'PSRT' },
-      { label: 'KOP' }, { label: 'ANGG' },
       { label: 'KOP' }, { label: 'ANGG' },
     ],
     flatKeys: [
-      'kader_khusus_koperasi', 'kader_khusus_keterampilan',
+      'jml_warga_3_buta',
       'paket_a_klp', 'paket_a_wrg',
       'paket_b_klp', 'paket_b_wrg',
       'paket_c_klp', 'paket_c_wrg',
-      'taman_bacaan', 'klp_pembaca', 'rumah_dilan', 'kampung_mandiri',
-      'usaha_mikro',
+      'kf_klp', 'kf_wrg',
+      'paud_sejenis',
+      'taman_bacaan',
+      'bkb_klp', 'bkb_jml_ibu_peserta', 'bkb_ape_set_a', 'bkb_ape_set_b',
+      'kader_tutor_kf', 'kader_tutor_paud', 'kader_bkb',
+      'kader_khusus_koperasi', 'kader_khusus_keterampilan',
+      'yg_dilatih_lp3pkk', 'yg_dilatih_tp3pkk', 'yg_dilatih_damaspkk',
       'up2k_pemula_klp', 'up2k_pemula_psrt',
       'up2k_madya_klp', 'up2k_madya_psrt',
       'up2k_utama_klp', 'up2k_utama_psrt',
       'up2k_mandiri_klp', 'up2k_mandiri_psrt',
-      'toko_pkk',
-      'koperasi_belum_bh_kop', 'koperasi_belum_bh_angg',
       'koperasi_berbadan_hukum_kop', 'koperasi_berbadan_hukum_angg',
     ],
-    totalCols: 29,
+    hasKet: true,
+    totalCols: 36,
   },
   {
     name: 'POKJA III',
+    mainTitle: 'DATA KEGIATAN PKK',
     table: 'data_pokja3',
     headerRow1: [
       { label: 'No', rowSpan: 3 },
@@ -218,10 +257,12 @@ const POKJA_DEFS = [
       'industri_pangan', 'industri_sandang', 'industri_jasa',
       'rumah_sehat', 'rumah_kurang_sehat',
     ],
+    hasKet: true,
     totalCols: 19,
   },
   {
     name: 'POKJA IV',
+    mainTitle: 'DATA KEGIATAN PKK',
     table: 'data_pokja4',
     headerRow1: [
       { label: 'No', rowSpan: 3 },
@@ -231,7 +272,7 @@ const POKJA_DEFS = [
       { label: 'LANSIA', colSpan: 3 },
       { label: 'RUMAH', colSpan: 4, rowSpan: 2 },
       { label: 'SUMBER AIR', colSpan: 3, rowSpan: 2 },
-      { label: 'KB', colSpan: 4 },
+      { label: 'PERENCANAAN SEHAT', colSpan: 5 },
       { label: 'KET', rowSpan: 3 },
     ],
     headerRow2: [
@@ -241,6 +282,7 @@ const POKJA_DEFS = [
       { label: 'PUS', rowSpan: 2 },
       { label: 'WUS', rowSpan: 2 },
       { label: 'AKSEPTOR', colSpan: 2 },
+      { label: 'KK TABUNGAN', rowSpan: 2 },
     ],
     headerRow3: [
       { label: 'POSYANDU' }, { label: 'GIZI' }, { label: 'KESLING' },
@@ -259,37 +301,149 @@ const POKJA_DEFS = [
       'air_pdam', 'air_sumur', 'air_lain',
       'jml_pus', 'jml_wus',
       'akseptor_kb_l', 'akseptor_kb_p',
+      'kk_tabungan',
     ],
-    totalCols: 25,
+    hasKet: true,
+    totalCols: 26,
   },
 ];
 
-/* ─── Build a Pokja section ─── */
-async function buildPokjaSection(pokja, tahun) {
-  const { data: dusunRows } = await supabase
-    .from('dusun')
-    .select('id, nama, nomor_urut')
-    .eq('is_active', 1)
-    .order('nomor_urut', { ascending: true });
-  const { data: tableData } = await supabase.from(pokja.table).select('*').eq('tahun', tahun);
-  const dusunList = dusunRows || [];
+export const REKAP_DAWIS_DEF = {
+  name: 'REKAPITULASI DASA WISMA',
+  mainTitle: 'CATATAN DATA DAN KEGIATAN WARGA',
+  table: 'data_rekap_dawis',
+  headerRow1: [
+    { label: 'No', rowSpan: 3 },
+    { label: 'NAMA DUSUN', rowSpan: 3 },
+    { label: 'JML RW', rowSpan: 3 },
+    { label: 'JML RT', rowSpan: 3 },
+    { label: 'JML DAWIS', rowSpan: 3 },
+    { label: 'JML KRT', rowSpan: 3 },
+    { label: 'JML KK', rowSpan: 3 },
+    { label: 'JUMLAH ANGGOTA KELUARGA', colSpan: 11 },
+    { label: 'JUMLAH RUMAH', colSpan: 6 },
+    { label: 'SUMBER AIR KELUARGA', colSpan: 4 },
+    { label: 'MAKANAN', colSpan: 2 },
+    { label: 'WARGA MENGIKUTI', colSpan: 3 },
+    { label: 'KET (JKN/BPJS)', rowSpan: 3 },
+  ],
+  headerRow2: [
+    { label: 'TOTAL', colSpan: 2 },
+    { label: 'BALITA', colSpan: 2 },
+    { label: 'PUS', rowSpan: 2 },
+    { label: 'WUS', rowSpan: 2 },
+    { label: 'HAMIL', rowSpan: 2 },
+    { label: 'MENYUSUI', rowSpan: 2 },
+    { label: 'LANSIA', rowSpan: 2 },
+    { label: '3 BUTA', rowSpan: 2 },
+    { label: 'KHUSUS', rowSpan: 2 },
+    { label: 'SEHAT', rowSpan: 2 },
+    { label: 'TIDAK SEHAT', rowSpan: 2 },
+    { label: 'SAMPAH', rowSpan: 2 },
+    { label: 'SPAL', rowSpan: 2 },
+    { label: 'JAMBAN', rowSpan: 2 },
+    { label: 'STIKER P4K', rowSpan: 2 },
+    { label: 'PDAM', rowSpan: 2 },
+    { label: 'SUMUR', rowSpan: 2 },
+    { label: 'SUNGAI', rowSpan: 2 },
+    { label: 'LAIN', rowSpan: 2 },
+    { label: 'BERAS', rowSpan: 2 },
+    { label: 'NON BERAS', rowSpan: 2 },
+    { label: 'UP2K', rowSpan: 2 },
+    { label: 'PEKARANGAN', rowSpan: 2 },
+    { label: 'KESLING', rowSpan: 2 },
+  ],
+  headerRow3: [
+    { label: 'L' }, { label: 'P' },
+    { label: 'L' }, { label: 'P' },
+  ],
+  flatKeys: [
+    'jml_rw', 'jml_rt', 'jml_dawis', 'jml_krt', 'jml_kk',
+    'jml_anggota_l', 'jml_anggota_p',
+    'balita_l', 'balita_p',
+    'pus', 'wus', 'ibu_hamil', 'ibu_menyusui', 'lansia', 'tiga_buta', 'berkebutuhan_khusus',
+    'rumah_sehat', 'rumah_kurang_sehat', 'punya_tempat_sampah', 'punya_spal', 'jamban', 'stiker_p4k',
+    'air_pdam', 'air_sumur', 'air_sungai', 'air_dll',
+    'makan_beras', 'makan_non_beras',
+    'ikut_up2k', 'ikut_pekarangan', 'ikut_kesling',
+    'jkn_bpjs',
+  ],
+  hasKet: false,
+  totalCols: 34,
+};
+
+export const BUMIL_DEF = {
+  name: 'REKAPITULASI DATA BUMIL',
+  mainTitle: 'REKAPITULASI DATA IBU HAMIL, MELAHIRKAN, NIFAS & BALITA',
+  table: 'data_bumil',
+  headerRow1: [
+    { label: 'No', rowSpan: 3 },
+    { label: 'NAMA DUSUN', rowSpan: 3 },
+    { label: 'JUMLAH', colSpan: 3 },
+    { label: 'JUMLAH IBU', colSpan: 4 },
+    { label: 'JUMLAH BAYI', colSpan: 6 },
+    { label: 'JML BALITA MENINGGAL', colSpan: 2 },
+    { label: 'KET', rowSpan: 3 },
+  ],
+  headerRow2: [
+    { label: 'RT', rowSpan: 2 },
+    { label: 'RW', rowSpan: 2 },
+    { label: 'DAWIS', rowSpan: 2 },
+    { label: 'HAMIL', rowSpan: 2 },
+    { label: 'MELAHIRKAN', rowSpan: 2 },
+    { label: 'NIFAS', rowSpan: 2 },
+    { label: 'MENINGGAL', rowSpan: 2 },
+    { label: 'LAHIR', colSpan: 2 },
+    { label: 'AKTE', colSpan: 2 },
+    { label: 'MENINGGAL', colSpan: 2 },
+    { label: 'L', rowSpan: 2 },
+    { label: 'P', rowSpan: 2 },
+  ],
+  headerRow3: [
+    { label: 'L' }, { label: 'P' },
+    { label: 'L' }, { label: 'P' },
+    { label: 'L' }, { label: 'P' },
+  ],
+  flatKeys: [
+    'jml_rt', 'jml_rw', 'jml_dasa_wisma',
+    'ibu_hamil', 'ibu_melahirkan', 'ibu_nifas', 'ibu_meninggal',
+    'bayi_lahir_l', 'bayi_lahir_p',
+    'akte_l', 'akte_p',
+    'bayi_meninggal_l', 'bayi_meninggal_p',
+    'balita_meninggal_l', 'balita_meninggal_p',
+  ],
+  hasKet: true,
+  totalCols: 18,
+};
+
+export const ALL_EXPORT_SECTIONS = [
+  DATA_UMUM_DEF,
+  ...POKJA_DEFS,
+  REKAP_DAWIS_DEF,
+  BUMIL_DEF,
+];
+
+/* ─── Build a section ─── */
+async function buildTableSection(secDef, tahun, dusunList = []) {
+  const { data: tableData } = await supabase.from(secDef.table).select('*').eq('tahun', tahun);
   const allData = tableData || [];
 
   const children = [];
-  const colCount = 2 + pokja.flatKeys.length + 1; // No + Nama + data cols + Ket
+  const hasKet = secDef.hasKet !== false;
+  const colCount = 2 + secDef.flatKeys.length + (hasKet ? 1 : 0);
 
   // Title
   children.push(
-    new Paragraph({ children: [new TextRun({ text: 'DATA KEGIATAN PKK', bold: true, size: 24, font: 'Times New Roman' })], alignment: AlignmentType.CENTER, spacing: { after: 100 } }),
+    new Paragraph({ children: [new TextRun({ text: secDef.mainTitle || 'DATA KEGIATAN PKK', bold: true, size: 24, font: 'Times New Roman' })], alignment: AlignmentType.CENTER, spacing: { after: 100 } }),
     new Paragraph({ children: [new TextRun({ text: 'TP PKK DESA BELIKURIP · KECAMATAN BATURETNO', bold: true, size: 24, font: 'Times New Roman' })], alignment: AlignmentType.CENTER, spacing: { after: 100 } }),
     new Paragraph({ children: [new TextRun({ text: `TAHUN : ${tahun}`, bold: true, size: 24, font: 'Times New Roman' })], alignment: AlignmentType.CENTER, spacing: { after: 100 } }),
-    new Paragraph({ children: [new TextRun({ text: pokja.name, bold: true, size: 24, font: 'Times New Roman' })], alignment: AlignmentType.CENTER, spacing: { after: 200 } }),
+    new Paragraph({ children: [new TextRun({ text: secDef.name, bold: true, size: 24, font: 'Times New Roman' })], alignment: AlignmentType.CENTER, spacing: { after: 200 } }),
   );
 
   // Build header rows
-  const row1Cells = pokja.headerRow1.map(h => headerCell(h.label, { colSpan: h.colSpan || 1, rowSpan: h.rowSpan || 1 }));
-  const row2Cells = pokja.headerRow2.map(h => headerCell(h.label, { colSpan: h.colSpan || 1, rowSpan: h.rowSpan || 1 }));
-  const row3Cells = pokja.headerRow3.map(h => headerCell(h.label, { colSpan: h.colSpan || 1, rowSpan: h.rowSpan || 1 }));
+  const row1Cells = secDef.headerRow1.map(h => headerCell(h.label, { colSpan: h.colSpan || 1, rowSpan: h.rowSpan || 1 }));
+  const row2Cells = secDef.headerRow2.map(h => headerCell(h.label, { colSpan: h.colSpan || 1, rowSpan: h.rowSpan || 1 }));
+  const row3Cells = (secDef.headerRow3 || []).map(h => headerCell(h.label, { colSpan: h.colSpan || 1, rowSpan: h.rowSpan || 1 }));
 
   // Column number row
   const numRowCells = [];
@@ -299,13 +453,28 @@ async function buildPokjaSection(pokja, tahun) {
 
   // Data rows
   const dataRows = [];
-  const totals = new Array(pokja.flatKeys.length).fill(0);
+  const totals = new Array(secDef.flatKeys.length).fill(0);
+
+  // Fallback data for Bumil (RT, RW, Dawis from rekap dawis)
+  let dawisData = [];
+  if (secDef.table === 'data_bumil') {
+    const { data: dData } = await supabase.from('data_rekap_dawis').select('*').eq('tahun', tahun);
+    dawisData = dData || [];
+  }
 
   dusunList.forEach((d, idx) => {
     const rows = allData.filter((r) => (r.dusun_id ?? r.desa_id) === d.id);
+    const dawisRows = dawisData.filter((r) => (r.dusun_id ?? r.desa_id) === d.id);
+
     const aggregated = {};
-    pokja.flatKeys.forEach((k) => {
-      aggregated[k] = rows.reduce((sum, r) => sum + (Number(r[k]) || 0), 0);
+    secDef.flatKeys.forEach((k) => {
+      let sum = rows.reduce((s, r) => s + (Number(r[k]) || 0), 0);
+      if (sum === 0 && secDef.table === 'data_bumil') {
+        if (k === 'jml_rt') sum = dawisRows.reduce((s, r) => s + (Number(r.jml_rt) || 0), 0);
+        if (k === 'jml_rw') sum = dawisRows.reduce((s, r) => s + (Number(r.jml_rw) || 0), 0);
+        if (k === 'jml_dasa_wisma') sum = dawisRows.reduce((s, r) => s + (Number(r.jml_dawis) || 0), 0);
+      }
+      aggregated[k] = sum;
     });
 
     const cells = [
@@ -313,13 +482,17 @@ async function buildPokjaSection(pokja, tahun) {
       dataCell(d.nama, { align: AlignmentType.LEFT, width: 2500 }),
     ];
 
-    pokja.flatKeys.forEach((k, ki) => {
+    secDef.flatKeys.forEach((k, ki) => {
       const val = aggregated[k] || 0;
       totals[ki] += val;
       cells.push(dataCell(String(val)));
     });
 
-    cells.push(dataCell('')); // KET
+    if (hasKet) {
+      const ketText = rows.map((r) => r.keterangan).filter(Boolean).join('; ');
+      cells.push(dataCell(ketText)); // KET
+    }
+
     dataRows.push(new TableRow({ children: cells }));
   });
 
@@ -331,13 +504,21 @@ async function buildPokjaSection(pokja, tahun) {
   totals.forEach(t => {
     totalCells.push(dataCell(String(t), { bold: true }));
   });
-  totalCells.push(dataCell(''));
+  if (hasKet) {
+    totalCells.push(dataCell(''));
+  }
+
+  const headerTableRows = [
+    new TableRow({ children: row1Cells, tableHeader: true }),
+    new TableRow({ children: row2Cells, tableHeader: true }),
+  ];
+  if (row3Cells.length > 0) {
+    headerTableRows.push(new TableRow({ children: row3Cells, tableHeader: true }));
+  }
 
   const table = new Table({
     rows: [
-      new TableRow({ children: row1Cells, tableHeader: true }),
-      new TableRow({ children: row2Cells, tableHeader: true }),
-      new TableRow({ children: row3Cells, tableHeader: true }),
+      ...headerTableRows,
       new TableRow({ children: numRowCells }),
       ...dataRows,
       new TableRow({ children: totalCells }),
@@ -349,6 +530,9 @@ async function buildPokjaSection(pokja, tahun) {
   return children;
 }
 
+// Backward-compat alias
+export const buildPokjaSection = buildTableSection;
+
 /* ─── Main Export ─── */
 export async function GET(request) {
   try {
@@ -358,10 +542,17 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const tahun = searchParams.get('tahun') || new Date().getFullYear();
 
+    const { data: dusunRows } = await supabase
+      .from('dusun')
+      .select('id, nama, nomor_urut')
+      .eq('is_active', 1)
+      .order('nomor_urut', { ascending: true });
+    const dusunList = dusunRows || [];
+
     const sections = [];
 
-    for (const pokja of POKJA_DEFS) {
-      const content = await buildPokjaSection(pokja, tahun);
+    for (const secDef of ALL_EXPORT_SECTIONS) {
+      const content = await buildTableSection(secDef, tahun, dusunList);
       sections.push({
         properties: {
           page: {

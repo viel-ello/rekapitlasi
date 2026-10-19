@@ -165,11 +165,16 @@ export default function ProfilePage() {
       <div className="glass rounded-3xl p-6">
         <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide mb-4">Aktivitas 30 Hari Terakhir</h2>
         {activityLoading ? (
-          <div className="text-sm text-gray-400">Memuat...</div>
+          <div className="text-sm text-gray-600">Memuat...</div>
         ) : activity.length === 0 ? (
-          <div className="text-sm text-gray-400">Belum ada aktivitas tercatat.</div>
+          <div className="text-sm text-gray-600">Belum ada aktivitas tercatat.</div>
         ) : (
-          <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+          <div
+            className="space-y-2 max-h-80 overflow-y-auto pr-1"
+            tabIndex={0}
+            role="region"
+            aria-label="Riwayat aktivitas akun"
+          >
             {activity.map((a) => (
               <div key={a.id} className="flex items-start gap-3 py-2 border-b border-gray-50 last:border-0">
                 <div className="w-1.5 h-1.5 rounded-full bg-primary-500 mt-2 flex-shrink-0"></div>

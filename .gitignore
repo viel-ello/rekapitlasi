@@ -13,6 +13,13 @@
 # testing
 /coverage
 
+# playwright (review E2E)
+/e2e-artifacts/
+/test-results/
+/playwright-report/
+/blob-report/
+/.playwright/
+
 # next.js
 /.next/
 /out/
@@ -32,6 +39,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# tapi izinkan .env.example (template tanpa secret) untuk di-commit
+!.env.example
 
 # vercel
 .vercel
@@ -40,3 +49,4 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 implementation_plan.md
+.env.example

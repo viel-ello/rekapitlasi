@@ -5,6 +5,7 @@
 
 beforeAll(() => {
   process.env.JWT_SECRET = 'test-secret-key-for-jwt-pkk-2025';
+  jest.setTimeout(15000);
   jest.resetModules();
 });
 

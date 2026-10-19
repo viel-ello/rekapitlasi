@@ -55,7 +55,7 @@ export default function EditModeModal({ open, onClose, editPath }) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.92, y: 12 }}
             transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-            className="relative w-full max-w-2xl rounded-2xl bg-white shadow-2xl overflow-hidden"
+            className="relative w-full max-w-2xl rounded-3xl glass-panel shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <button

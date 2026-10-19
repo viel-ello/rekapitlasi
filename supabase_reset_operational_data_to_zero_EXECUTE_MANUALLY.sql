@@ -54,14 +54,8 @@
 --   2. Pastikan tidak ada user lain yang sedang input data di aplikasi.
 --   3. Buka Supabase Dashboard → SQL Editor → New query.
 --   4. Copy SELURUH isi file ini dan paste ke editor.
---   5. Klik tombol Run (Ctrl + Enter).
---   6. Setelah selesai, jalankan blok VERIFIKASI di akhir file untuk memastikan
---      hasilnya sesuai (tabel data 0 baris, master data tetap utuh).
---
--- ╔══════════════════════════════════════════════════════════════════════════╗
--- ║  AKTIF: TRUNCATE TABEL OPERASIONAL                                        ║
--- ╚══════════════════════════════════════════════════════════════════════════╝
-
+--   5. Buka blok pengaman RAISE EXCEPTION dan hilangkan tanda komentar (--) pada perintah:
+/*
 TRUNCATE TABLE
   data_umum,
   data_pokja1,
@@ -74,6 +68,31 @@ TRUNCATE TABLE
   notifications,
   rate_limits
 RESTART IDENTITY CASCADE;
+*/
+--   6. Klik tombol Run (Ctrl + Enter).
+--   7. Setelah selesai, jalankan blok VERIFIKASI di akhir file untuk memastikan
+--      hasilnya sesuai (tabel data 0 baris, master data tetap utuh).
+--
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  BLOK PENGAMAN AKTIF — HAPUS BLOK INI SEBELUM EKSEKUSI MANUAL            ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+DO $$
+BEGIN
+  RAISE EXCEPTION 'BLOK PENGAMAN AKTIF: File ini adalah skrip reset destruktif. Jika Anda BENAR-BENAR bermaksud mengosongkan seluruh data operasional, buat backup terlebih dahulu, lalu hapus blok RAISE EXCEPTION ini sebelum mengeksekusi TRUNCATE di bawah secara sadar.';
+END $$;
+
+-- TRUNCATE TABLE
+--   data_umum,
+--   data_pokja1,
+--   data_pokja2,
+--   data_pokja3,
+--   data_pokja4,
+--   data_rekap_dawis,
+--   data_bumil,
+--   audit_logs,
+--   notifications,
+--   rate_limits
+-- RESTART IDENTITY CASCADE;
 
 -- ╔══════════════════════════════════════════════════════════════════════════╗
 -- ║  VERIFIKASI — wajib dijalankan setelah reset                              ║

@@ -460,18 +460,18 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
             {icon} {title}
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5 flex items-center gap-2">
+          <p className="text-sm text-gray-600 dark:text-gray-300 mt-0.5 flex items-center gap-2">
             {subtitle}
             {!canEdit && userRole && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-600 text-xs font-medium rounded-full border border-amber-200">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 text-xs font-medium rounded-full border border-amber-200 dark:border-amber-800">
                 <Lock className="w-3 h-3" /> Hanya Lihat
               </span>
             )}
             {userDusunId != null && canEdit && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary-50 text-primary-700 text-xs font-medium rounded-full border border-primary-200">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary-50 text-primary-700 dark:bg-primary-950/40 dark:text-primary-300 text-xs font-medium rounded-full border border-primary-200 dark:border-primary-800">
                 Scope: {dusun.find((d) => d.id === Number(userDusunId))?.nama || `Dusun #${userDusunId}`}
               </span>
             )}
@@ -503,9 +503,9 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
           <select
             value={tahun}
             onChange={(e) => setTahun(Number(e.target.value))}
-            className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none shadow-sm"
+            className="px-3 py-2 glass-pill rounded-xl text-sm font-semibold text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 outline-none"
           >
-            {years.map((y) => <option key={y} value={y}>{y}</option>)}
+            {years.map((y) => <option key={y} value={y} className="bg-white dark:bg-surface-dark text-gray-800 dark:text-gray-100">{y}</option>)}
           </select>
         </div>
       </div>
@@ -514,22 +514,22 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="relative max-w-sm flex-1 min-w-[200px]">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-4 w-4 text-gray-400" />
+            <Search className="h-4 w-4 text-gray-500 dark:text-gray-400" />
           </div>
           <input
             type="text"
             placeholder="Cari dusun..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none shadow-sm"
+            className="w-full pl-10 pr-4 py-2 glass-input rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none"
           />
         </div>
         <button
           type="button"
           onClick={() => setOnlyIssues((v) => !v)}
           aria-pressed={onlyIssues}
-          className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border transition-colors ${
-            onlyIssues ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+          className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${
+            onlyIssues ? 'bg-amber-500 text-white shadow-sm' : 'glass-pill text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
           }`}
         >
           <ExclamationCircle className="w-4 h-4" /> Hanya bermasalah
@@ -605,11 +605,11 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
           <table className={`data-table relative ${isWord ? 'mode-word' : ''} ${isCompact ? 'density-compact' : ''}`}>
             <thead className="sticky top-0 z-20">
               <tr>
-                <th rowSpan={2} style={{ position: 'sticky', left: 0, zIndex: 30, background: '#f9fafb', minWidth: 40 }}>No</th>
-                <th rowSpan={2} style={{ position: 'sticky', left: 40, zIndex: 30, background: '#f9fafb', minWidth: 130 }}>Nama Dusun</th>
-                <th colSpan={effectiveColumns.length} className="text-center bg-gray-50">Kolom Standar</th>
-                {dynamicColumns.length > 0 && <th colSpan={dynamicColumns.length} className="text-center text-primary-700 bg-primary-50/40">Kolom Dinamis</th>}
-                {canEdit && <th rowSpan={2} className="text-center sticky right-0 z-30" style={{ minWidth: 60, background: '#f9fafb' }}>Aksi</th>}
+                <th rowSpan={2} style={{ position: 'sticky', left: 0, zIndex: 30, minWidth: 40 }} className="bg-gray-50 dark:bg-surface-dark-elevated text-gray-700 dark:text-gray-200">No</th>
+                <th rowSpan={2} style={{ position: 'sticky', left: 40, zIndex: 30, minWidth: 130 }} className="bg-gray-50 dark:bg-surface-dark-elevated text-gray-700 dark:text-gray-200">Nama Dusun</th>
+                <th colSpan={effectiveColumns.length} className="text-center bg-gray-50 dark:bg-surface-dark-elevated text-gray-700 dark:text-gray-200">Kolom Standar</th>
+                {dynamicColumns.length > 0 && <th colSpan={dynamicColumns.length} className="text-center text-primary-700 dark:text-primary-300 bg-primary-50/40 dark:bg-primary-950/30">Kolom Dinamis</th>}
+                {canEdit && <th rowSpan={2} className="text-center sticky right-0 z-30 bg-gray-50 dark:bg-surface-dark-elevated text-gray-700 dark:text-gray-200" style={{ minWidth: 60 }}>Aksi</th>}
               </tr>
               <tr>
                 {effectiveColumns.map((col) => (
@@ -618,7 +618,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
                     {col.renamed && <span className="ml-1 text-[9px] text-amber-500" aria-hidden="true">*</span>}
                   </th>
                 ))}
-                {dynamicColumns.map((col) => <th key={`dyn-${col.column_key}`} className="text-center text-primary-700 bg-primary-50/30" style={{ minWidth: 100 }}>{col.column_label}</th>)}
+                {dynamicColumns.map((col) => <th key={`dyn-${col.column_key}`} className="text-center text-primary-700 dark:text-primary-300 bg-primary-50/30 dark:bg-primary-950/30" style={{ minWidth: 100 }}>{col.column_label}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -630,8 +630,8 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
 
                 return (
                   <tr key={d.id} className="group">
-                    <td style={{ position: 'sticky', left: 0, background: '#fff', zIndex: 10, textAlign: 'center' }} className="group-hover:bg-primary-50/50 transition-colors">{i + 1}</td>
-                    <td className="col-desa group-hover:bg-primary-50/50 transition-colors" style={{ left: 40 }}>{d.nama}</td>
+                    <td style={{ position: 'sticky', left: 0, zIndex: 10, textAlign: 'center' }} className="bg-white dark:bg-surface-dark text-gray-800 dark:text-gray-100 group-hover:bg-primary-50/50 dark:group-hover:bg-primary-950/30 transition-colors">{i + 1}</td>
+                    <td className="col-desa group-hover:bg-primary-50/50 dark:group-hover:bg-primary-950/30 transition-colors" style={{ left: 40 }}>{d.nama}</td>
                     {effectiveColumns.map((col) => {
                       const valObj = validation[col.key] || { valid: true };
                       const hasError = valObj.severity === 'error';
@@ -674,7 +674,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
                               />
                             )
                           ) : (
-                            <span className="block text-center px-2 py-1 text-gray-500" title={valObj.warning || ''}>
+                            <span className="block text-center px-2 py-1 text-gray-600 dark:text-gray-300" title={valObj.warning || ''}>
                               {isText ? (rowData[col.key] || '-') : (rowData[col.key] ?? '-')}
                               {hasWarning && <ExclamationCircle className="w-3 h-3 text-amber-500 inline ml-1" />}
                             </span>
@@ -683,18 +683,18 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
                       );
                     })}
                     {dynamicColumns.map((col) => (
-                      <td key={`dyn-${col.column_key}`} className="bg-primary-50/10">
+                      <td key={`dyn-${col.column_key}`} className="bg-primary-50/10 dark:bg-primary-950/10">
                         {dusunEditable ? (
                           <input
                             type={col.column_type === 'number' ? 'number' : 'text'}
-                            className="cell-input !text-primary-800"
+                            className="cell-input !text-primary-800 dark:!text-primary-300"
                             value={data[d.id]?.custom_columns?.[col.column_key] ?? ''}
                             onChange={(e) => handleChange(d.id, col.column_key, e.target.value, true, col.column_type)}
                             onBlur={() => saveRow(d.id)}
                             min={col.column_type === 'number' ? "0" : undefined}
                           />
                         ) : (
-                          <span className="block px-2 py-1 text-gray-500 text-center">
+                          <span className="block px-2 py-1 text-gray-600 dark:text-gray-300 text-center">
                             {col.column_type === 'number'
                               ? (Number(data[d.id]?.custom_columns?.[col.column_key]) || 0).toLocaleString('id-ID')
                               : (data[d.id]?.custom_columns?.[col.column_key] || '-')}
@@ -703,14 +703,14 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
                       </td>
                     ))}
                     {canEdit && (
-                      <td className="text-center sticky right-0 bg-white z-10 group-hover:bg-primary-50/50 transition-colors border-l border-gray-100">
+                      <td className="text-center sticky right-0 bg-white dark:bg-surface-dark z-10 group-hover:bg-primary-50/50 dark:group-hover:bg-primary-950/30 transition-colors border-l border-gray-100 dark:border-gray-800">
                         {dusunEditable ? (
                           <button
                             className={`inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors disabled:opacity-50 ${
-                              saveStatus[d.id] === 'saved' ? 'bg-green-100 text-green-600' :
-                              saveStatus[d.id] === 'dirty' ? 'bg-amber-100 text-amber-700' :
-                              saveStatus[d.id] === 'error' ? 'bg-red-100 text-red-600' :
-                              'bg-gray-50 hover:bg-primary-100 text-gray-500 hover:text-primary-600'
+                              saveStatus[d.id] === 'saved' ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-300' :
+                              saveStatus[d.id] === 'dirty' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300' :
+                              saveStatus[d.id] === 'error' ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300' :
+                              'bg-gray-50 hover:bg-primary-100 text-gray-600 hover:text-primary-600 dark:bg-surface-dark-elevated dark:text-gray-300'
                             }`}
                             onClick={() => saveRow(d.id)}
                             disabled={saving === d.id}
@@ -721,7 +721,7 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
                              <FloppyDisk className="w-4 h-4" />}
                           </button>
                         ) : (
-                          <Lock className="w-4 h-4 text-gray-300 inline-block" />
+                          <Lock className="w-4 h-4 text-gray-400 dark:text-gray-500 inline-block" />
                         )}
                       </td>
                     )}
@@ -730,24 +730,24 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
               })}
               {filteredDusun.length === 0 && (
                 <tr>
-                  <td colSpan={100} className="text-center py-8 text-gray-500">Dusun tidak ditemukan</td>
+                  <td colSpan={100} className="text-center py-8 text-gray-600 dark:text-gray-300">Dusun tidak ditemukan</td>
                 </tr>
               )}
               {filteredDusun.length > 0 && (
                 <tr className="row-total sticky bottom-0 z-20 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
-                  <td style={{ position: 'sticky', left: 0, background: '#f0fdf4', zIndex: 30 }}></td>
-                  <td className="col-desa" style={{ left: 40, background: '#f0fdf4', zIndex: 30 }}>JUMLAH</td>
+                  <td style={{ position: 'sticky', left: 0, zIndex: 30 }} className="bg-emerald-50 dark:bg-emerald-950/60 font-bold"></td>
+                  <td className="col-desa bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 font-bold" style={{ left: 40, zIndex: 30 }}>JUMLAH</td>
                   {effectiveColumns.map((col) => (
                     <td key={col.key} className="text-center font-bold">
                       {col.type === 'text' ? '-' : getTotal(col.key).toLocaleString('id-ID')}
                     </td>
                   ))}
                   {dynamicColumns.map((col) => (
-                    <td key={`dyn-${col.column_key}`} className="text-center font-bold text-primary-700 bg-primary-50/30">
+                    <td key={`dyn-${col.column_key}`} className="text-center font-bold text-primary-700 dark:text-primary-300 bg-primary-50/30 dark:bg-primary-950/30">
                       {getTotal(col.column_key, true, col.column_type).toLocaleString('id-ID')}
                     </td>
                   ))}
-                  {canEdit && <td className="sticky right-0 background-[#f0fdf4] z-30"></td>}
+                  {canEdit && <td className="sticky right-0 bg-emerald-50 dark:bg-emerald-950/60 z-30"></td>}
                 </tr>
               )}
             </tbody>

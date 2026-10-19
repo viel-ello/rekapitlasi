@@ -38,7 +38,10 @@ export async function GET(request) {
     if (tableName) query = query.eq('table_name', tableName);
     if (action) query = query.eq('action', action);
     if (unitNama) {
-      // Match canonical dusun_nama OR legacy desa_nama (history lama).
+      if (!/^[a-zA-Z0-9\s-]+$/.test(unitNama)) {
+        return NextResponse.json({ error: 'Parameter dusun tidak valid' }, { status: 400 });
+      }
+      // Match canonical dusun_nama OR legacy desa_nama (history lama)
       query = query.or(`dusun_nama.eq.${unitNama},desa_nama.eq.${unitNama}`);
     }
     if (from) query = query.gte('created_at', from);

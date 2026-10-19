@@ -15,6 +15,7 @@ export default function DashboardLayout({ children }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [showPwModal, setShowPwModal] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -69,7 +70,7 @@ export default function DashboardLayout({ children }) {
     return (
       <div className="flex items-center justify-center h-screen gap-3">
         <div className="w-8 h-8 border-3 border-primary-600 border-t-transparent rounded-full animate-spin" />
-        <span className="text-gray-400 text-sm">Memuat...</span>
+        <span className="text-gray-600 text-sm">Memuat...</span>
       </div>
     );
   }
@@ -99,13 +100,19 @@ export default function DashboardLayout({ children }) {
           onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
           mobileOpen={mobileOpen}
           onMobileClose={() => setMobileOpen(false)}
+          showPwModal={showPwModal}
+          setShowPwModal={setShowPwModal}
         />
 
         <main
           className="relative z-[1] transition-[margin-left] duration-300 ease-in-out flex flex-col min-h-screen"
           style={{ marginLeft: mainMargin }}
         >
-          <Topbar user={user} onMobileMenuToggle={() => setMobileOpen(!mobileOpen)} />
+          <Topbar
+            user={user}
+            onMobileMenuToggle={() => setMobileOpen(!mobileOpen)}
+            onOpenPasswordModal={() => setShowPwModal(true)}
+          />
           <div className="flex-1 p-4 md:p-6 lg:p-8">
             {children}
           </div>

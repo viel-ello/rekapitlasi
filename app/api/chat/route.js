@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabase';
 import { getAuthUser, ROLE_PERMISSIONS, ROLE_SCOPE, normalizeTableName } from '@/lib/auth';
 import { parseYear } from '@/lib/requestValidation';
 import { writeLog } from '@/lib/audit';
+import { checkRateLimit } from '@/lib/rate-limit';
 import { DUSUN_LIST } from '@/lib/dusun';
 import { BRAND } from '@/lib/branding';
 
@@ -344,6 +345,14 @@ ${excelContent}`;
 
 export async function POST(request) {
   try {
+    const { limited, retryAfter } = await checkRateLimit(request);
+    if (limited) {
+      return NextResponse.json(
+        { error: `Terlalu banyak permintaan AI. Coba lagi dalam ${retryAfter} menit.` },
+        { status: 429 }
+      );
+    }
+
     const contentType = request.headers.get('content-type') || '';
 
     if (contentType.includes('multipart/form-data')) {

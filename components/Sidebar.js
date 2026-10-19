@@ -27,9 +27,14 @@ const adminItems = [
   { href: '/dashboard/admin', label: 'Panel Admin', icon: Cog },
 ];
 
-export default function Sidebar({ user, onLogout, collapsed, onToggle, mobileOpen, onMobileClose }) {
+export default function Sidebar({
+  user, onLogout, collapsed, onToggle, mobileOpen, onMobileClose,
+  showPwModal: propPwModal, setShowPwModal: propSetPwModal,
+}) {
   const pathname = usePathname();
-  const [showPwModal, setShowPwModal] = useState(false);
+  const [localPwModal, setLocalPwModal] = useState(false);
+  const showPwModal = propPwModal !== undefined ? propPwModal : localPwModal;
+  const setShowPwModal = propSetPwModal || setLocalPwModal;
   const [pwForm, setPwForm] = useState({ old: '', new: '', confirm: '' });
   const [pwMsg, setPwMsg] = useState(null);
 
@@ -75,7 +80,7 @@ export default function Sidebar({ user, onLogout, collapsed, onToggle, mobileOpe
             </div>
             <div className="brand-text min-w-0">
               <h3 className="text-sm font-bold text-primary-700 truncate">Lumbung PKK</h3>
-              <span className="text-[0.65rem] text-gray-400">Desa Belikurip</span>
+              <span className="text-[0.65rem] text-gray-700 dark:text-gray-300 font-medium">Desa Belikurip</span>
             </div>
             <button className="sidebar-toggle" onClick={onToggle} aria-label="Tutup sidebar">
               <AngleLeft className="w-4 h-4" />
@@ -94,7 +99,7 @@ export default function Sidebar({ user, onLogout, collapsed, onToggle, mobileOpe
               alt="Logo"
               className="w-8 h-8 object-cover rounded-full"
             />
-            <AngleRight className="w-3 h-3 text-gray-400" />
+            <AngleRight className="w-3 h-3 text-gray-600 dark:text-gray-300" />
           </button>
         )}
       </div>
@@ -155,8 +160,8 @@ export default function Sidebar({ user, onLogout, collapsed, onToggle, mobileOpe
               {user.nama_lengkap?.charAt(0) || 'U'}
             </div>
             <div className="min-w-0">
-              <span className="text-sm font-semibold text-gray-800 block truncate">{user.nama_lengkap}</span>
-              <span className="text-xs text-gray-400">{user.role}</span>
+              <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 block truncate">{user.nama_lengkap}</span>
+              <span className="text-xs text-gray-600 dark:text-gray-300 font-medium">{user.role}</span>
             </div>
           </div>
         )}
@@ -165,7 +170,7 @@ export default function Sidebar({ user, onLogout, collapsed, onToggle, mobileOpe
             <span className="nav-icon"><Lock className="w-5 h-5" /></span>
             {!collapsed && <span>Ganti Password</span>}
           </button>
-          <button className="nav-item text-red-500 hover:!text-red-600 hover:!bg-red-50" onClick={onLogout} aria-label="Keluar dari aplikasi">
+          <button className="nav-item text-red-500 hover:!text-red-600 hover:!bg-red-50 dark:hover:!bg-red-950/40" onClick={onLogout} aria-label="Keluar dari aplikasi">
             <span className="nav-icon"><ArrowRightToBracket className="w-5 h-5" /></span>
             {!collapsed && <span>Keluar</span>}
           </button>
@@ -177,30 +182,30 @@ export default function Sidebar({ user, onLogout, collapsed, onToggle, mobileOpe
         open={showPwModal}
         onClose={() => { setShowPwModal(false); setPwMsg(null); }}
         title="Ganti Password"
-        panelClassName="relative z-10 bg-white rounded-2xl shadow-modal w-full max-w-sm p-6"
+        panelClassName="relative z-10 glass-panel rounded-3xl w-full max-w-sm p-6"
       >
-        <h3 className="text-lg font-bold text-gray-800 mb-4">Ganti Password</h3>
+        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Ganti Password</h3>
         {pwMsg && (
-          <div className={`p-3 rounded-lg mb-4 text-sm ${pwMsg.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+          <div className={`p-3 rounded-xl mb-4 text-sm font-medium ${pwMsg.type === 'success' ? 'bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300' : 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300'}`}>
             {pwMsg.text}
           </div>
         )}
         <form onSubmit={handlePwSubmit} className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">Password Lama</label>
-            <input type="password" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" value={pwForm.old} onChange={e => setPwForm({...pwForm, old: e.target.value})} required />
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password Lama</label>
+            <input type="password" className="w-full px-3 py-2 glass-input rounded-xl text-sm outline-none" value={pwForm.old} onChange={e => setPwForm({...pwForm, old: e.target.value})} required />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">Password Baru</label>
-            <input type="password" minLength={12} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" value={pwForm.new} onChange={e => setPwForm({...pwForm, new: e.target.value})} required />
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password Baru</label>
+            <input type="password" minLength={12} className="w-full px-3 py-2 glass-input rounded-xl text-sm outline-none" value={pwForm.new} onChange={e => setPwForm({...pwForm, new: e.target.value})} required />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">Konfirmasi Password</label>
-            <input type="password" minLength={12} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" value={pwForm.confirm} onChange={e => setPwForm({...pwForm, confirm: e.target.value})} required />
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Konfirmasi Password</label>
+            <input type="password" minLength={12} className="w-full px-3 py-2 glass-input rounded-xl text-sm outline-none" value={pwForm.confirm} onChange={e => setPwForm({...pwForm, confirm: e.target.value})} required />
           </div>
           <div className="flex gap-2 pt-2">
-            <button type="submit" className="flex-1 bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-lg text-sm font-medium transition-colors">Simpan</button>
-            <button type="button" onClick={() => { setShowPwModal(false); setPwMsg(null); }} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 py-2 rounded-lg text-sm font-medium transition-colors">Batal</button>
+            <button type="submit" className="flex-1 bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm">Simpan</button>
+            <button type="button" onClick={() => { setShowPwModal(false); setPwMsg(null); }} className="flex-1 glass-pill text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white py-2 rounded-xl text-sm font-semibold transition-colors">Batal</button>
           </div>
         </form>
       </Dialog>

@@ -68,13 +68,18 @@ export default function DesaTab({ toast, setToast }) {
                   <div className="flex justify-center gap-1">
                     {editId === d.id ? (
                       <>
-                        <button onClick={() => saveNama(d.id)} className="p-1.5 bg-primary-50 text-primary-600 rounded-lg hover:bg-primary-100"><Check className="w-4 h-4" /></button>
-                        <button onClick={() => setEditId(null)} className="p-1.5 bg-gray-100 text-gray-500 rounded-lg hover:bg-gray-200"><Close className="w-4 h-4" /></button>
+                        <button onClick={() => saveNama(d.id)} aria-label={`Simpan nama dusun ${d.nama}`} title="Simpan" className="p-1.5 bg-primary-50 text-primary-600 rounded-lg hover:bg-primary-100"><Check className="w-4 h-4" /></button>
+                        <button onClick={() => setEditId(null)} aria-label={`Batalkan edit dusun ${d.nama}`} title="Batal" className="p-1.5 bg-gray-100 text-gray-500 rounded-lg hover:bg-gray-200"><Close className="w-4 h-4" /></button>
                       </>
                     ) : (
-                      <button onClick={() => { setEditId(d.id); setEditNama(d.nama); }} className="p-1.5 bg-gray-100 text-gray-500 rounded-lg hover:bg-gray-200"><Pen className="w-4 h-4" /></button>
+                      <button onClick={() => { setEditId(d.id); setEditNama(d.nama); }} aria-label={`Edit dusun ${d.nama}`} title="Edit" className="p-1.5 bg-gray-100 text-gray-500 rounded-lg hover:bg-gray-200"><Pen className="w-4 h-4" /></button>
                     )}
-                    <button onClick={() => toggleActive(d.id, d.is_active)} className={`p-1.5 rounded-lg ${d.is_active ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
+                    <button
+                      onClick={() => toggleActive(d.id, d.is_active)}
+                      aria-label={`${d.is_active ? 'Nonaktifkan' : 'Aktifkan'} dusun ${d.nama}`}
+                      title={d.is_active ? 'Nonaktifkan' : 'Aktifkan'}
+                      className={`p-1.5 rounded-lg ${d.is_active ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}
+                    >
                       {d.is_active ? <Ban className="w-4 h-4" /> : <Check className="w-4 h-4" />}
                     </button>
                   </div>

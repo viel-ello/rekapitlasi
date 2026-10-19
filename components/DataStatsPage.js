@@ -23,7 +23,7 @@ import EditModeModal from '@/components/EditModeModal';
 
 function AnimatedBar({ percent, className = 'bg-primary-600' }) {
   return (
-    <div className="h-2.5 rounded-full bg-gray-100 overflow-hidden">
+    <div className="h-2.5 rounded-full bg-gray-100 dark:bg-surface-dark-elevated overflow-hidden">
       <motion.div
         initial={{ width: 0 }}
         animate={{ width: `${Math.max(0, Math.min(100, percent))}%` }}
@@ -36,10 +36,10 @@ function AnimatedBar({ percent, className = 'bg-primary-600' }) {
 
 function KpiCard({ label, value, sub, icon: Icon, tone = 'primary' }) {
   const tones = {
-    primary: 'bg-primary-50 text-primary-700 border-primary-100',
-    blue: 'bg-blue-50 text-blue-700 border-blue-100',
-    amber: 'bg-amber-50 text-amber-700 border-amber-100',
-    green: 'bg-green-50 text-green-700 border-green-100',
+    primary: 'bg-primary-50 dark:bg-primary-950/50 text-primary-700 dark:text-primary-300 border-primary-100 dark:border-primary-900/30',
+    blue: 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-100 dark:border-blue-900/30',
+    amber: 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-100 dark:border-amber-900/30',
+    green: 'bg-green-50 dark:bg-emerald-950/50 text-green-700 dark:text-emerald-300 border-green-100 dark:border-emerald-900/30',
   };
 
   return (
@@ -49,13 +49,13 @@ function KpiCard({ label, value, sub, icon: Icon, tone = 'primary' }) {
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-2xl font-bold text-gray-800 tabular-nums">
+          <div className="text-2xl font-bold text-gray-800 dark:text-gray-100 tabular-nums">
             <AnimatedCounter value={value} />
           </div>
-          <div className="text-sm font-semibold text-gray-700 mt-0.5">{label}</div>
-          <div className="text-xs text-gray-500 mt-1">{sub}</div>
+          <div className="text-sm font-semibold text-gray-700 dark:text-gray-200 mt-0.5">{label}</div>
+          <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">{sub}</div>
         </div>
-        <div className={`rounded-2xl p-2 ${tones[tone] || tones.primary}`}>
+        <div className={`rounded-2xl p-2 border ${tones[tone] || tones.primary}`}>
           <Icon className="w-5 h-5" />
         </div>
       </div>
@@ -176,13 +176,13 @@ export default function DataStatsPage({ config }) {
   if (loading) {
     return (
       <div className="space-y-5">
-        <div className="h-8 w-64 rounded-xl bg-gray-100 animate-pulse" />
+        <div className="h-8 w-64 rounded-xl bg-gray-100 dark:bg-surface-dark-elevated animate-pulse" />
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, index) => <div key={index} className="h-28 rounded-xl bg-gray-100 animate-pulse" />)}
+          {[...Array(4)].map((_, index) => <div key={index} className="h-28 rounded-xl bg-gray-100 dark:bg-surface-dark-elevated animate-pulse" />)}
         </div>
         <div className="grid lg:grid-cols-2 gap-5">
-          <div className="h-96 rounded-xl bg-gray-100 animate-pulse" />
-          <div className="h-96 rounded-xl bg-gray-100 animate-pulse" />
+          <div className="h-96 rounded-xl bg-gray-100 dark:bg-surface-dark-elevated animate-pulse" />
+          <div className="h-96 rounded-xl bg-gray-100 dark:bg-surface-dark-elevated animate-pulse" />
         </div>
       </div>
     );
@@ -197,10 +197,10 @@ export default function DataStatsPage({ config }) {
     >
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
             <DataPageIcon name={config.icon} className="w-7 h-7" /> {config.title}
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">{config.subtitle}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">{config.subtitle}</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -208,19 +208,27 @@ export default function DataStatsPage({ config }) {
             <select
               value={bulan}
               onChange={(event) => setBulan(Number(event.target.value))}
-              className="px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 font-medium focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none shadow-sm"
+              className="px-3 py-2.5 glass-pill text-sm text-gray-700 dark:text-gray-200 font-medium focus:ring-2 focus:ring-primary-500 outline-none shadow-sm cursor-pointer"
               aria-label="Pilih bulan statistik"
             >
-              {MONTHS.map((month, index) => <option key={month} value={index + 1}>{month}</option>)}
+              {MONTHS.map((month, index) => (
+                <option key={month} value={index + 1} className="bg-white dark:bg-surface-dark text-gray-900 dark:text-gray-100">
+                  {month}
+                </option>
+              ))}
             </select>
           )}
           <select
             value={tahun}
             onChange={(event) => setTahun(Number(event.target.value))}
-            className="px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 font-medium focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none shadow-sm"
+            className="px-3 py-2.5 glass-pill text-sm text-gray-700 dark:text-gray-200 font-medium focus:ring-2 focus:ring-primary-500 outline-none shadow-sm cursor-pointer"
             aria-label="Pilih tahun statistik"
           >
-            {years.map(year => <option key={year} value={year}>{year}</option>)}
+            {years.map(year => (
+              <option key={year} value={year} className="bg-white dark:bg-surface-dark text-gray-900 dark:text-gray-100">
+                {year}
+              </option>
+            ))}
           </select>
           <button
             type="button"
@@ -239,7 +247,7 @@ export default function DataStatsPage({ config }) {
       />
 
       {error && (
-        <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
+        <div className="rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/50 px-4 py-3 text-sm text-red-700 dark:text-red-300 flex items-center gap-2">
           <ExclamationCircle className="w-4 h-4" /> {error}
         </div>
       )}
@@ -264,11 +272,19 @@ export default function DataStatsPage({ config }) {
 
       <div className="grid xl:grid-cols-2 gap-6">
         <div className="glass rounded-3xl overflow-hidden">
-          <div className="p-4 border-b border-white/40 bg-white/30">
-            <h2 className="text-sm font-bold text-gray-800">Total Semua Indikator</h2>
-            <p className="text-xs text-gray-500 mt-1">Akumulasi per kolom untuk tahun terpilih</p>
+          <div className="p-4 border-b border-white/60 dark:border-white/10 bg-white/40 dark:bg-surface-dark/40">
+            <h2 className="text-sm font-bold text-gray-800 dark:text-gray-100">Total Semua Indikator</h2>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Akumulasi per kolom untuk tahun terpilih</p>
           </div>
-          <div className="p-4 space-y-3 max-h-[560px] overflow-y-auto">
+          {/* tabIndex + role/aria-label: region yang bisa di-scroll harus dapat
+              dijangkau keyboard, kalau tidak isi di bawah lipatan tidak terakses
+              tanpa mouse (axe: scrollable-region-focusable). */}
+          <div
+            className="p-4 space-y-3 max-h-[560px] overflow-y-auto"
+            tabIndex={0}
+            role="region"
+            aria-label="Daftar total semua indikator"
+          >
             {totals.map((item, index) => (
               <motion.div
                 key={item.key}
@@ -278,8 +294,8 @@ export default function DataStatsPage({ config }) {
                 className="space-y-1.5"
               >
                 <div className="flex items-center justify-between gap-3 text-sm">
-                  <span className="font-medium text-gray-700 truncate" title={item.label}>{item.label}</span>
-                  <span className="font-bold text-gray-900">
+                  <span className="font-medium text-gray-700 dark:text-gray-200 truncate" title={item.label}>{item.label}</span>
+                  <span className="font-bold text-gray-900 dark:text-gray-100">
                     <AnimatedCounter value={item.total} duration={1.2} />
                   </span>
                 </div>
@@ -290,26 +306,35 @@ export default function DataStatsPage({ config }) {
         </div>
 
         <div className="glass rounded-3xl overflow-hidden">
-          <div className="p-4 border-b border-white/40 bg-white/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="p-4 border-b border-white/60 dark:border-white/10 bg-white/40 dark:bg-surface-dark/40 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h2 className="text-sm font-bold text-gray-800">Ranking Dusun</h2>
-              <p className="text-xs text-gray-500 mt-1">Perbandingan dusun berdasarkan indikator fokus</p>
+              <h2 className="text-sm font-bold text-gray-800 dark:text-gray-100">Ranking Dusun</h2>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Perbandingan dusun berdasarkan indikator fokus</p>
             </div>
             <select
               value={selectedMetric}
               onChange={(event) => setSelectedMetric(event.target.value)}
-              className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 focus:ring-2 focus:ring-primary-500 outline-none"
+              className="px-3 py-2 glass-pill text-sm text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-primary-500 outline-none cursor-pointer"
               aria-label="Pilih indikator ranking dusun"
             >
-              {effectiveColumns.map((column) => <option key={column.key} value={column.key}>{column.label}</option>)}
+              {effectiveColumns.map((column) => (
+                <option key={column.key} value={column.key} className="bg-white dark:bg-surface-dark text-gray-900 dark:text-gray-100">
+                  {column.label}
+                </option>
+              ))}
             </select>
           </div>
           <div className="p-4">
-            <div className="mb-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800 flex items-center justify-between">
+            <div className="mb-4 rounded-xl border border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-950/50 px-4 py-3 text-sm text-blue-800 dark:text-blue-200 flex items-center justify-between">
               <span>Indikator</span>
               <span className="font-bold">{selectedColumn?.label}</span>
             </div>
-            <div className="space-y-3 max-h-[500px] overflow-y-auto">
+            <div
+              className="space-y-3 max-h-[500px] overflow-y-auto"
+              tabIndex={0}
+              role="region"
+              aria-label="Peringkat dusun per indikator"
+            >
               {ranking.map((item, index) => (
                 <motion.div
                   key={item.id}
@@ -318,14 +343,14 @@ export default function DataStatsPage({ config }) {
                   transition={{ delay: index * 0.025 }}
                   className="grid grid-cols-[1.5rem_minmax(0,1fr)_4.5rem] items-center gap-3"
                 >
-                  <span className="text-xs font-bold text-gray-400 text-right">{index + 1}</span>
+                  <span className="text-xs font-bold text-gray-500 dark:text-gray-400 text-right">{index + 1}</span>
                   <div className="min-w-0">
                     <div className="flex items-center justify-between gap-3 mb-1">
-                      <span className="text-sm font-medium text-gray-700 truncate">{item.nama}</span>
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-200 truncate">{item.nama}</span>
                     </div>
                     <AnimatedBar percent={(item.value / maxRankValue) * 100} className="bg-primary-600" />
                   </div>
-                  <span className="text-sm font-bold text-gray-900 text-right">
+                  <span className="text-sm font-bold text-gray-900 dark:text-gray-100 text-right">
                     <AnimatedCounter value={item.value} duration={1.2} />
                   </span>
                 </motion.div>
@@ -338,7 +363,7 @@ export default function DataStatsPage({ config }) {
       <button
         type="button"
         onClick={() => setEditModeOpen(true)}
-        className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary-700 hover:text-primary-800"
+        className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary-700 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300"
       >
         Buka tabel input dan validasi <ArrowRight className="w-4 h-4" />
       </button>

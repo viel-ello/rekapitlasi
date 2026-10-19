@@ -11,6 +11,7 @@ import PeriodWorkflowBadge from '@/components/PeriodWorkflowBadge';
 import EditModeSwitcher from '@/components/EditModeSwitcher';
 import AutoGrowTextarea from '@/components/AutoGrowTextarea';
 import ConfirmModal from '@/components/ConfirmModal';
+import DensityToggle from '@/components/DensityToggle';
 import TableSkeleton from '@/components/TableSkeleton';
 import { useEditMode } from '@/lib/useEditMode';
 import { MONTHS } from '@/lib/dataPages';
@@ -97,6 +98,8 @@ export default function NestedDataPage({
   // Filter "hanya bermasalah" — hanya tampilkan dusun dengan error/warning.
   const [onlyIssues, setOnlyIssues] = useState(false);
   const [confirmSaveAll, setConfirmSaveAll] = useState(null);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [density, setDensity] = useState('comfortable');
   // State expanded mobile card di parent supaya tidak reset tiap re-render
   // (kalau di local MobileCard, akan unmount setiap kali parent re-render
   // karena MobileCard di-define inline → React anggap component baru).
@@ -485,6 +488,19 @@ export default function NestedDataPage({
         onConfirm={() => { setConfirmSaveAll(null); _performSaveAll(); }}
         onCancel={() => setConfirmSaveAll(null)}
       />
+      <ConfirmModal
+        isOpen={confirmCancel}
+        type="danger"
+        title="Batalkan Perubahan?"
+        message={`Ada ${dirtyCount} ${unitLabel.toLowerCase()} yang perubahannya belum disimpan. Apakah Anda yakin ingin membatalkan semua perubahan ini?`}
+        confirmText="Ya, Batalkan"
+        cancelText="Lanjutkan Mengedit"
+        onConfirm={() => {
+          setConfirmCancel(false);
+          cancelPending();
+        }}
+        onCancel={() => setConfirmCancel(false)}
+      />
       {toast && (
         <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 ${
           toast.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' :
@@ -519,6 +535,7 @@ export default function NestedDataPage({
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <DensityToggle density={density} onChange={setDensity} />
           <EditModeSwitcher mode={mode} onChange={setMode} />
           {canEdit && (
             <button onClick={saveAll} disabled={saving === 'all'} className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors disabled:opacity-50">
@@ -526,7 +543,7 @@ export default function NestedDataPage({
               Simpan Semua
             </button>
           )}
-          <select value={tahun} onChange={(e) => setTahun(Number(e.target.value))} className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary-500 outline-none shadow-sm">
+          <select value={tahun} onChange={(e) => setTahun(Number(e.target.value))} aria-label="Pilih tahun" className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary-500 outline-none shadow-sm">
             {years.map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
           {hasMonth && (
@@ -565,7 +582,7 @@ export default function NestedDataPage({
             <span>{dirtyCount} {unitLabel.toLowerCase()} memiliki perubahan belum tersimpan</span>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={cancelPending} className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">Batalkan</button>
+            <button onClick={() => setConfirmCancel(true)} className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">Batalkan</button>
             <button onClick={saveAll} disabled={saving === 'all'} className="px-3 py-1.5 text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg disabled:opacity-50">
               {saving === 'all' ? 'Menyimpan...' : 'Simpan Semua'}
             </button>
@@ -602,7 +619,7 @@ export default function NestedDataPage({
       <div className="hidden md:block nested-table glass rounded-3xl p-3">
         {canEdit && (
           <div className="flex items-center justify-end gap-2 mb-2">
-            <span className="text-[11px] text-gray-400">Total di bawah dihitung dari data yang sudah disimpan.</span>
+            <span className="text-[11px] text-gray-600 dark:text-gray-300 font-medium">Total di bawah dihitung dari data yang sudah disimpan.</span>
             <button
               onClick={() => setRecalcTick((t) => t + 1)}
               className="px-2.5 py-1 text-xs font-medium text-primary-700 bg-primary-50 border border-primary-200 rounded-lg hover:bg-primary-100 transition-colors"
@@ -680,7 +697,11 @@ export default function NestedDataPage({
                       ...sticky,
                       border: `1px solid ${theme.borderColor}`,
                       textAlign: 'center', verticalAlign: 'middle',
-                      fontSize: 10, fontWeight: 500, color: theme.fg, opacity: 0.85,
+                      // Tanpa opacity: 0.85. Meredupkan teks putih di atas latar
+                      // tema menurunkan kontras efektif ke ~4.1:1, di bawah ambang
+                      // WCAG AA 4.5:1. Ukuran font kecil sudah cukup membedakan
+                      // baris nomor dari header di atasnya.
+                      fontSize: 10, fontWeight: 500, color: theme.fg,
                       padding: '2px 4px',
                       background: theme.bg,
                     }}>{idx}</th>
@@ -696,8 +717,25 @@ export default function NestedDataPage({
                 const dusunEditable = isDusunEditable(d.id);
                 return (
                   <tr key={d.id} className="group">
-                    <td style={{ position: 'sticky', left: 0, background: '#fff', zIndex: 1, textAlign: 'center', padding: 4, border: '1px solid #e5e7eb' }} className="group-hover:bg-primary-50/50">{i + 1}</td>
-                    <td style={{ position: 'sticky', left: 36, background: '#fff', zIndex: 1, padding: '4px 8px', border: '1px solid #e5e7eb', fontWeight: 500 }} className="group-hover:bg-primary-50/50">{d.nama}</td>
+                    <td
+                      style={{
+                        position: 'sticky', left: 0, zIndex: 1, textAlign: 'center',
+                        padding: density === 'compact' ? 2 : 4,
+                      }}
+                      className="bg-white dark:bg-surface-dark text-gray-800 dark:text-gray-100 border border-gray-200 dark:border-gray-800 group-hover:bg-primary-50/50 dark:group-hover:bg-primary-950/30"
+                    >
+                      {i + 1}
+                    </td>
+                    <td
+                      style={{
+                        position: 'sticky', left: 36, zIndex: 1,
+                        padding: density === 'compact' ? '2px 6px' : '4px 8px',
+                        fontWeight: 500,
+                      }}
+                      className="bg-white dark:bg-surface-dark text-gray-800 dark:text-gray-100 border border-gray-200 dark:border-gray-800 group-hover:bg-primary-50/50 dark:group-hover:bg-primary-950/30"
+                    >
+                      {d.nama}
+                    </td>
                     {leaves.map((col) => {
                       const valObj = validation[col.key] || { valid: true };
                       const hasError = valObj.severity === 'error';
@@ -725,10 +763,11 @@ export default function NestedDataPage({
                                 defaultValue={rowData[col.key] ?? ''}
                                 onChange={(e) => handleChange(d.id, col.key, e.target.value)}
                                 placeholder={isText ? '' : '0'}
-                                className="w-full text-[13px] py-1.5 px-2 rounded-md border outline-none focus:ring-2 focus:ring-primary-500"
+                                aria-label={`${col.fullLabel || col.label} — ${d.nama}`}
+                                className="w-full text-[13px] py-1.5 px-2 rounded-md border outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-surface-dark text-gray-900 dark:text-gray-100"
                                 style={{
-                                  border: hasError ? '1px solid #fca5a5' : hasWarning ? '1px solid #fcd34d' : '1px solid #e5e7eb',
-                                  background: hasError ? '#fef2f2' : hasWarning ? '#fffbeb' : '#fff',
+                                  border: hasError ? '1px solid #fca5a5' : hasWarning ? '1px solid #fcd34d' : undefined,
+                                  background: hasError ? '#fef2f2' : hasWarning ? '#fffbeb' : undefined,
                                   textAlign: isText ? 'left' : 'center',
                                   fontFamily: 'inherit',
                                   lineHeight: 1.4,
@@ -738,6 +777,8 @@ export default function NestedDataPage({
                             ) : isText ? (
                               <input type="text"
                                 key={`${d.id}-${col.key}-${dataVersion}`}
+                                aria-label={`${col.fullLabel || col.label} — ${d.nama}`}
+                                className="bg-white dark:bg-surface-dark text-gray-900 dark:text-gray-100"
                                 style={{ width: '100%', padding: '2px 4px', fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 4, outline: 'none' }}
                                 defaultValue={rowData[col.key] ?? ''}
                                 onChange={(e) => handleChange(d.id, col.key, e.target.value)} />
@@ -746,11 +787,13 @@ export default function NestedDataPage({
                                 key={`${d.id}-${col.key}-${dataVersion}`}
                                 type="text"
                                 inputMode="decimal"
+                                aria-label={`${col.fullLabel || col.label} — ${d.nama}`}
+                                className="bg-white dark:bg-surface-dark text-gray-900 dark:text-gray-100"
                                 style={{
                                   width: '100%', padding: '2px 4px', fontSize: 12, textAlign: 'center',
                                   border: hasError ? '1px solid #fca5a5' : hasWarning ? '1px solid #fcd34d' : '1px solid #e5e7eb',
                                   borderRadius: 4,
-                                  background: hasError ? '#fef2f2' : hasWarning ? '#fffbeb' : '#fff',
+                                  background: hasError ? '#fef2f2' : hasWarning ? '#fffbeb' : undefined,
                                   outline: 'none',
                                 }}
                                 defaultValue={rowData[col.key] ?? ''}
@@ -760,14 +803,17 @@ export default function NestedDataPage({
                               />
                             )
                           ) : (
-                            <span style={{
-                              display: 'block',
-                              textAlign: isText ? 'left' : 'center',
-                              fontSize: 12,
-                              color: '#6b7280',
-                              whiteSpace: isWord ? 'normal' : 'nowrap',
-                              padding: isWord ? '4px 6px' : 0,
-                            }} title={valObj.warning || ''}>
+                            <span
+                              className="text-gray-700 dark:text-gray-300 font-medium"
+                              style={{
+                                display: 'block',
+                                textAlign: isText ? 'left' : 'center',
+                                fontSize: 12,
+                                whiteSpace: isWord ? 'normal' : 'nowrap',
+                                padding: isWord ? '4px 6px' : 0,
+                              }}
+                              title={valObj.warning || ''}
+                            >
                               {isText ? (rowData[col.key] || '-') : (rowData[col.key] ?? '-')}
                               {hasWarning && <ExclamationCircle className="w-3 h-3 text-amber-500 inline ml-1" />}
                             </span>
@@ -779,14 +825,14 @@ export default function NestedDataPage({
                 );
               })}
               {filteredDusun.length === 0 && (
-                <tr><td colSpan={totalCols} style={{ textAlign: 'center', padding: 24, color: '#6b7280' }}>{unitLabel} tidak ditemukan</td></tr>
+                <tr><td colSpan={totalCols} className="text-gray-600 dark:text-gray-300" style={{ textAlign: 'center', padding: 24 }}>{unitLabel} tidak ditemukan</td></tr>
               )}
               {filteredDusun.length > 0 && (
-                <tr style={{ background: '#f0fdf4' }} data-recalc={recalcTick}>
-                  <td style={{ position: 'sticky', left: 0, background: '#f0fdf4', zIndex: 1, border: '1px solid #d1fae5' }}></td>
-                  <td style={{ position: 'sticky', left: 36, background: '#f0fdf4', zIndex: 1, padding: '6px 8px', border: '1px solid #d1fae5', fontWeight: 700, color: '#065f46' }}>JUMLAH</td>
+                <tr className="bg-emerald-50/90 dark:bg-emerald-950/60" data-recalc={recalcTick}>
+                  <td style={{ position: 'sticky', left: 0, zIndex: 1 }} className="bg-emerald-50/90 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800"></td>
+                  <td style={{ position: 'sticky', left: 36, zIndex: 1, padding: density === 'compact' ? '4px 6px' : '6px 8px', fontWeight: 700 }} className="bg-emerald-50/90 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800">JUMLAH</td>
                   {leaves.map((col) => (
-                    <td key={col.key} style={{ textAlign: 'center', fontWeight: 700, fontSize: 12, padding: 4, border: '1px solid #d1fae5', color: '#065f46' }}>
+                    <td key={col.key} style={{ textAlign: 'center', fontWeight: 700, fontSize: 12, padding: density === 'compact' ? 2 : 4 }} className="text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800">
                       {col.type === 'text' ? '-' : getTotal(col.key).toLocaleString('id-ID')}
                     </td>
                   ))}

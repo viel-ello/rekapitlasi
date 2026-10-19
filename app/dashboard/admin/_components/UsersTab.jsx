@@ -139,13 +139,13 @@ export default function UsersTab({ toast, setToast }) {
                     {u.username !== 'admin' && (
                       editId === u.id ? (
                         <div className="flex justify-center gap-1">
-                          <button onClick={() => handleUpdate(u.id)} className="p-1.5 bg-primary-50 text-primary-600 rounded-lg hover:bg-primary-100"><Check className="w-4 h-4" /></button>
-                          <button onClick={() => setEditId(null)} className="p-1.5 bg-gray-100 text-gray-500 rounded-lg hover:bg-gray-200"><Close className="w-4 h-4" /></button>
+                          <button onClick={() => handleUpdate(u.id)} aria-label={`Simpan perubahan untuk ${u.username}`} title="Simpan" className="p-1.5 bg-primary-50 text-primary-600 rounded-lg hover:bg-primary-100"><Check className="w-4 h-4" /></button>
+                          <button onClick={() => setEditId(null)} aria-label={`Batalkan edit ${u.username}`} title="Batal" className="p-1.5 bg-gray-100 text-gray-500 rounded-lg hover:bg-gray-200"><Close className="w-4 h-4" /></button>
                         </div>
                       ) : (
                         <div className="flex justify-center gap-1">
-                          <button onClick={() => { setEditId(u.id); setEditForm({}); }} className="p-1.5 bg-gray-100 text-gray-500 rounded-lg hover:bg-gray-200"><Pen className="w-4 h-4" /></button>
-                          <button onClick={() => confirmDelete(u.id)} className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100"><TrashBin className="w-4 h-4" /></button>
+                          <button onClick={() => { setEditId(u.id); setEditForm({}); }} aria-label={`Edit pengguna ${u.username}`} title="Edit" className="p-1.5 bg-gray-100 text-gray-500 rounded-lg hover:bg-gray-200"><Pen className="w-4 h-4" /></button>
+                          <button onClick={() => confirmDelete(u.id)} aria-label={`Hapus pengguna ${u.username}`} title="Hapus" className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100"><TrashBin className="w-4 h-4" /></button>
                         </div>
                       )
                     )}

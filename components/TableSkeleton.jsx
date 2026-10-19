@@ -7,14 +7,20 @@
 
 export default function TableSkeleton({ rows = 9, cols = 6 }) {
   return (
-    <div className="animate-in fade-in" aria-busy="true" aria-label="Memuat data">
-      {/* Toolbar skeleton */}
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <div className="space-y-2">
-          <div className="skeleton h-6 w-48 rounded-lg" />
-          <div className="skeleton h-3 w-64 rounded" />
+    // role="status" wajib: `aria-label`/`aria-busy` terlarang pada <div> generik
+    // tanpa role (axe: aria-prohibited-attr), sehingga labelnya diabaikan
+    // screen reader. role="status" juga mengumumkan state loading.
+    <div className="animate-in fade-in" role="status" aria-busy="true" aria-label="Memuat data">
+      {/* Toolbar skeleton.
+          `flex-wrap` + `min-w-0` mencegah overflow horizontal di layar sempit:
+          tanpa itu lebar tetap (w-64 + w-24 + w-20 + gap) memaksa dokumen jadi
+          468px pada viewport 390px. `max-w-full` membuat bar ikut menyusut. */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div className="space-y-2 min-w-0 flex-1">
+          <div className="skeleton h-6 w-48 max-w-full rounded-lg" />
+          <div className="skeleton h-3 w-64 max-w-full rounded" />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 shrink-0">
           <div className="skeleton h-9 w-24 rounded-xl" />
           <div className="skeleton h-9 w-20 rounded-xl" />
         </div>

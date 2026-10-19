@@ -15,7 +15,11 @@ const CSV_MAX_ROWS = 5000;
 
 function csvEscape(value) {
   if (value === null || value === undefined) return '';
-  const str = typeof value === 'object' ? JSON.stringify(value) : String(value);
+  let str = typeof value === 'object' ? JSON.stringify(value) : String(value);
+  // Formula injection defense (CWE-1236): netralkan awalan formula jika bukan angka
+  if (typeof value !== 'number' && !(!isNaN(Number(str)) && str.trim() !== '') && /^[=+\-@\t\r]/.test(str)) {
+    str = `'${str}`;
+  }
   if (/[",\n\r]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
   return str;
 }
@@ -29,7 +33,7 @@ export async function GET(request) {
     const userId = searchParams.get('user_id');
     const tableName = searchParams.get('table_name');
     const action = searchParams.get('action');
-    const unitNama = searchParams.get('dusun') || searchParams.get('desa');
+    const unitNama = (searchParams.get('dusun') || searchParams.get('desa') || '').trim();
     const from = searchParams.get('from');
     const to = searchParams.get('to');
 
@@ -43,6 +47,9 @@ export async function GET(request) {
     if (tableName) query = query.eq('table_name', tableName);
     if (action) query = query.eq('action', action);
     if (unitNama) {
+      if (!/^[a-zA-Z0-9\s-]+$/.test(unitNama)) {
+        return NextResponse.json({ error: 'Parameter dusun tidak valid' }, { status: 400 });
+      }
       query = query.or(`dusun_nama.eq.${unitNama},desa_nama.eq.${unitNama}`);
     }
     if (from) query = query.gte('created_at', from);

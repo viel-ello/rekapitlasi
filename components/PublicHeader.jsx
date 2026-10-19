@@ -5,7 +5,7 @@ import { ArrowRightToBracket, Globe, Home } from 'flowbite-react-icons/outline';
 
 export default function PublicHeader() {
   return (
-    <header className="bg-white border-b border-gray-100 sticky top-0 z-30">
+    <header className="glass-header sticky top-0 z-30">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
         <Link href="/" className="flex items-center gap-2.5 min-w-0">
           <img src="/logo.png" alt="Logo TP PKK Baturetno" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />

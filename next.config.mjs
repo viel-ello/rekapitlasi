@@ -1,3 +1,5 @@
+import path from 'path';
+
 /** @type {import('next').NextConfig} */
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -35,6 +37,9 @@ const securityHeaders = [
 
 const nextConfig = {
   poweredByHeader: false,
+  turbopack: {
+    root: path.resolve('.'),
+  },
   async headers() {
     return [
       {

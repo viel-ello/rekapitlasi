@@ -379,7 +379,7 @@ function DynamicColumnsPanel({ setToast }) {
                   <td className="px-6 py-3">{c.column_label}</td>
                   <td className="px-6 py-3">{c.column_type === 'number' ? 'Angka' : 'Teks'}</td>
                   <td className="px-6 py-3 text-right">
-                    <button onClick={() => confirmDelete(c.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Hapus"><TrashBin className="w-4 h-4" /></button>
+                    <button onClick={() => confirmDelete(c.id)} aria-label={`Hapus kolom ${c.column_label}`} className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Hapus"><TrashBin className="w-4 h-4" /></button>
                   </td>
                 </tr>
               ))}
