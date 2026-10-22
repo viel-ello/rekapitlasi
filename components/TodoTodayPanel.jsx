@@ -20,25 +20,33 @@ export default function TodoTodayPanel({ completeness }) {
   const [me, setMe] = useState(null);
   const [queue, setQueue] = useState({ items: [], summary: {}, isAdmin: false });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
+    setError(false);
     (async () => {
       try {
         const [meRes, qRes] = await Promise.all([
           fetch('/api/auth/me'),
           fetch('/api/periods/queue'),
         ]);
-        if (!cancelled && meRes.ok) setMe(await meRes.json());
-        if (!cancelled && qRes.ok) setQueue(await qRes.json());
-      } catch { /* silent */ }
+        if (!meRes.ok || !qRes.ok) throw new Error('Status pekerjaan belum tersedia');
+        const [meData, queueData] = await Promise.all([meRes.json(), qRes.json()]);
+        if (!cancelled) { setMe(meData); setQueue(queueData); }
+      } catch { if (!cancelled) setError(true); }
       if (!cancelled) setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [attempt]);
 
   if (loading) {
     return <div className="skeleton h-24 rounded-2xl" />;
+  }
+  if (error) {
+    return <section className="glass rounded-3xl p-5"><h2 className="text-sm font-bold text-gray-800 dark:text-gray-100">Pekerjaan hari ini</h2><p role="status" className="text-xs text-gray-600 dark:text-gray-300 mt-2">Status persetujuan belum dapat dimuat.</p><button type="button" onClick={() => setAttempt(value => value + 1)} className="text-xs text-primary-700 dark:text-primary-300 font-semibold underline mt-3">Coba lagi</button></section>;
   }
 
   const isAdmin = me?.role === 'admin';

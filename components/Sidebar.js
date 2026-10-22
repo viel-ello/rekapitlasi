@@ -173,8 +173,10 @@ export default function Sidebar({
               >
                 {active && (
                   <motion.div
+                    layoutId="sidebarActiveIndicator"
                     initial={false}
                     animate={{ opacity: 1 }}
+                    transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 36 }}
                     className="absolute inset-0 bg-gradient-to-b from-emerald-600/75 via-emerald-600/65 to-emerald-700/75 dark:from-emerald-500/40 dark:via-emerald-600/30 dark:to-emerald-700/40 rounded-[14px] border border-emerald-300/75 dark:border-emerald-400/50 shadow-[0_4px_16px_rgba(5,150,105,0.28),inset_0_1.5px_2px_0_rgba(255,255,255,0.65),inset_0_-1px_1px_0_rgba(4,120,87,0.40)] backdrop-blur-md pointer-events-none"
                   />
                 )}
@@ -205,8 +207,10 @@ export default function Sidebar({
                 >
                   {active && (
                     <motion.div
+                      layoutId="sidebarActiveIndicator"
                       initial={false}
                       animate={{ opacity: 1 }}
+                      transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 36 }}
                       className="absolute inset-0 bg-gradient-to-b from-emerald-600/75 via-emerald-600/65 to-emerald-700/75 dark:from-emerald-500/40 dark:via-emerald-600/30 dark:to-emerald-700/40 rounded-[14px] border border-emerald-300/75 dark:border-emerald-400/50 shadow-[0_4px_16px_rgba(5,150,105,0.28),inset_0_1.5px_2px_0_rgba(255,255,255,0.65),inset_0_-1px_1px_0_rgba(4,120,87,0.40)] backdrop-blur-md pointer-events-none"
                     />
                   )}

@@ -8,6 +8,7 @@ import AiChatBubble from '@/components/AiChatBubble';
 import ToastViewport from '@/components/Toast';
 import OnboardingTour from '@/components/OnboardingTour';
 import { ToastProvider } from '@/lib/useToast';
+import AmbientBackdrop from '@/components/AmbientBackdrop';
 
 export default function DashboardLayout({ children }) {
   const [user, setUser] = useState(null);
@@ -95,7 +96,7 @@ export default function DashboardLayout({ children }) {
       <div className="relative min-h-screen bg-dashboard dark:bg-gray-950 text-gray-800 dark:text-gray-100">
         {/* Ambient gradient backdrop — basis efek liquid glass (kartu translucent
             di atasnya jadi terlihat "frosted"). Fixed + pointer-events-none. */}
-        <div className="glass-ambient" aria-hidden="true" />
+        <AmbientBackdrop variant="workspace" />
         {/* Mobile overlay backdrop */}
         {mobileOpen && (
           <div

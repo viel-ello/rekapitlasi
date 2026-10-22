@@ -1,0 +1,561 @@
+{
+  "version": 3,
+  "pages404": true,
+  "appType": "app",
+  "caseSensitive": false,
+  "basePath": "",
+  "redirects": [
+    {
+      "source": "/:path+/",
+      "destination": "/:path+",
+      "internal": true,
+      "priority": true,
+      "statusCode": 308,
+      "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/:path*",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=(), payment=()"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains; preload"
+        }
+      ],
+      "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?(?:/)?$"
+    }
+  ],
+  "onMatchHeaders": [],
+  "rewrites": {
+    "beforeFiles": [],
+    "afterFiles": [],
+    "fallback": []
+  },
+  "dynamicRoutes": [
+    {
+      "page": "/api/public/desa/[id]",
+      "regex": "^/api/public/desa/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/public/desa/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/public/dusun/[id]",
+      "regex": "^/api/public/dusun/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/public/dusun/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/rekap/desa/[id]",
+      "regex": "^/api/rekap/desa/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/rekap/desa/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/rekap/dusun/[id]",
+      "regex": "^/api/rekap/dusun/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/rekap/dusun/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/dashboard/desa/[id]",
+      "regex": "^/dashboard/desa/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/dashboard/desa/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/dashboard/dusun/[id]",
+      "regex": "^/dashboard/dusun/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/dashboard/dusun/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/publik/desa/[id]",
+      "regex": "^/publik/desa/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/publik/desa/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/publik/dusun/[id]",
+      "regex": "^/publik/dusun/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/publik/dusun/(?<nxtPid>[^/]+?)(?:/)?$"
+    }
+  ],
+  "staticRoutes": [
+    {
+      "page": "/",
+      "regex": "^/(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/(?:/)?$"
+    },
+    {
+      "page": "/_global-error",
+      "regex": "^/_global\\-error(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_global\\-error(?:/)?$"
+    },
+    {
+      "page": "/_not-found",
+      "regex": "^/_not\\-found(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_not\\-found(?:/)?$"
+    },
+    {
+      "page": "/api/admin/backup",
+      "regex": "^/api/admin/backup(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admin/backup(?:/)?$"
+    },
+    {
+      "page": "/api/admin/column-overrides",
+      "regex": "^/api/admin/column\\-overrides(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admin/column\\-overrides(?:/)?$"
+    },
+    {
+      "page": "/api/admin/columns",
+      "regex": "^/api/admin/columns(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admin/columns(?:/)?$"
+    },
+    {
+      "page": "/api/admin/desa",
+      "regex": "^/api/admin/desa(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admin/desa(?:/)?$"
+    },
+    {
+      "page": "/api/admin/dusun",
+      "regex": "^/api/admin/dusun(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admin/dusun(?:/)?$"
+    },
+    {
+      "page": "/api/admin/logs",
+      "regex": "^/api/admin/logs(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admin/logs(?:/)?$"
+    },
+    {
+      "page": "/api/admin/logs/export",
+      "regex": "^/api/admin/logs/export(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admin/logs/export(?:/)?$"
+    },
+    {
+      "page": "/api/admin/users",
+      "regex": "^/api/admin/users(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admin/users(?:/)?$"
+    },
+    {
+      "page": "/api/admin/years",
+      "regex": "^/api/admin/years(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admin/years(?:/)?$"
+    },
+    {
+      "page": "/api/auth",
+      "regex": "^/api/auth(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth(?:/)?$"
+    },
+    {
+      "page": "/api/auth/me",
+      "regex": "^/api/auth/me(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/me(?:/)?$"
+    },
+    {
+      "page": "/api/auth/me/activity",
+      "regex": "^/api/auth/me/activity(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/me/activity(?:/)?$"
+    },
+    {
+      "page": "/api/auth/password",
+      "regex": "^/api/auth/password(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/password(?:/)?$"
+    },
+    {
+      "page": "/api/bumil",
+      "regex": "^/api/bumil(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/bumil(?:/)?$"
+    },
+    {
+      "page": "/api/chat",
+      "regex": "^/api/chat(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/chat(?:/)?$"
+    },
+    {
+      "page": "/api/chat/confirm-mutation",
+      "regex": "^/api/chat/confirm\\-mutation(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/chat/confirm\\-mutation(?:/)?$"
+    },
+    {
+      "page": "/api/chat/import-confirm",
+      "regex": "^/api/chat/import\\-confirm(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/chat/import\\-confirm(?:/)?$"
+    },
+    {
+      "page": "/api/data-umum",
+      "regex": "^/api/data\\-umum(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/data\\-umum(?:/)?$"
+    },
+    {
+      "page": "/api/desa",
+      "regex": "^/api/desa(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/desa(?:/)?$"
+    },
+    {
+      "page": "/api/dusun",
+      "regex": "^/api/dusun(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/dusun(?:/)?$"
+    },
+    {
+      "page": "/api/export/excel",
+      "regex": "^/api/export/excel(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/export/excel(?:/)?$"
+    },
+    {
+      "page": "/api/export/template",
+      "regex": "^/api/export/template(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/export/template(?:/)?$"
+    },
+    {
+      "page": "/api/export/word",
+      "regex": "^/api/export/word(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/export/word(?:/)?$"
+    },
+    {
+      "page": "/api/import/confirm",
+      "regex": "^/api/import/confirm(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/import/confirm(?:/)?$"
+    },
+    {
+      "page": "/api/import/excel",
+      "regex": "^/api/import/excel(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/import/excel(?:/)?$"
+    },
+    {
+      "page": "/api/import/preview",
+      "regex": "^/api/import/preview(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/import/preview(?:/)?$"
+    },
+    {
+      "page": "/api/kegiatan-warga",
+      "regex": "^/api/kegiatan\\-warga(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/kegiatan\\-warga(?:/)?$"
+    },
+    {
+      "page": "/api/notifications",
+      "regex": "^/api/notifications(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/notifications(?:/)?$"
+    },
+    {
+      "page": "/api/notifications/mark-read",
+      "regex": "^/api/notifications/mark\\-read(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/notifications/mark\\-read(?:/)?$"
+    },
+    {
+      "page": "/api/periods",
+      "regex": "^/api/periods(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/periods(?:/)?$"
+    },
+    {
+      "page": "/api/periods/queue",
+      "regex": "^/api/periods/queue(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/periods/queue(?:/)?$"
+    },
+    {
+      "page": "/api/pokja1",
+      "regex": "^/api/pokja1(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/pokja1(?:/)?$"
+    },
+    {
+      "page": "/api/pokja2",
+      "regex": "^/api/pokja2(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/pokja2(?:/)?$"
+    },
+    {
+      "page": "/api/pokja3",
+      "regex": "^/api/pokja3(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/pokja3(?:/)?$"
+    },
+    {
+      "page": "/api/pokja4",
+      "regex": "^/api/pokja4(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/pokja4(?:/)?$"
+    },
+    {
+      "page": "/api/public/summary",
+      "regex": "^/api/public/summary(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/public/summary(?:/)?$"
+    },
+    {
+      "page": "/api/public/years",
+      "regex": "^/api/public/years(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/public/years(?:/)?$"
+    },
+    {
+      "page": "/api/rekap",
+      "regex": "^/api/rekap(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/rekap(?:/)?$"
+    },
+    {
+      "page": "/api/rekap/trend",
+      "regex": "^/api/rekap/trend(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/rekap/trend(?:/)?$"
+    },
+    {
+      "page": "/api/rekap-dawis",
+      "regex": "^/api/rekap\\-dawis(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/rekap\\-dawis(?:/)?$"
+    },
+    {
+      "page": "/api/reports/build",
+      "regex": "^/api/reports/build(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/reports/build(?:/)?$"
+    },
+    {
+      "page": "/api/years",
+      "regex": "^/api/years(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/years(?:/)?$"
+    },
+    {
+      "page": "/dashboard",
+      "regex": "^/dashboard(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard(?:/)?$"
+    },
+    {
+      "page": "/dashboard/admin",
+      "regex": "^/dashboard/admin(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/admin(?:/)?$"
+    },
+    {
+      "page": "/dashboard/approval",
+      "regex": "^/dashboard/approval(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/approval(?:/)?$"
+    },
+    {
+      "page": "/dashboard/bumil",
+      "regex": "^/dashboard/bumil(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/bumil(?:/)?$"
+    },
+    {
+      "page": "/dashboard/bumil/edit",
+      "regex": "^/dashboard/bumil/edit(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/bumil/edit(?:/)?$"
+    },
+    {
+      "page": "/dashboard/data-umum",
+      "regex": "^/dashboard/data\\-umum(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/data\\-umum(?:/)?$"
+    },
+    {
+      "page": "/dashboard/data-umum/edit",
+      "regex": "^/dashboard/data\\-umum/edit(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/data\\-umum/edit(?:/)?$"
+    },
+    {
+      "page": "/dashboard/kegiatan-warga",
+      "regex": "^/dashboard/kegiatan\\-warga(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/kegiatan\\-warga(?:/)?$"
+    },
+    {
+      "page": "/dashboard/kegiatan-warga/edit",
+      "regex": "^/dashboard/kegiatan\\-warga/edit(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/kegiatan\\-warga/edit(?:/)?$"
+    },
+    {
+      "page": "/dashboard/notifications",
+      "regex": "^/dashboard/notifications(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/notifications(?:/)?$"
+    },
+    {
+      "page": "/dashboard/pokja1",
+      "regex": "^/dashboard/pokja1(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/pokja1(?:/)?$"
+    },
+    {
+      "page": "/dashboard/pokja1/edit",
+      "regex": "^/dashboard/pokja1/edit(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/pokja1/edit(?:/)?$"
+    },
+    {
+      "page": "/dashboard/pokja2",
+      "regex": "^/dashboard/pokja2(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/pokja2(?:/)?$"
+    },
+    {
+      "page": "/dashboard/pokja2/edit",
+      "regex": "^/dashboard/pokja2/edit(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/pokja2/edit(?:/)?$"
+    },
+    {
+      "page": "/dashboard/pokja3",
+      "regex": "^/dashboard/pokja3(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/pokja3(?:/)?$"
+    },
+    {
+      "page": "/dashboard/pokja3/edit",
+      "regex": "^/dashboard/pokja3/edit(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/pokja3/edit(?:/)?$"
+    },
+    {
+      "page": "/dashboard/pokja4",
+      "regex": "^/dashboard/pokja4(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/pokja4(?:/)?$"
+    },
+    {
+      "page": "/dashboard/pokja4/edit",
+      "regex": "^/dashboard/pokja4/edit(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/pokja4/edit(?:/)?$"
+    },
+    {
+      "page": "/dashboard/profile",
+      "regex": "^/dashboard/profile(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/profile(?:/)?$"
+    },
+    {
+      "page": "/dashboard/rekap-dawis",
+      "regex": "^/dashboard/rekap\\-dawis(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/rekap\\-dawis(?:/)?$"
+    },
+    {
+      "page": "/dashboard/rekap-dawis/edit",
+      "regex": "^/dashboard/rekap\\-dawis/edit(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/rekap\\-dawis/edit(?:/)?$"
+    },
+    {
+      "page": "/dashboard/reports",
+      "regex": "^/dashboard/reports(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/reports(?:/)?$"
+    },
+    {
+      "page": "/login",
+      "regex": "^/login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/login(?:/)?$"
+    },
+    {
+      "page": "/manifest.webmanifest",
+      "regex": "^/manifest\\.webmanifest(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/manifest\\.webmanifest(?:/)?$"
+    },
+    {
+      "page": "/publik",
+      "regex": "^/publik(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/publik(?:/)?$"
+    }
+  ],
+  "dataRoutes": [],
+  "rsc": {
+    "header": "rsc",
+    "varyHeader": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+    "prefetchHeader": "next-router-prefetch",
+    "didPostponeHeader": "x-nextjs-postponed",
+    "contentTypeHeader": "text/x-component",
+    "suffix": ".rsc",
+    "prefetchSegmentHeader": "next-router-segment-prefetch",
+    "prefetchSegmentSuffix": ".segment.rsc",
+    "prefetchSegmentDirSuffix": ".segments",
+    "clientParamParsing": false,
+    "dynamicRSCPrerender": false
+  },
+  "rewriteHeaders": {
+    "pathHeader": "x-nextjs-rewritten-path",
+    "queryHeader": "x-nextjs-rewritten-query"
+  }
+}

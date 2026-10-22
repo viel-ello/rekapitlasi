@@ -1,0 +1,16 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/dashboard/layout,_N_T_/dashboard/rekap-dawis/layout,_N_T_/dashboard/rekap-dawis/page,_N_T_/dashboard/rekap-dawis"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/dashboard/rekap-dawis/__PAGE__",
+    "/dashboard/rekap-dawis",
+    "/dashboard",
+    "/_index",
+    "/_head"
+  ]
+}

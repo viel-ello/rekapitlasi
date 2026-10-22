@@ -1,0 +1,16 @@
+module.exports=[99040,a=>{a.v({className:"plus_jakarta_sans_69ea1ac5-module__KTpNKa__className",variable:"plus_jakarta_sans_69ea1ac5-module__KTpNKa__variable"})},28324,a=>{a.v({className:"lora_a92b5d2a-module__S44laG__className",variable:"lora_a92b5d2a-module__S44laG__variable"})},84639,a=>{a.v({className:"fira_code_6333e40d-module__CKaGVa__className",variable:"fira_code_6333e40d-module__CKaGVa__variable"})},96657,a=>{"use strict";a.s(["default",()=>b]);let b=(0,a.i(11857).registerClientReference)(function(){throw Error("Attempted to call the default export of [project]/components/ThemeProvider.jsx <module evaluation> from the server, but it's on the client. It's not possible to invoke a client function from the server, it can only be rendered as a Component or passed to props of a Client Component.")},"[project]/components/ThemeProvider.jsx <module evaluation>","default")},22574,a=>{"use strict";a.s(["default",()=>b]);let b=(0,a.i(11857).registerClientReference)(function(){throw Error("Attempted to call the default export of [project]/components/ThemeProvider.jsx from the server, but it's on the client. It's not possible to invoke a client function from the server, it can only be rendered as a Component or passed to props of a Client Component.")},"[project]/components/ThemeProvider.jsx","default")},92459,a=>{"use strict";a.i(96657);var b=a.i(22574);a.n(b)},62925,a=>{"use strict";var b=a.i(7997),c=a.i(99040);let d={className:c.default.className,style:{fontFamily:"'Plus Jakarta Sans', 'Plus Jakarta Sans Fallback'",fontStyle:"normal"}};null!=c.default.variable&&(d.variable=c.default.variable);var e=a.i(28324);let f={className:e.default.className,style:{fontFamily:"'Lora', 'Lora Fallback'",fontStyle:"normal"}};null!=e.default.variable&&(f.variable=e.default.variable);var g=a.i(84639);let h={className:g.default.className,style:{fontFamily:"'Fira Code', 'Fira Code Fallback'",fontStyle:"normal"}};null!=g.default.variable&&(h.variable=g.default.variable);var i=a.i(92459);let j=`
+(function() {
+  try {
+    var t = localStorage.getItem('theme') || 'light';
+    var effective = t;
+    if (t === 'system') {
+      effective = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    document.documentElement.classList.add(effective);
+  } catch (_) {
+    document.documentElement.classList.add('light');
+  }
+})();
+`;a.s(["default",0,function({children:a}){return(0,b.jsxs)("html",{lang:"id",className:`light ${d.variable} ${f.variable} ${h.variable}`,children:[(0,b.jsx)("head",{children:(0,b.jsx)("script",{dangerouslySetInnerHTML:{__html:j}})}),(0,b.jsx)("body",{children:(0,b.jsx)(i.default,{children:a})})]})},"metadata",0,{title:"Lumbung Data PKK Desa Belikurip",description:"Lumbung Data PKK Desa Belikurip — Kecamatan Baturetno, Kabupaten Wonogiri, Jawa Tengah. Aplikasi rekapitulasi data kegiatan PKK per dusun.",icons:{icon:[{url:"/logo.png",type:"image/png"}],shortcut:"/logo.png",apple:"/logo.png"}}],62925)},19325,a=>{a.n(a.i(62925))}];
+
+//# sourceMappingURL=%5Broot-of-the-server%5D__0h2g0.p._.js.map

@@ -5,6 +5,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Eye, EyeSlash, ArrowRightToBracket, ExclamationCircle, AngleLeft } from 'flowbite-react-icons/outline';
+import AmbientBackdrop from '@/components/AmbientBackdrop';
+import AmbientMotionToggle from '@/components/AmbientMotionToggle';
+import { useAmbientMotionPreference } from '@/lib/useAmbientMotionPreference';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -13,6 +16,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { motionAllowed } = useAmbientMotionPreference();
 
   // Redirect kalau sudah login
   useEffect(() => {
@@ -28,6 +32,7 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
     setError('');
     setLoading(true);
     try {
@@ -51,8 +56,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative bg-[#f6f9f6] px-4 py-8">
-      <div className="glass-ambient" aria-hidden="true" />
+    <div className="min-h-screen flex items-center justify-center relative bg-[#f6f9f6] px-4 pt-24 pb-10">
+      <AmbientBackdrop variant="workspace" />
+      <div className="absolute right-4 top-4 z-20"><AmbientMotionToggle /></div>
 
       {/* Back link */}
       <Link
@@ -63,16 +69,23 @@ export default function LoginPage() {
       </Link>
 
       <motion.div
-        initial={{ opacity: 0, y: 16 }}
+        initial={motionAllowed ? { opacity: 0, y: 16 } : false}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: 'easeOut' }}
-        className="relative z-10 w-full max-w-md"
+        className="relative z-10 w-full max-w-4xl grid md:grid-cols-[0.95fr_1fr] gap-7 md:gap-12 items-center"
       >
+        <div className="px-2 sm:px-5">
+          <p className="text-sm font-semibold text-primary-800 mb-4">Lumbung PKK Desa Belikurip</p>
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight leading-tight text-gray-900">Ruang kerja<br />pencatatan PKK.</h2>
+          <p className="mt-4 max-w-sm text-sm text-gray-600 leading-relaxed">Masuk dengan akun petugas untuk mengisi data, meninjau kelengkapan, dan menyiapkan laporan sesuai kewenangan.</p>
+          <Link href="/publik" className="inline-flex min-h-11 items-center mt-5 text-sm font-semibold text-primary-700 underline focus-visible:ring-2 focus-visible:ring-primary-600">Lihat ringkasan publik</Link>
+        </div>
         <div className="glass-strong rounded-3xl p-6 sm:p-8">
           <div className="text-center mb-6">
             <div className="mx-auto w-16 h-16 mb-3 rounded-full bg-white/70 shadow-md ring-2 ring-primary-200 flex items-center justify-center overflow-hidden">
               <img
                 src="/logo.png"
+                onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = '/map-baturetno.svg'; }}
                 alt="Logo TP PKK Desa Belikurip"
                 className="w-full h-full object-cover"
               />
@@ -84,9 +97,9 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" aria-busy={loading}>
             {error && (
-              <div className="flex items-start gap-2 p-3 bg-red-50 text-red-700 rounded-xl text-sm border border-red-100">
+              <div id="login-error" role="alert" className="flex items-start gap-2 p-3 bg-red-50 text-red-700 rounded-xl text-sm border border-red-100">
                 <ExclamationCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
                 <span>{error}</span>
               </div>
@@ -105,6 +118,7 @@ export default function LoginPage() {
                 onChange={(e) => setUsername(e.target.value)}
                 required
                 autoComplete="username"
+                aria-describedby={error ? 'login-error' : undefined}
                 autoFocus
               />
             </div>
@@ -123,12 +137,14 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   autoComplete="current-password"
+                  aria-describedby={error ? 'login-error' : undefined}
                 />
                 <button
                   type="button"
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary-600 transition-colors p-1 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                  aria-pressed={showPassword}
                 >
                   {showPassword ? <EyeSlash className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -142,7 +158,7 @@ export default function LoginPage() {
             >
               {loading ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <div aria-hidden="true" className={`w-4 h-4 border-2 border-white border-t-transparent rounded-full ${motionAllowed ? 'animate-spin' : ''}`} />
                   Memproses...
                 </>
               ) : (
@@ -156,7 +172,7 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="text-center text-[11px] text-gray-400 mt-4">
+        <p className="text-center text-[11px] text-gray-500 md:col-span-2">
           © {new Date().getFullYear()} TP PKK Desa Belikurip · Kecamatan Baturetno
         </p>
       </motion.div>

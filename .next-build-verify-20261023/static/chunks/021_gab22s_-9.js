@@ -1,0 +1,1 @@
+(globalThis.TURBOPACK||(globalThis.TURBOPACK=[])).push(["object"==typeof document?document.currentScript:void 0,54439,t=>{"use strict";var i=t.i(43476),e=t.i(67588),o=t.i(34806);t.s(["default",0,function(){return(0,i.jsx)(e.default,{config:o.DATA_PAGES.rekapDawis})}])}]);

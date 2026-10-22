@@ -1,0 +1,13 @@
+var R=require("../../../../chunks/ssr/[turbopack]_runtime.js")("server/app/publik/dusun/[id]/page.js")
+R.c("server/chunks/ssr/[root-of-the-server]__0p_hc._._.js")
+R.c("server/chunks/ssr/node_modules_next_dist_esm_build_templates_app-page_0a456on.js")
+R.c("server/chunks/ssr/[root-of-the-server]__0-id16c._.js")
+R.c("server/chunks/ssr/node_modules_next_dist_0-g.jog._.js")
+R.c("server/chunks/ssr/[root-of-the-server]__0h2g0.p._.js")
+R.c("server/chunks/ssr/node_modules_next_dist_client_components_0inhx6q._.js")
+R.c("server/chunks/ssr/node_modules_next_dist_client_components_builtin_forbidden_0ghu-f7.js")
+R.c("server/chunks/ssr/node_modules_next_dist_client_components_builtin_unauthorized_0cjv-23.js")
+R.c("server/chunks/ssr/node_modules_next_dist_client_components_builtin_global-error_0lgvd_..js")
+R.c("server/chunks/ssr/_next-internal_server_app_publik_dusun_[id]_page_actions_06lgrr2.js")
+R.m(95641)
+module.exports=R.m(95641).exports

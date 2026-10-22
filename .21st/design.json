@@ -1,0 +1,253 @@
+{
+  "version": 1,
+  "project": {
+    "name": "rekapitlasi",
+    "productType": null,
+    "stack": [
+      "nextjs",
+      "react",
+      "shadcn",
+      "tailwind-v3"
+    ]
+  },
+  "sources": {
+    "tokens": [
+      "app/globals.css"
+    ],
+    "components": [
+      "components/ui"
+    ],
+    "assets": [],
+    "instructions": [
+      "DESIGN.md",
+      "AGENTS.md",
+      "CLAUDE.md"
+    ]
+  },
+  "design": {
+    "colorMode": "light-and-dark",
+    "colors": {
+      "--background": {
+        "value": "0 0% 100%",
+        "source": "app/globals.css"
+      },
+      "--foreground": {
+        "value": "156 9% 11%",
+        "source": "app/globals.css"
+      },
+      "--card": {
+        "value": "0 0% 100%",
+        "source": "app/globals.css"
+      },
+      "--card-foreground": {
+        "value": "156 9% 11%",
+        "source": "app/globals.css"
+      },
+      "--popover": {
+        "value": "0 0% 100%",
+        "source": "app/globals.css"
+      },
+      "--popover-foreground": {
+        "value": "156 9% 11%",
+        "source": "app/globals.css"
+      },
+      "--primary": {
+        "value": "163 94% 24%",
+        "source": "app/globals.css"
+      },
+      "--primary-foreground": {
+        "value": "0 0% 100%",
+        "source": "app/globals.css"
+      },
+      "--secondary": {
+        "value": "150 14% 95%",
+        "source": "app/globals.css"
+      },
+      "--secondary-foreground": {
+        "value": "156 9% 11%",
+        "source": "app/globals.css"
+      },
+      "--muted": {
+        "value": "150 14% 95%",
+        "source": "app/globals.css"
+      },
+      "--muted-foreground": {
+        "value": "155 4% 44%",
+        "source": "app/globals.css"
+      },
+      "--accent": {
+        "value": "152 81% 96%",
+        "source": "app/globals.css"
+      },
+      "--accent-foreground": {
+        "value": "163 94% 24%",
+        "source": "app/globals.css"
+      },
+      "--destructive": {
+        "value": "0 72% 51%",
+        "source": "app/globals.css"
+      },
+      "--destructive-foreground": {
+        "value": "0 0% 100%",
+        "source": "app/globals.css"
+      },
+      "--border": {
+        "value": "220 13% 91%",
+        "source": "app/globals.css"
+      },
+      "--input": {
+        "value": "220 13% 91%",
+        "source": "app/globals.css"
+      },
+      "--ring": {
+        "value": "160 84% 39%",
+        "source": "app/globals.css"
+      },
+      "--chart-1": {
+        "value": "163 94% 24%",
+        "source": "app/globals.css"
+      },
+      "--chart-2": {
+        "value": "217 91% 60%",
+        "source": "app/globals.css"
+      },
+      "--chart-3": {
+        "value": "38 92% 50%",
+        "source": "app/globals.css"
+      },
+      "--chart-4": {
+        "value": "271 91% 65%",
+        "source": "app/globals.css"
+      },
+      "--chart-5": {
+        "value": "330 81% 60%",
+        "source": "app/globals.css"
+      }
+    },
+    "darkColors": {
+      "--background": "156 21% 7%",
+      "--foreground": "149 80% 90%",
+      "--card": "155 22% 10%",
+      "--card-foreground": "149 80% 90%",
+      "--popover": "155 22% 10%",
+      "--popover-foreground": "149 80% 90%",
+      "--primary": "158 64% 52%",
+      "--primary-foreground": "164 86% 10%",
+      "--secondary": "153 18% 14%",
+      "--secondary-foreground": "149 80% 90%",
+      "--muted": "153 18% 14%",
+      "--muted-foreground": "215 20% 65%",
+      "--accent": "153 18% 14%",
+      "--accent-foreground": "158 64% 52%",
+      "--destructive": "0 63% 31%",
+      "--destructive-foreground": "0 0% 98%",
+      "--border": "151 15% 14%",
+      "--input": "151 15% 14%",
+      "--ring": "158 64% 52%",
+      "--chart-1": "158 64% 52%",
+      "--chart-2": "217 91% 60%",
+      "--chart-3": "38 92% 50%",
+      "--chart-4": "271 91% 65%",
+      "--chart-5": "330 81% 60%"
+    },
+    "typography": {},
+    "spacing": {},
+    "radius": {
+      "--radius": {
+        "value": "0.625rem",
+        "source": "app/globals.css"
+      }
+    },
+    "shadows": {},
+    "motion": {
+      "--sidebar-transition-duration": {
+        "value": "240ms",
+        "source": "app/globals.css"
+      },
+      "--sidebar-transition-ease": {
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "source": "app/globals.css"
+      }
+    },
+    "density": "unknown"
+  },
+  "components": {
+    "installed": [
+      "accordion",
+      "AnimatedCounter",
+      "badge",
+      "button",
+      "card",
+      "Dialog",
+      "FormProgressBar",
+      "FormReviewStep",
+      "InlineFieldError",
+      "input",
+      "SteppedForm",
+      "table"
+    ],
+    "preferredPrimitives": [
+      "radix-ui"
+    ],
+    "patterns": []
+  },
+  "constraints": {
+    "must": [],
+    "avoid": []
+  },
+  "decisions": [
+    {
+      "decision": "Studio Data composition across the welcome, public, login, and dashboard surfaces, with organic liquid-glass forms and slow background motion.",
+      "constraints": [
+        "Preserve existing light and dark theme tokens, emerald identity, typography, and glass treatment.",
+        "Use self-hosted CSS and SVG effects without adding UI or animation dependencies.",
+        "Respect reduced motion, coarse pointers, small screens, and the saved background-pause preference."
+      ],
+      "date": "2026-10-23",
+      "source": "User-approved implementation plan"
+    }
+  ],
+  "evidence": [
+    {
+      "fact": "components.installed",
+      "source": "components/ui"
+    },
+    {
+      "fact": "design.colorMode:light-and-dark",
+      "source": "app/globals.css"
+    },
+    {
+      "fact": "design.tokens",
+      "source": "app/globals.css"
+    },
+    {
+      "fact": "project.instructions",
+      "source": "AGENTS.md"
+    },
+    {
+      "fact": "project.instructions",
+      "source": "CLAUDE.md"
+    },
+    {
+      "fact": "project.instructions",
+      "source": "DESIGN.md"
+    },
+    {
+      "fact": "project.stack:nextjs",
+      "source": "package.json"
+    },
+    {
+      "fact": "project.stack:react",
+      "source": "package.json"
+    },
+    {
+      "fact": "project.stack:shadcn",
+      "source": "components.json"
+    },
+    {
+      "fact": "project.stack:tailwind-v3",
+      "source": "package.json"
+    }
+  ],
+  "generatedAt": "2026-10-22T17:10:16.344Z"
+}

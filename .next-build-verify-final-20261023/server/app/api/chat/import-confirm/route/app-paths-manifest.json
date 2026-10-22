@@ -1,0 +1,3 @@
+{
+  "/api/chat/import-confirm/route": "app/api/chat/import-confirm/route.js"
+}

@@ -20,6 +20,7 @@ import { useEditMode } from '@/lib/useEditMode';
 import { useDensity } from '@/lib/useDensity';
 import { captureScrollState, restoreScrollState } from '@/lib/preserveScroll';
 import { getDusunCached } from '@/lib/fetchDusun';
+import { useLocalDraft } from '@/lib/useLocalDraft';
 
 const BUMIL_FORM_TITLE = 'REKAPITULASI DATA/BUKU CATATAN IBU HAMIL,MELAHIRKAN,NIFAS,IBU MENINGGAL,KELAHIRAN BAYI,BAYI MENINGGAL DAN KEMATIAN BALITA';
 const BUMIL_ORG_TITLE = 'TP PKK DESA BELIKURIP';
@@ -165,6 +166,139 @@ export default function BumilDataPage({ config }) {
   const bumilGroups = useMemo(() => resolveBumilGroups(effectiveColumns), [effectiveColumns]);
   const visibleColumns = useMemo(() => flattenBumilGroups(bumilGroups), [bumilGroups]);
 
+  const isDusunEditable = useCallback(
+    (id) => canEdit && (userDusunId == null || Number(id) === Number(userDusunId)),
+    [canEdit, userDusunId]
+  );
+
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [confirmCarryOver, setConfirmCarryOver] = useState(false);
+  const [carryingOver, setCarryingOver] = useState(false);
+
+  const prevPeriod = useMemo(() => {
+    if (bulan === 1) {
+      return { tahun: tahun - 1, bulan: 12 };
+    }
+    return { tahun, bulan: bulan - 1 };
+  }, [tahun, bulan]);
+
+  const {
+    hasDraft,
+    draftTimestamp,
+    showBanner: showDraftBanner,
+    saveDraft,
+    clearDraft,
+    restoreDraft,
+    dismissBanner: dismissDraftBanner,
+  } = useLocalDraft({
+    tableName: config.tableName || 'data_bumil',
+    tahun,
+    bulan,
+    dusunId: userDusunId,
+    onRestore: (draft) => {
+      if (!draft) return;
+      let count = 0;
+      setData((prev) => {
+        const next = { ...prev };
+        Object.entries(draft).forEach(([dIdStr, rowValues]) => {
+          const dId = Number(dIdStr);
+          if (isDusunEditable(dId)) {
+            next[dId] = { ...(next[dId] || {}), ...rowValues, dusun_id: dId };
+            count++;
+          }
+        });
+        return next;
+      });
+      setSaveStatus((prev) => {
+        const next = { ...prev };
+        Object.keys(draft).forEach((dIdStr) => {
+          const dId = Number(dIdStr);
+          if (isDusunEditable(dId)) {
+            next[dId] = 'dirty';
+          }
+        });
+        return next;
+      });
+      setToast({
+        type: 'success',
+        message: `Draf tersimpan lokal berhasil dipulihkan untuk ${count} dusun`,
+      });
+      setTimeout(() => setToast(null), 4000);
+    },
+  });
+
+  const handleCarryOver = async () => {
+    if (!prevPeriod || !canEdit) return;
+    setCarryingOver(true);
+    try {
+      const res = await fetch(`${config.apiEndpoint}?tahun=${prevPeriod.tahun}&bulan=${prevPeriod.bulan}`);
+      if (!res.ok) {
+        throw new Error('Gagal mengambil data periode lalu');
+      }
+      const prevRows = await res.json();
+      if (!prevRows || prevRows.length === 0) {
+        setToast({
+          type: 'warning',
+          message: `Tidak ada data pada periode ${MONTHS[prevPeriod.bulan - 1]} ${prevPeriod.tahun}`,
+        });
+        setTimeout(() => setToast(null), 4000);
+        return;
+      }
+
+      let copiedCount = 0;
+      const draftToSave = {};
+      setData((prev) => {
+        const next = { ...prev };
+        prevRows.forEach((r) => {
+          const dId = r.dusun_id ?? r.desa_id;
+          if (dId != null && isDusunEditable(dId)) {
+            const rowObj = { ...(next[dId] || {}), dusun_id: dId };
+            config.columns.forEach((col) => {
+              const val = r[col.key];
+              if (val !== undefined && val !== null) {
+                rowObj[col.key] = String(val);
+              }
+            });
+            next[dId] = rowObj;
+            draftToSave[dId] = { ...rowObj };
+            copiedCount++;
+          }
+        });
+        return next;
+      });
+
+      if (copiedCount > 0) {
+        setSaveStatus((prev) => {
+          const next = { ...prev };
+          Object.keys(draftToSave).forEach((dId) => {
+            next[dId] = 'dirty';
+          });
+          return next;
+        });
+        saveDraft(draftToSave);
+        setToast({
+          type: 'success',
+          message: `Berhasil menyalin data dari ${MONTHS[prevPeriod.bulan - 1]} ${prevPeriod.tahun} untuk ${copiedCount} dusun (draf belum disimpan)`,
+        });
+      } else {
+        setToast({
+          type: 'warning',
+          message: 'Tidak ada dusun yang dapat disalin untuk akun Anda',
+        });
+      }
+      setTimeout(() => setToast(null), 4000);
+    } catch (err) {
+      setToast({
+        type: 'error',
+        message: err.message || 'Gagal menyalin data periode lalu',
+      });
+      setTimeout(() => setToast(null), 4000);
+    } finally {
+      setCarryingOver(false);
+      setConfirmCarryOver(false);
+    }
+  };
+
   useEffect(() => { fetchDusun(); checkPermission(); fetchOverrides(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (dusun.length > 0) { fetchData(); fetchPrevData(); fetchMonthsWithData(); } }, [tahun, bulan, dusun]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -243,14 +377,25 @@ export default function BumilDataPage({ config }) {
     if (!canEdit) return;
     if (userDusunId != null && Number(dusunId) !== Number(userDusunId)) return;
     // v6: simpan as-is (string), supaya kolom angka boleh diisi huruf juga.
-    setData((prev) => ({
-      ...prev,
-      [dusunId]: {
+    setData((prev) => {
+      const updatedRow = {
         ...(prev[dusunId] || {}),
         dusun_id: dusunId,
         [key]: value,
-      },
-    }));
+      };
+      const next = {
+        ...prev,
+        [dusunId]: updatedRow,
+      };
+      const draftObj = {};
+      Object.entries(next).forEach(([id, r]) => {
+        if (isDusunEditable(id)) {
+          draftObj[id] = r;
+        }
+      });
+      saveDraft(draftObj);
+      return next;
+    });
     setSaveStatus((prev) => ({ ...prev, [dusunId]: 'dirty' }));
   };
 
@@ -290,6 +435,9 @@ export default function BumilDataPage({ config }) {
         type: issues > 0 ? 'warning' : 'success',
         message: issues > 0 ? `Data disimpan dengan ${issues} peringatan` : 'Data berhasil disimpan',
       });
+      if (Object.values(saveStatus).filter((s) => s === 'dirty').length <= 1) {
+        clearDraft();
+      }
     } catch (err) {
       setSaveStatus((prev) => ({ ...prev, [dusunId]: 'error' }));
       setToast({ type: 'error', message: err.message });
@@ -299,7 +447,7 @@ export default function BumilDataPage({ config }) {
     setMonthsWithData((prev) => new Set(prev).add(bulan));
     setTimeout(() => setToast(null), 4000);
     setTimeout(() => setSaveStatus((prev) => ({ ...prev, [dusunId]: null })), 5000);
-  }, [data, prevData, tahun, bulan, canEdit, config, visibleColumns]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [data, prevData, tahun, bulan, canEdit, config, visibleColumns, saveStatus, clearDraft]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const _performSaveAll = async () => {
     const scrollSnapshot = captureScrollState();
@@ -319,6 +467,9 @@ export default function BumilDataPage({ config }) {
     setSaving(null);
     restoreScrollState(scrollSnapshot);
     if (ok > 0) setMonthsWithData((prev) => new Set(prev).add(bulan));
+    if (fail === 0) {
+      clearDraft();
+    }
     setToast({ type: fail === 0 ? 'success' : 'error', message: `Berhasil ${ok}${fail > 0 ? `, gagal ${fail}` : ''}` });
     setTimeout(() => setToast(null), 4000);
   };
@@ -352,7 +503,6 @@ export default function BumilDataPage({ config }) {
     const num = Number(data[d.id]?.[key]);
     return sum + (Number.isFinite(num) ? num : 0);
   }, 0);
-  const isDusunEditable = (id) => canEdit && (userDusunId == null || Number(id) === Number(userDusunId));
 
   if (initialLoading) {
     return <TableSkeleton rows={9} cols={Math.min(visibleColumns.length || 6, 8)} />;
@@ -452,12 +602,42 @@ export default function BumilDataPage({ config }) {
         onConfirm={() => { setConfirmSaveAll(null); _performSaveAll(); }}
         onCancel={() => setConfirmSaveAll(null)}
       />
+      <ConfirmModal
+        isOpen={confirmCancel}
+        type="danger"
+        title="Batalkan Perubahan?"
+        message={`Ada ${dirtyCount} dusun yang perubahannya belum disimpan. Apakah Anda yakin ingin membatalkan semua perubahan ini?`}
+        confirmText="Ya, Batalkan"
+        cancelText="Lanjutkan Mengedit"
+        onConfirm={() => {
+          setConfirmCancel(false);
+          clearDraft();
+          fetchData();
+        }}
+        onCancel={() => setConfirmCancel(false)}
+      />
+      {confirmCarryOver && (
+        <ConfirmModal
+          isOpen={confirmCarryOver}
+          type="warning"
+          title="Salin Data Bulan Lalu?"
+          message={`Salin data dari ${MONTHS[(prevPeriod?.bulan || 1) - 1]} ${prevPeriod?.tahun} ke dalam draf ${MONTHS[bulan - 1]} ${tahun}? Nilai akan dimuat ke formulir dan belum disimpan ke database.`}
+          confirmText="Ya, Salin Data"
+          cancelText="Batal"
+          onConfirm={handleCarryOver}
+          onCancel={() => setConfirmCarryOver(false)}
+        />
+      )}
       {toast && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 ${
-          toast.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' :
-          toast.type === 'warning' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-          'bg-red-50 text-red-700 border border-red-200'
-        }`}>
+        <div
+          role={toast.type === 'error' ? 'alert' : 'status'}
+          aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
+          className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 ${
+            toast.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' :
+            toast.type === 'warning' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+            'bg-red-50 text-red-700 border border-red-200'
+          }`}
+        >
           {toast.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <ExclamationCircle className="w-5 h-5" />}
           {toast.message}
         </div>
@@ -510,6 +690,24 @@ export default function BumilDataPage({ config }) {
             </button>
           )}
           {canEdit && (
+            <button
+              type="button"
+              onClick={() => setConfirmCarryOver(true)}
+              disabled={carryingOver}
+              className="inline-flex items-center gap-1.5 px-3 py-2 glass-pill text-emerald-800 dark:text-emerald-200 hover:bg-white/80 dark:hover:bg-white/20 text-xs sm:text-sm font-semibold rounded-xl transition-all shadow-sm"
+              title="Salin data dari periode bulan sebelumnya ke formulir aktif"
+            >
+              {carryingOver ? (
+                <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg className="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                </svg>
+              )}
+              Salin Bulan Lalu
+            </button>
+          )}
+          {canEdit && (
             <button onClick={saveAll} disabled={saving === 'all'}
               className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors disabled:opacity-50">
               {saving === 'all' ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <FloppyDisk className="w-4 h-4" />}
@@ -524,6 +722,33 @@ export default function BumilDataPage({ config }) {
           </select>
         </div>
       </div>
+
+      {showDraftBanner && hasDraft && canEdit && dirtyCount === 0 && (
+        <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl glass-panel border border-primary-300 dark:border-primary-700 p-4 shadow-md">
+          <div className="flex items-center gap-2.5 text-sm font-medium text-primary-900 dark:text-primary-100">
+            <ClipboardList className="w-5 h-5 text-primary-600 shrink-0" />
+            <span>
+              Ditemukan draf tersimpan lokal{draftTimestamp ? ` (${draftTimestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` : ''}. Pulihkan perubahan yang belum tersimpan?
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={restoreDraft}
+              className="px-3 py-1.5 text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors shadow-sm"
+            >
+              Pulihkan Draf
+            </button>
+            <button
+              type="button"
+              onClick={clearDraft}
+              className="px-3 py-1.5 text-xs font-medium glass-pill text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 rounded-lg"
+            >
+              Buang Draf
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="relative max-w-sm flex-1 min-w-[200px]">
@@ -565,7 +790,7 @@ export default function BumilDataPage({ config }) {
             <span>{dirtyCount} dusun memiliki perubahan belum tersimpan</span>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={fetchData} className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">Batalkan</button>
+            <button onClick={() => setConfirmCancel(true)} className="px-3 py-1.5 text-xs font-semibold glass-pill text-gray-700 dark:text-gray-200 hover:text-red-600 dark:hover:text-red-400">Batalkan</button>
             <button onClick={saveAll} disabled={saving === 'all'} className="px-3 py-1.5 text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg disabled:opacity-50">
               {saving === 'all' ? 'Menyimpan...' : 'Simpan Semua'}
             </button>
@@ -575,8 +800,8 @@ export default function BumilDataPage({ config }) {
 
       <div className="md:hidden">
         {filteredDusun.length > 1 && (
-          <div className="sticky top-16 z-20 mb-3 flex items-center gap-2 rounded-xl border border-gray-200 bg-white/95 backdrop-blur px-3 py-2 shadow-sm">
-            <span className="text-xs font-medium text-gray-500 flex-shrink-0">Lompat ke:</span>
+          <div className="sticky top-16 z-20 mb-3 flex items-center gap-2 rounded-xl border border-glass-border-light dark:border-glass-border-dark glass px-3 py-2 shadow-sm">
+            <span className="text-xs font-medium text-gray-600 dark:text-gray-300 flex-shrink-0">Lompat ke:</span>
             <select
               value=""
               onChange={(e) => {
@@ -586,7 +811,7 @@ export default function BumilDataPage({ config }) {
                   document.getElementById(`dusun-card-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }, 50);
               }}
-              className="flex-1 min-w-0 px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+              className="flex-1 min-w-0 px-2 py-1.5 glass-input rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
               aria-label="Lompat ke dusun"
             >
               <option value="">Pilih dusun...</option>
@@ -595,7 +820,7 @@ export default function BumilDataPage({ config }) {
           </div>
         )}
         {filteredDusun.map((d, i) => <MobileCard key={d.id} d={d} i={i} />)}
-        {filteredDusun.length === 0 && <div className="text-center py-8 text-gray-500 bg-white rounded-xl border border-gray-100">Dusun tidak ditemukan</div>}
+        {filteredDusun.length === 0 && <div className="text-center py-8 text-gray-500 dark:text-gray-400 glass rounded-xl border border-gray-100 dark:border-gray-800">Dusun tidak ditemukan</div>}
       </div>
 
       <div className="hidden md:block glass rounded-3xl p-4">

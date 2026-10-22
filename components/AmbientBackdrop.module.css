@@ -1,0 +1,79 @@
+.backdrop { contain: strict; }
+.layer { position: absolute; inset: 0; animation-play-state: paused; pointer-events: none; }
+
+/* Two compositor-only timelines. Pausing preserves their elapsed time. */
+.canopy { animation: ambient-canopy 30s ease-in-out infinite alternate paused; }
+.garden { animation: ambient-garden 40s ease-in-out infinite alternate paused; }
+.backdrop[data-motion='running'] .layer { animation-play-state: running; }
+
+.form {
+  position: absolute;
+  display: block;
+  aspect-ratio: 240 / 340;
+  background: url('/ambient-lumbung.svg') center / contain no-repeat;
+  opacity: 0.93;
+}
+.formOne { width: clamp(230px, 25vw, 390px); right: -3%; top: -7%; transform: rotate(25deg); }
+.formTwo { width: clamp(180px, 19vw, 285px); right: 17%; top: -17%; transform: rotate(-52deg); opacity: 0.76; }
+.formThree { width: clamp(160px, 17vw, 250px); right: -7%; top: 46%; transform: rotate(62deg); opacity: 0.72; }
+.formFour { width: clamp(260px, 28vw, 440px); left: -7%; bottom: -14%; transform: rotate(-31deg); }
+.formFive { width: clamp(150px, 17vw, 260px); left: 18%; bottom: -20%; transform: rotate(38deg); opacity: 0.72; }
+
+/* Static matte wash for numbers and form fields, with no extra blur pass. */
+.quietZone {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 47% 54% at 48% 50%, rgba(246, 249, 246, 0.76), rgba(246, 249, 246, 0.17) 72%, transparent 100%);
+}
+.backdrop[data-variant='workspace'] .form { opacity: 0.58; }
+.backdrop[data-variant='workspace'] .quietZone {
+  background: radial-gradient(ellipse 66% 65% at 54% 48%, rgba(246, 249, 246, 0.9), rgba(246, 249, 246, 0.26) 76%, transparent 100%);
+}
+:global(.dark) .form { filter: saturate(0.72) brightness(0.7); opacity: 0.75; }
+:global(.dark) .quietZone {
+  background: radial-gradient(ellipse 47% 54% at 48% 50%, rgba(11, 19, 16, 0.8), rgba(11, 19, 16, 0.2) 72%, transparent 100%);
+}
+:global(.dark) .backdrop[data-variant='workspace'] .form { opacity: 0.52; }
+:global(.dark) .backdrop[data-variant='workspace'] .quietZone {
+  background: radial-gradient(ellipse 66% 65% at 54% 48%, rgba(11, 19, 16, 0.9), rgba(11, 19, 16, 0.32) 76%, transparent 100%);
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.5rem 0.8rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 999px;
+  color: hsl(var(--foreground));
+  background: hsl(var(--background) / 0.8);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.toggle:hover:not(:disabled) { background: hsl(var(--secondary)); }
+.toggle:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
+.toggle:disabled { cursor: default; }
+.compactToggle { padding: 0.5rem; }
+.publicToggle span { display: inline; }
+
+@keyframes ambient-canopy { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-16px, 16px, 0); } }
+@keyframes ambient-garden { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(20px, -12px, 0); } }
+
+@media (max-width: 767px) {
+  .publicToggle { padding: 0.5rem; }
+  .publicToggle span { display: none; }
+  .form { background-image: url('/ambient-lumbung-mobile.svg'); }
+  .formOne { width: 180px; right: -58px; top: 4%; }
+  .formTwo { width: 135px; right: 23%; top: -11%; }
+  .formThree { width: 125px; right: -66px; top: 48%; }
+  .formFour { width: 205px; left: -80px; bottom: 0; }
+  .formFive { width: 135px; left: 22%; bottom: -11%; }
+}
+/* Guard hydration delays and environment changes between React renders. */
+@media (max-width: 767px), (pointer: coarse), (prefers-reduced-motion: reduce) {
+  .backdrop[data-motion='running'] .layer { animation-play-state: paused; }
+}

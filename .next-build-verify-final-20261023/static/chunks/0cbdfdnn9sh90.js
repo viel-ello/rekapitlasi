@@ -1,0 +1,1 @@
+(globalThis.TURBOPACK||(globalThis.TURBOPACK=[])).push(["object"==typeof document?document.currentScript:void 0,42602,t=>{"use strict";var i=t.i(43476),o=t.i(67588),e=t.i(34806);t.s(["default",0,function(){return(0,i.jsx)(o.default,{config:e.DATA_PAGES.pokja2})}])}]);

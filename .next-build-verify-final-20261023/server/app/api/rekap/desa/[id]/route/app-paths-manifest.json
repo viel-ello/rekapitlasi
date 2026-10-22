@@ -1,0 +1,3 @@
+{
+  "/api/rekap/desa/[id]/route": "app/api/rekap/desa/[id]/route.js"
+}

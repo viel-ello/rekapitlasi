@@ -2,19 +2,21 @@
 
 import Link from 'next/link';
 import { ArrowRightToBracket, Globe, Home } from 'flowbite-react-icons/outline';
+import AmbientMotionToggle from '@/components/AmbientMotionToggle';
+import ambientStyles from '@/components/AmbientBackdrop.module.css';
 
 export default function PublicHeader() {
   return (
     <header className="glass-header sticky top-0 z-30">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center gap-x-3 gap-y-2">
         <Link href="/" className="flex items-center gap-2.5 min-w-0">
-          <img src="/logo.png" alt="Logo TP PKK Baturetno" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+          <img src="/logo.png" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = '/map-baturetno.svg'; }} alt="Logo TP PKK Desa Belikurip" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
           <div className="min-w-0">
             <div className="text-sm font-bold text-gray-800 truncate">Lumbung PKK</div>
             <div className="text-[11px] text-gray-500 truncate">Desa Belikurip</div>
           </div>
         </Link>
-        <nav className="flex items-center gap-1 sm:gap-2">
+        <nav aria-label="Navigasi publik" className="w-full sm:w-auto sm:ml-auto flex items-center justify-between sm:justify-end gap-1 sm:gap-2">
           <Link
             href="/"
             className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 hover:text-primary-700 transition-colors"
@@ -33,6 +35,7 @@ export default function PublicHeader() {
           >
             <ArrowRightToBracket className="w-4 h-4" /> Masuk
           </Link>
+          <AmbientMotionToggle className={ambientStyles.publicToggle} />
         </nav>
       </div>
     </header>

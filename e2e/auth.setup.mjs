@@ -11,10 +11,17 @@
 import { test as setup, expect } from '@playwright/test';
 import fs from 'node:fs';
 import { writeArtifact, ARTIFACT_DIR } from './lib/helpers.mjs';
+import { isProductionUrl } from '../playwright.config.mjs';
 
 export const STORAGE_STATE = `${ARTIFACT_DIR}/storage-state.json`;
 
 setup('authenticate + discover', async ({ page, baseURL }) => {
+  if (isProductionUrl(baseURL) && process.env.E2E_ALLOW_PROD_READ !== '1') {
+    throw new Error(
+      `[SECURITY GUARD] E2E execution aborted: baseURL "${baseURL}" is a production environment. Set E2E_ALLOW_PROD_READ=1 to permit read-only execution.`
+    );
+  }
+
   const user = process.env.E2E_USER || 'admin';
   const pass = process.env.E2E_PASS || 'admin123';
 

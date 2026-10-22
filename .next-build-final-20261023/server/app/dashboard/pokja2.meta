@@ -1,0 +1,16 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/dashboard/layout,_N_T_/dashboard/pokja2/layout,_N_T_/dashboard/pokja2/page,_N_T_/dashboard/pokja2"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/dashboard/pokja2/__PAGE__",
+    "/dashboard/pokja2",
+    "/dashboard",
+    "/_index",
+    "/_head"
+  ]
+}

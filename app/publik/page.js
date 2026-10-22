@@ -6,6 +6,10 @@ import { CheckCircle, ExclamationCircle, Globe, ArrowRight } from 'flowbite-reac
 import PublicHeader from '@/components/PublicHeader';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import { usePublicYears } from '@/lib/usePublicYears';
+import KilasDusunInfographic from '@/components/public/KilasDusunInfographic';
+import DusunBenchmarkMatrix from '@/components/public/DusunBenchmarkMatrix';
+import ShareableReportCard from '@/components/public/ShareableReportCard';
+import AmbientBackdrop from '@/components/AmbientBackdrop';
 
 const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
@@ -27,6 +31,7 @@ export default function PublikPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [attempt, setAttempt] = useState(0);
+  const [selectedDusunId, setSelectedDusunId] = useState(null);
   const { years, error: yearsError, retry: retryYears } = usePublicYears();
 
   useEffect(() => {
@@ -59,6 +64,7 @@ export default function PublikPage() {
   }, [tahun, bulan, attempt]);
 
   const totals = summary?.totals || {};
+  const chartRows = useMemo(() => (summary?.dusun || summary?.desa || []).map((dusun) => ({ ...summary?.perDusunChart?.find((item) => item.id != null ? String(item.id) === String(dusun.id) : item.nama === dusun.nama), id: String(dusun.id), nama: dusun.nama })), [summary]);
   const completeness = summary?.completeness || { complete: 0, needsCheck: 0, incomplete: 0 };
 
   const kpi = useMemo(() => ([
@@ -81,27 +87,27 @@ export default function PublikPage() {
 
   return (
     <div className="relative min-h-screen bg-gray-50">
-      <div className="glass-ambient" aria-hidden="true" />
+      <AmbientBackdrop />
       <div className="relative z-[1]">
       <PublicHeader />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Title */}
-        <div className="mb-6">
+        <div className="mb-6 glass-panel rounded-3xl p-5 sm:p-8">
           <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
             <Link href="/" className="hover:text-primary-700">Beranda</Link>
             <span aria-hidden="true">/</span>
             <span className="font-medium text-gray-700">Data Publik</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2">
+          <div className="flex flex-wrap justify-between items-start gap-4"><h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-gray-900 flex items-center gap-2">
             <Globe className="w-7 h-7 text-primary-600" /> Data Publik PKK Desa Belikurip
-          </h1>
+          </h1></div>
           <p className="text-sm text-gray-600 mt-1">
             Ringkasan agregat per dusun. Data pribadi/individu tidak ditampilkan.
           </p>
           {!loading && summary?.lastUpdated && (
             <p className="text-xs text-gray-400 mt-1">
-              Terakhir diperbarui: {new Date(summary.lastUpdated).toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' })}
+              Data Umum terakhir diperbarui: {new Date(summary.lastUpdated).toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' })}
             </p>
           )}
         </div>
@@ -110,6 +116,7 @@ export default function PublikPage() {
 
         {/* Filter */}
         <div className="glass rounded-3xl p-3 sm:p-4 mb-6 flex flex-wrap items-center gap-3">
+          <p className="font-semibold text-sm text-primary-900 sm:mr-auto">Periode laporan <span className="block text-xs font-normal text-gray-600 mt-1">{MONTHS[bulan - 1]} {tahun}</span></p>
           <div className="flex items-center gap-2">
             <label htmlFor="pubtahun" className="text-xs font-semibold text-gray-600">Tahun</label>
             <select
@@ -143,7 +150,7 @@ export default function PublikPage() {
           {kpi.map((k) => (
             <div key={k.label} className="glass rounded-3xl p-4">
               <div className="text-2xl font-bold text-gray-800 tabular-nums">
-                {loading || error ? '—' : <AnimatedCounter value={Number(k.value || 0)} />}
+                {loading || error || k.value == null ? '—' : <AnimatedCounter value={Number(k.value)} />}
               </div>
               <div className="text-xs font-semibold text-gray-700 mt-0.5">{k.label}</div>
               <div className="text-[11px] text-gray-500">{k.sub}</div>
@@ -165,17 +172,17 @@ export default function PublikPage() {
               {completeness.needsCheck > 0 && <>, <strong>{completeness.needsCheck}</strong> perlu dicek</>}
               {completeness.incomplete > 0 && <>, dan <strong>{completeness.incomplete}</strong> belum lengkap</>}.
               {(completeness.needsCheck > 0 || completeness.incomplete > 0)
-                ? ' Dusun yang belum lengkap akan dilengkapi oleh kader pada periode berjalan.'
+                ? ' Status tersebut menunjukkan bagian pencatatan yang perlu ditinjau.'
                 : ' Seluruh dusun telah melengkapi data periode ini.'}
             </p>
           </div>
         )}
 
         {/* Chart sederhana: KK per dusun */}
-        {!loading && (summary?.perDusunChart || []).some((d) => d.kk > 0 || d.jiwa > 0) && (
+        {!loading && !error && chartRows.length > 0 && (
           <div className="glass rounded-3xl p-4 sm:p-5 mb-6">
-            <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide mb-3">Jumlah KK per Dusun</h2>
-            <PublicBarChart data={summary.perDusunChart} />
+            <div className="flex justify-between flex-wrap gap-2 mb-3"><h2 className="text-lg font-bold text-gray-800">Jumlah KK per dusun</h2>{selectedDusunId && <button type="button" className="text-xs text-primary-700 font-semibold underline min-h-8 focus-visible:ring-2 focus-visible:ring-primary-600" onClick={() => setSelectedDusunId(null)}>Hapus sorotan</button>}</div>
+            <PublicBarChart data={chartRows} selectedId={selectedDusunId} onSelect={setSelectedDusunId} />
           </div>
         )}
 
@@ -199,6 +206,34 @@ export default function PublikPage() {
           </div>
         </div>
 
+        {/* Infografis Kilas Dusun */}
+        {!loading && !error && summary && (
+          <div className="mb-6">
+            <KilasDusunInfographic
+              dusunList={summary.dusun || summary.desa || []}
+              perDusunChart={summary.perDusunChart || []}
+              totals={totals}
+              tahun={tahun}
+              bulan={bulan}
+              selectedId={selectedDusunId}
+              onSelect={setSelectedDusunId}
+            />
+          </div>
+        )}
+
+        {/* Matriks Komparasi Dusun */}
+        {!loading && !error && summary && (
+          <div className="mb-6">
+            <DusunBenchmarkMatrix
+              dusunList={summary.dusun || summary.desa || []}
+              perDusunChart={summary.perDusunChart || []}
+              tahun={tahun}
+              bulan={bulan}
+              selectedId={selectedDusunId}
+            />
+          </div>
+        )}
+
         {/* Tabel dusun */}
         <div className="glass rounded-3xl overflow-hidden">
           <div className="px-4 sm:px-5 py-3 border-b border-white/40 flex items-center justify-between flex-wrap gap-2">
@@ -221,7 +256,7 @@ export default function PublikPage() {
                   <tr><td colSpan="3" className="px-4 py-8 text-center text-gray-400">Belum ada data</td></tr>
                 ) : (
                   (summary.dusun || summary.desa).map((d) => (
-                    <tr key={d.id} className="hover:bg-gray-50">
+                    <tr key={d.id} className={String(selectedDusunId) === String(d.id) ? 'bg-emerald-50' : 'hover:bg-gray-50'}>
                       <td className="px-4 py-2.5 font-medium text-gray-800">{d.nama}</td>
                       <td className="px-4 py-2.5 text-center">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_BADGE[d.status]}`}>
@@ -232,7 +267,7 @@ export default function PublikPage() {
                       <td className="px-4 py-2.5 text-right">
                         <Link
                           href={`/publik/dusun/${d.id}?tahun=${tahun}&bulan=${bulan}`}
-                          className="inline-flex items-center gap-1 text-xs font-semibold text-primary-700 hover:text-primary-800"
+                            className="inline-flex items-center gap-1 min-h-11 text-xs font-semibold text-primary-700 hover:text-primary-800 focus-visible:ring-2 focus-visible:ring-primary-600"
                         >
                           Lihat detail <ArrowRight className="w-3 h-3" />
                         </Link>
@@ -245,16 +280,27 @@ export default function PublikPage() {
           </div>
         </div>
 
+        {/* Kartu Laporan Ringkas Siap Bagikan */}
+        {!loading && !error && summary && (
+          <div className="mt-6 mb-6">
+            <ShareableReportCard
+              summary={summary}
+              tahun={tahun}
+              bulan={bulan}
+            />
+          </div>
+        )}
+
         {/* Definisi istilah */}
         <div className="mt-6 glass rounded-3xl p-4 sm:p-5">
           <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide mb-3">Definisi Istilah</h2>
           <dl className="grid sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
-            <div><dt className="font-semibold text-gray-700 inline">Dasa Wisma</dt><dd className="text-gray-600 inline"> — kelompok ±10 rumah tetangga sebagai unit pembinaan PKK terkecil.</dd></div>
-            <div><dt className="font-semibold text-gray-700 inline">KK</dt><dd className="text-gray-600 inline"> — Kepala Keluarga / jumlah keluarga.</dd></div>
-            <div><dt className="font-semibold text-gray-700 inline">Posyandu</dt><dd className="text-gray-600 inline"> — Pos Pelayanan Terpadu untuk kesehatan ibu & anak.</dd></div>
-            <div><dt className="font-semibold text-gray-700 inline">JKN/BPJS</dt><dd className="text-gray-600 inline"> — kepesertaan Jaminan Kesehatan Nasional.</dd></div>
-            <div><dt className="font-semibold text-gray-700 inline">Rumah Sehat</dt><dd className="text-gray-600 inline"> — rumah memenuhi kriteria sanitasi & kesehatan dasar.</dd></div>
-            <div><dt className="font-semibold text-gray-700 inline">Ibu Hamil</dt><dd className="text-gray-600 inline"> — jumlah ibu hamil yang tercatat pada periode.</dd></div>
+            <div><dt className="font-semibold text-gray-700 inline">Dasa Wisma:</dt><dd className="text-gray-600 inline"> kelompok rumah tangga dalam pencatatan PKK.</dd></div>
+            <div><dt className="font-semibold text-gray-700 inline">KK:</dt><dd className="text-gray-600 inline"> jumlah keluarga yang tercatat.</dd></div>
+            <div><dt className="font-semibold text-gray-700 inline">Posyandu:</dt><dd className="text-gray-600 inline"> jumlah pos pelayanan terpadu yang tercatat.</dd></div>
+            <div><dt className="font-semibold text-gray-700 inline">JKN/BPJS:</dt><dd className="text-gray-600 inline"> jumlah kepesertaan yang tercatat.</dd></div>
+            <div><dt className="font-semibold text-gray-700 inline">Rumah Sehat:</dt><dd className="text-gray-600 inline"> jumlah pada kolom rumah sehat di laporan.</dd></div>
+            <div><dt className="font-semibold text-gray-700 inline">Ibu Hamil:</dt><dd className="text-gray-600 inline"> jumlah ibu hamil yang tercatat pada periode.</dd></div>
           </dl>
         </div>
 
@@ -277,25 +323,25 @@ export default function PublikPage() {
 }
 
 /** Bar chart horizontal sederhana (tanpa lib) untuk KK per dusun. */
-function PublicBarChart({ data }) {
-  const rows = (data || []).filter((d) => Number(d.kk) > 0);
+function PublicBarChart({ data, selectedId, onSelect }) {
+  const rows = data || [];
   if (rows.length === 0) {
     return <p className="text-sm text-gray-400">Belum ada data KK untuk periode ini.</p>;
   }
-  const max = Math.max(...rows.map((d) => d.kk), 1);
+  const max = Math.max(...rows.map((d) => d.hasData ? Number(d.kk) || 0 : 0), 1);
   return (
     <div className="space-y-1.5">
       {rows.map((d) => (
-        <div key={d.nama} className="flex items-center gap-2">
+        <button type="button" key={d.id} aria-pressed={String(selectedId) === d.id} aria-label={`${d.nama}, ${d.hasData ? `${d.kk} KK` : 'Data Umum belum tersedia'}`} onClick={() => onSelect(String(selectedId) === d.id ? null : d.id)} className={`flex w-full min-h-11 items-center gap-2 p-2 rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 ${String(selectedId) === d.id ? 'bg-emerald-100/70 ring-1 ring-emerald-300' : 'hover:bg-white/70'}`}>
           <div className="w-28 shrink-0 text-xs text-gray-600 truncate" title={d.nama}>{d.nama}</div>
           <div className="flex-1 bg-gray-100 rounded-full h-4 overflow-hidden">
             <div
               className="h-full bg-primary-500 rounded-full"
-              style={{ width: `${(d.kk / max) * 100}%` }}
+              style={{ width: `${d.hasData ? (Number(d.kk) / max) * 100 : 0}%` }}
             />
           </div>
-          <div className="w-14 shrink-0 text-right text-xs font-semibold text-gray-700">{d.kk.toLocaleString('id-ID')}</div>
-        </div>
+          <div className="w-14 shrink-0 text-right text-xs font-semibold text-gray-700">{d.hasData ? Number(d.kk).toLocaleString('id-ID') : '—'}</div>
+        </button>
       ))}
     </div>
   );

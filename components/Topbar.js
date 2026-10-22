@@ -8,6 +8,7 @@ import { Bell, ArrowRightToBracket, Lock, AngleDown, Bars, Sun, Moon, Cog } from
 import { User } from 'flowbite-react-icons/solid';
 import { timeAgo } from '@/lib/time';
 import { useTheme } from '@/lib/useTheme';
+import AmbientMotionToggle from '@/components/AmbientMotionToggle';
 
 export default function Topbar({ user, onMobileMenuToggle, mobileMenuOpen = false, onOpenPasswordModal }) {
   const [showDropdown, setShowDropdown] = useState(false);
@@ -162,6 +163,7 @@ export default function Topbar({ user, onMobileMenuToggle, mobileMenuOpen = fals
       </div>
 
       <div className="flex items-center gap-3 ml-4">
+        <AmbientMotionToggle compact />
         {/* Notifications */}
         <div className="relative" ref={notifRef}>
           <motion.button

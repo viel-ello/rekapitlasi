@@ -59,22 +59,24 @@ export async function POST(request) {
       );
     }
 
-    let updateQuery = supabase
+    const payload = {
+      ...v.sanitizedUpdates,
+      dusun_id: v.dusunId,
+      tahun: currentYear,
+    };
+    if (v.isMonthly) {
+      payload.bulan = v.bulan;
+    }
+
+    const onConflict = v.isMonthly ? 'dusun_id,tahun,bulan' : 'dusun_id,tahun';
+
+    const { data: upsertedRows, error } = await supabase
       .from(v.tableName)
-      .update(v.sanitizedUpdates)
-      .eq('dusun_id', v.dusunId)
-      .eq('tahun', currentYear);
-    if (v.isMonthly) updateQuery = updateQuery.eq('bulan', v.bulan);
-    const { data: updatedRows, error } = await updateQuery.select('id');
+      .upsert(payload, { onConflict })
+      .select('id');
 
     if (error) {
       return NextResponse.json({ error: `Gagal menyimpan ke database: ${error.message}` }, { status: 500 });
-    }
-    if (!updatedRows || updatedRows.length === 0) {
-      return NextResponse.json(
-        { error: `Data dusun ${v.dusunId} tahun ${currentYear}${v.isMonthly ? ` bulan ${v.bulan}` : ''} belum ada. Isi lewat halaman data atau import dulu.` },
-        { status: 404 }
-      );
     }
 
     const { data: dusun } = await supabase.from('dusun').select('nama').eq('id', v.dusunId).maybeSingle();

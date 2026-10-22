@@ -1,24 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { 
-  MapPin, Users, Home, Chart, ChartPie, ChartLineUp, 
-  Download, FileLines, ClipboardList, CheckCircle, 
-  ExclamationCircle, Clock, ArrowRight, Upload
-} from 'flowbite-react-icons/outline';
-import { Heart } from 'flowbite-react-icons/solid';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { motion, useReducedMotion } from 'framer-motion';
+import { ArrowRight, CheckCircle, ExclamationCircle, MapPin } from 'flowbite-react-icons/outline';
 import AnimatedCounter from '@/components/AnimatedCounter';
-import { timeAgo } from '@/lib/time';
-import { useYears } from '@/lib/useYears';
-import { useRouter } from 'next/navigation';
 import DashboardToolbar from '@/components/DashboardToolbar';
 import TodoTodayPanel from '@/components/TodoTodayPanel';
 import ConfirmModal from '@/components/ConfirmModal';
-import { useToast } from '@/lib/useToast';
 import DusunBarChart from '@/components/charts/DusunBarChart';
-import KaderDonut from '@/components/charts/KaderDonut';
-import StackedBumilBar from '@/components/charts/StackedBumilBar';
+import CompletenessHeatmap from '@/components/CompletenessHeatmap';
+import DataQualityAuditor from '@/components/DataQualityAuditor';
+import { useToast } from '@/lib/useToast';
+import { useYears } from '@/lib/useYears';
 
 const TABLE_FILTERS = [
   { value: 'all', label: 'Semua Data', short: 'Semua' },
@@ -36,177 +30,102 @@ const MONTHS = [
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
 ];
 
-function getStatusDotClass(status) {
-  if (status === 'lengkap') return 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]';
-  if (status === 'perlu_dicek') return 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.35)]';
-  return 'bg-red-300';
+
+const METRICS = [
+  { key: 'kk', label: 'KK', color: '#059669', sources: ['data_umum'] },
+  { key: 'jiwa', label: 'Jiwa', color: '#3B82F6', sources: ['data_umum'] },
+  { key: 'dasaWisma', label: 'Dasa Wisma', color: '#22C55E', sources: ['data_umum'] },
+  { key: 'kaderTotal', label: 'Kader', color: '#F59E0B', sources: ['data_umum', 'data_pokja1', 'data_pokja3', 'data_pokja4'] },
+  { key: 'posyandu', label: 'Posyandu', color: '#A855F7', sources: ['data_pokja4'] },
+  { key: 'rumahSehat', label: 'Rumah Sehat', color: '#10B981', sources: ['data_pokja3', 'data_rekap_dawis'] },
+  { key: 'jknBpjs', label: 'JKN/BPJS', color: '#EC4899', sources: ['data_rekap_dawis'] },
+];
+const statusLabel = status => status === 'lengkap' ? 'Lengkap' : status === 'perlu_dicek' ? 'Perlu dicek' : 'Belum lengkap';
+const statusColor = status => status === 'lengkap' ? 'bg-green-50 text-green-700 dark:bg-green-950/50 dark:text-green-300' : status === 'perlu_dicek' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300' : 'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300';
+
+function getMetricCoverage(dusunStatus, sourceTables, activeFilter) {
+  if (activeFilter !== 'all' && sourceTables.some(table => table !== activeFilter)) return 'out_of_filter';
+  const statuses = sourceTables.map(table => dusunStatus?.tableStatuses?.[table]?.status);
+  if (statuses.some(status => !status)) return 'unknown';
+  if (statuses.every(status => status === 'belum_lengkap')) return 'unfilled';
+  if (statuses.some(status => status === 'belum_lengkap')) return 'partial';
+  return 'tracked';
 }
 
-function getStatusLabel(status) {
-  if (status === 'lengkap') return 'Lengkap';
-  if (status === 'perlu_dicek') return 'Perlu dicek';
-  return 'Belum lengkap';
-}
-
-function toneClasses(tone) {
-  const tones = {
-    primary: { bar: 'bg-primary-600', stroke: '#059669', text: 'text-primary-700', bg: 'bg-primary-50', border: 'border-primary-100' },
-    blue: { bar: 'bg-blue-500', stroke: '#3B82F6', text: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-100' },
-    green: { bar: 'bg-green-500', stroke: '#22C55E', text: 'text-green-700', bg: 'bg-green-50', border: 'border-green-100' },
-    amber: { bar: 'bg-amber-500', stroke: '#F59E0B', text: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-100' },
-    red: { bar: 'bg-red-500', stroke: '#EF4444', text: 'text-red-700', bg: 'bg-red-50', border: 'border-red-100' },
-  };
-  return tones[tone] || tones.primary;
-}
-
-function MiniTrendCard({ label, rows, field, tone = 'primary' }) {
-  const colors = toneClasses(tone);
-  const values = rows.map(row => Number(row[field] || 0));
-  const max = Math.max(...values, 1);
-  const last = values[values.length - 1] || 0;
-  const prev = values[values.length - 2] || 0;
-  const diff = last - prev;
-  const points = values.map((value, index) => {
-    const x = values.length <= 1 ? 150 : 24 + index * (252 / (values.length - 1));
-    const y = 78 - (value / max) * 56;
-    return `${x},${y}`;
-  }).join(' ');
-
-  return (
-    <motion.div
-      variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}
-      whileHover={{ y: -4, scale: 1.015 }}
-      whileTap={{ scale: 0.985 }}
-      transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-      className={`glass rounded-3xl p-4 hover:shadow-card-hover cursor-pointer transition-shadow`}
-    >
-      <div className="flex items-start justify-between gap-3 mb-2">
-        <div>
-          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</div>
-          <div className="text-xl font-bold text-gray-900 mt-1">
-            <AnimatedCounter value={last} />
-          </div>
-        </div>
-        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${colors.bg} ${colors.text}`}>
-          <AnimatedCounter value={diff} prefix={diff >= 0 ? '+' : ''} duration={1.2} />
-        </span>
-      </div>
-      <svg viewBox="0 0 300 92" className="w-full h-20 overflow-visible" aria-hidden="true">
-        <polyline points={points} fill="none" stroke={colors.stroke} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="trend-line-anim" />
-        {values.map((value, index) => {
-          const x = values.length <= 1 ? 150 : 24 + index * (252 / (values.length - 1));
-          const y = 78 - (value / max) * 56;
-          return <circle key={index} cx={x} cy={y} r="3.5" fill="#fff" stroke={colors.stroke} strokeWidth="2" />;
-        })}
-      </svg>
-      <div className="flex justify-between text-[10px] text-gray-400">
-        {rows.map(row => <span key={row.tahun}>{row.tahun}</span>)}
-      </div>
-    </motion.div>
-  );
-}
-
-function HorizontalStatBar({ label, value, max, tone = 'primary', sub, subTitle }) {
-  const colors = toneClasses(tone);
-  const percent = max > 0 ? (Number(value || 0) / max) * 100 : 0;
-  return (
-    <div>
-      <div className="flex items-center justify-between gap-3 mb-1">
-        <div className="min-w-0">
-          <div className="text-sm font-semibold text-gray-700 truncate">{label}</div>
-          {sub && <div className="text-[10px] text-gray-400 truncate" title={subTitle}>{sub}</div>}
-        </div>
-        <span className="text-sm font-bold text-gray-900">
-          <AnimatedCounter value={value} duration={1.2} />
-        </span>
-      </div>
-      <div className="h-2.5 rounded-full bg-gray-100 overflow-hidden">
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: `${Math.max(0, Math.min(100, percent))}%` }}
-          transition={{ duration: 0.65, ease: 'easeOut' }}
-          className={`h-full rounded-full ${colors.bar}`}
-        />
-      </div>
-    </div>
-  );
+function metricCoverageLabel(coverage) {
+  if (coverage === 'out_of_filter') return 'Tidak dapat diperiksa pada filter ini';
+  if (coverage === 'unfilled') return 'Belum ada nilai pada kolom yang diperiksa';
+  if (coverage === 'partial') return 'Sebagian tabel sumber belum terisi pada kolom yang diperiksa';
+  if (coverage === 'unknown') return 'Status tabel sumber tidak tersedia';
+  return '';
 }
 
 export default function DashboardPage() {
   const [rekap, setRekap] = useState(null);
-  const [trend, setTrend] = useState([]);
-  const [compareData, setCompareData] = useState(null); // { aggregate, byDesa }
-  const [compareDesaIds, setCompareDesaIds] = useState([]); // [] = aggregate only
-  const router = useRouter();
   const [tahun, setTahun] = useState(new Date().getFullYear());
-  const [jenisData, setJenisData] = useState('all');
   const [bulan, setBulan] = useState(12);
+  const [jenisData, setJenisData] = useState('all');
+  const [loadedPeriod, setLoadedPeriod] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
+  const [selectedDusun, setSelectedDusun] = useState(null);
+  const [highlightedDusun, setHighlightedDusun] = useState(null);
   const [downloading, setDownloading] = useState(null);
   const [downloadingTemplate, setDownloadingTemplate] = useState(null);
-  const [showTemplateMenu, setShowTemplateMenu] = useState(false);
   const [confirmExport, setConfirmExport] = useState(null);
-  const [fetchError, setFetchError] = useState(false);
+  const requestRef = useRef(0);
+  const controllerRef = useRef(null);
+  const reduceMotion = useReducedMotion();
   const { showToast } = useToast();
   const { years } = useYears();
 
-  // Jika tahun aktif saat ini tidak ada dalam daftar, pilih tahun pertama
   useEffect(() => {
-    if (years.length > 0 && !years.includes(tahun)) {
-      setTahun(years[0]);
-    }
-  }, [years]);
+    if (years.length && !years.includes(tahun)) setTahun(years[0]);
+  }, [years, tahun]);
 
-  useEffect(() => {
-    fetchRekap();
-  }, [tahun, jenisData, bulan, compareDesaIds.join(',')]);
-
-  const fetchRekap = async () => {
+  const fetchRekap = useCallback(async () => {
+    controllerRef.current?.abort();
+    const controller = new AbortController();
+    controllerRef.current = controller;
+    const request = ++requestRef.current;
+    const period = { tahun, bulan, jenis: jenisData };
     setLoading(true);
     setFetchError(false);
     try {
-      const params = new URLSearchParams({
-        tahun: String(tahun),
-        jenis: jenisData,
-        bulan: String(bulan),
-      });
-      const trendUrl = compareDesaIds.length > 0
-        ? `/api/rekap/trend?dusun_ids=${compareDesaIds.join(',')}`
-        : '/api/rekap/trend';
-      const [resRekap, resTrend] = await Promise.all([
-        fetch(`/api/rekap?${params.toString()}`),
-        fetch(trendUrl),
-      ]);
-      if (!resRekap.ok) throw new Error('Gagal memuat rekap');
-      setRekap(await resRekap.json());
-      const trendJson = await resTrend.json();
-      // Backward-compat: kalau aggregate-only, response = array
-      if (Array.isArray(trendJson)) {
-        setTrend(trendJson);
-        setCompareData(null);
-      } else {
-        setTrend(trendJson.aggregate || []);
-        setCompareData(trendJson);
-      }
-    } catch (err) {
-      console.error('Failed to fetch:', err);
+      const params = new URLSearchParams({ tahun: String(tahun), bulan: String(bulan), jenis: jenisData });
+      const response = await fetch(`/api/rekap?${params}`, { signal: controller.signal });
+      if (!response.ok) throw new Error('Gagal memuat rekap');
+      const json = await response.json();
+      if (controller.signal.aborted || request !== requestRef.current) return;
+      setRekap(json);
+      setLoadedPeriod(period);
+    } catch (error) {
+      if (controller.signal.aborted || request !== requestRef.current) return;
       setFetchError(true);
+    } finally {
+      if (!controller.signal.aborted && request === requestRef.current) setLoading(false);
     }
-    setLoading(false);
-  };
+  }, [tahun, bulan, jenisData]);
+
+  useEffect(() => {
+    setConfirmExport(null);
+    fetchRekap();
+    return () => { controllerRef.current?.abort(); requestRef.current += 1; };
+  }, [fetchRekap]);
 
   const _performDownload = async (type) => {
     setDownloading(type);
     try {
-      const res = await fetch(`/api/export/${type}?tahun=${tahun}`);
+      const exportUrl = `/api/export/${type}?tahun=${tahun}&bulan=${bulan}`;
+      const res = await fetch(exportUrl);
       if (!res.ok) throw new Error('Gagal mengunduh');
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = type === 'excel'
-        ? `Rekapitulasi_PKK_Baturetno_${tahun}.xlsx`
-        : `Data_Kegiatan_PKK_${tahun}.docx`;
+        ? `Rekapitulasi_PKK_Belikurip_${tahun}_Bulan_${bulan}.xlsx`
+        : `Data_Kegiatan_PKK_${tahun}${bulan ? `_Bulan_${bulan}` : ''}.docx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -243,7 +162,6 @@ export default function DashboardPage() {
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
-      setShowTemplateMenu(false);
     } catch (err) {
       console.error('Template download error:', err);
       showToast({ type: 'error', message: 'Terjadi kesalahan saat mengunduh template.' });
@@ -251,564 +169,169 @@ export default function DashboardPage() {
     setDownloadingTemplate(null);
   };
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="space-y-2">
-          <div className="h-8 w-3/5 rounded-2xl bg-gray-200 animate-pulse" />
-          <div className="h-4 w-2/5 rounded-lg bg-gray-100 animate-pulse" />
-        </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => <div key={i} className="h-32 rounded-3xl bg-gray-100 animate-pulse" />)}
-        </div>
-        <div className="grid md:grid-cols-2 gap-4">
-          <div className="h-72 rounded-3xl bg-gray-100 animate-pulse" />
-          <div className="h-72 rounded-3xl bg-gray-100 animate-pulse" />
-        </div>
-      </div>
-    );
-  }
 
-  const completeness = rekap?.completeness || { complete: 0, incomplete: 0, needsCheck: 0, total: 0, perDesa: [], filter: { tables: [] } };
-  const lastActivity = rekap?.lastActivity;
-  const activeTables = completeness.filter?.tables?.length ? completeness.filter.tables : TABLE_FILTERS.filter(t => t.value !== 'all').map(t => t.value);
-  const tableLabel = Object.fromEntries(TABLE_FILTERS.map(t => [t.value, t]));
-
-  const kpiCards = [
-    {
-      label: 'Dusun Lengkap',
-      value: completeness.complete,
-      sub: <>dari <AnimatedCounter value={completeness.total} duration={1.2} /> dusun</>,
-      subTitle: `dari ${completeness.total} dusun`,
-      icon: CheckCircle,
-      color: 'text-green-600',
-      bg: 'bg-green-50',
-      border: 'border-green-100',
-    },
-    { label: 'Belum Lengkap', value: completeness.incomplete, sub: 'belum memenuhi kolom wajib', icon: MapPin, color: 'text-red-500', bg: 'bg-red-50', border: 'border-red-100' },
-    { label: 'Perlu Dicek', value: completeness.needsCheck, sub: 'ada warning/anomali', icon: ExclamationCircle, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
-    { 
-      label: 'Aktivitas Terakhir', 
-      value: lastActivity ? timeAgo(lastActivity.created_at) : 'Belum ada', 
-      sub: lastActivity ? `${lastActivity.username} (${lastActivity.action})` : '-',
-      icon: Clock, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100',
-      isText: true
-    },
-  ];
-  const trendCards = [
-    { label: 'KK', field: 'total_kk', tone: 'primary' },
-    { label: 'Jiwa', field: 'total_jiwa', tone: 'blue' },
-    { label: 'Dasa Wisma', field: 'total_dasa_wisma', tone: 'green' },
-    { label: 'Posyandu', field: 'total_posyandu', tone: 'amber' },
-    { label: 'Ibu Hamil', field: 'total_bumil', tone: 'blue' },
-    { label: 'Kelahiran', field: 'total_kelahiran', tone: 'green' },
-  ];
-  const statusStats = [
-    { label: 'Lengkap', value: completeness.complete, tone: 'green' },
-    { label: 'Perlu Dicek', value: completeness.needsCheck, tone: 'amber' },
-    { label: 'Belum Lengkap', value: completeness.incomplete, tone: 'red' },
-  ];
-  const maxStatus = Math.max(...statusStats.map(item => item.value), 1);
-  const dashboardIndicators = rekap?.dashboardIndicators || [];
-  const maxIndicator = Math.max(...dashboardIndicators.map(item => item.value), 1);
-
-  return (
-    <motion.div 
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="space-y-6"
-    >
-      <ConfirmModal
-        isOpen={!!confirmExport}
-        type="warning"
-        title="Tetap export laporan?"
-        message={`Masih ada ${confirmExport?.needsCheck || 0} dusun perlu dicek dan ${confirmExport?.incomplete || 0} dusun belum lengkap. Tetap export laporan?`}
-        confirmText="Ya, export"
-        cancelText="Batal"
-        onConfirm={() => { const t = confirmExport?.type; setConfirmExport(null); if (t) _performDownload(t); }}
-        onCancel={() => setConfirmExport(null)}
-      />
-      {fetchError && (
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          <span className="flex items-center gap-2">
-            <ExclamationCircle className="w-4 h-4" /> Gagal memuat data dashboard.
-          </span>
-          <button onClick={fetchRekap} className="px-3 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg">
-            Coba lagi
-          </button>
-        </div>
-      )}
-      {/* Header & Quick Actions */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">Dashboard Operasional</h1>
-          <p className="text-sm text-gray-500 mt-1">TP PKK Desa Belikurip · Tahun {tahun}</p>
-        </div>
-        <div className="md:max-w-2xl w-full md:w-auto">
-          <DashboardToolbar
-            tahun={tahun} setTahun={setTahun} years={years}
-            bulan={bulan} setBulan={setBulan} months={MONTHS}
-            jenisData={jenisData} setJenisData={setJenisData} tableFilters={TABLE_FILTERS}
-            onDownloadExcel={() => handleDownload('excel')}
-            onDownloadWord={() => handleDownload('word')}
-            onDownloadTemplate={handleDownloadTemplate}
-            downloading={downloading}
-            downloadingTemplate={downloadingTemplate}
-          />
-        </div>
-      </div>
-
-      {/* Yang perlu tindakan hari ini (role-based) */}
-      <TodoTodayPanel completeness={rekap?.completeness} />
-
-      {/* Operational KPI Cards */}
-      <motion.div 
-        variants={{
-          hidden: { opacity: 0 },
-          show: {
-            opacity: 1,
-            transition: {
-              staggerChildren: 0.08,
-              delayChildren: 0.1,
-            },
-          },
-        }}
-        initial="hidden"
-        animate="show"
-        className="grid grid-cols-2 lg:grid-cols-4 gap-4"
-      >
-        {kpiCards.map((card, i) => {
-          const Icon = card.icon;
-          return (
-            <motion.div 
-              key={i}
-              variants={{
-                hidden: { opacity: 0, y: 16 },
-                show: {
-                  opacity: 1,
-                  y: 0,
-                  transition: { type: 'spring', stiffness: 350, damping: 25 },
-                },
-              }}
-              whileHover={{ y: -4, scale: 1.015 }}
-              whileTap={{ scale: 0.985 }}
-              transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-              className="relative overflow-hidden group rounded-3xl p-5 glass hover:shadow-card-hover cursor-pointer"
-            >
-              {/* Specular reflection sweep */}
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 rounded-3xl bg-gradient-to-br from-white/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-              />
-              <div className="flex justify-between items-start mb-3 relative z-10">
-                <div className="p-2.5 rounded-2xl bg-white/50 dark:bg-white/10 shadow-inner">
-                  <Icon className={`w-5 h-5 ${card.color}`} />
-                </div>
-              </div>
-              <div className="relative z-10">
-                <div className="text-2xl font-bold tabular-nums text-gray-900 dark:text-gray-100">
-                  {card.isText ? card.value : <AnimatedCounter value={card.value} />}
-                </div>
-                <div className="text-sm font-semibold mt-0.5 text-gray-700 dark:text-gray-200">{card.label}</div>
-                <div className="text-xs mt-1 truncate text-gray-500 dark:text-gray-400" title={card.subTitle || (typeof card.sub === 'string' ? card.sub : undefined)}>{card.sub}</div>
-              </div>
-            </motion.div>
-          );
-        })}
-      </motion.div>
-
-      <div className="grid xl:grid-cols-3 gap-6">
-        <div className="glass rounded-3xl p-5">
-          <h3 className="flex items-center gap-2 text-sm font-bold text-gray-800 mb-4">
-            <ChartPie className="w-4 h-4 text-primary-600" /> Status Kelengkapan
-          </h3>
-          <div className="space-y-4">
-            {statusStats.map((item) => (
-              <HorizontalStatBar
-                key={item.label}
-                label={item.label}
-                value={item.value}
-                max={maxStatus}
-                tone={item.tone}
-                sub={<><AnimatedCounter value={completeness.total} duration={1.1} /> dusun aktif</>}
-                subTitle={`${completeness.total} dusun aktif`}
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className="xl:col-span-2 glass rounded-3xl p-5">
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <h3 className="flex items-center gap-2 text-sm font-bold text-gray-800">
-              <Chart className="w-4 h-4 text-primary-600" /> Ringkasan Indikator
-            </h3>
-            <span className="text-xs text-gray-400">Data Umum - Bumil</span>
-          </div>
-          <div className="grid md:grid-cols-2 gap-x-6 gap-y-4">
-            {dashboardIndicators.map((item) => (
-              <HorizontalStatBar key={`${item.category}-${item.label}`} label={item.label} value={item.value} max={maxIndicator} tone={item.tone} sub={item.category} />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <motion.div
-        variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.08 } } }}
-        initial="hidden"
-        animate="show"
-        className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4"
-      >
-        {trendCards.map((card) => (
-          <MiniTrendCard key={card.field} label={card.label} rows={trend} field={card.field} tone={card.tone} />
-        ))}
-      </motion.div>
-
-      {/* ── New: Per-Dusun Charts (Charts Update v6) ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-        className="grid lg:grid-cols-3 gap-6"
-      >
-        <div className="lg:col-span-2">
-          <DusunBarChart
-            data={rekap?.perDusunMetrics || []}
-            metrics={[
-              { key: 'kk', label: 'KK', color: '#059669' },
-              { key: 'jiwa', label: 'Jiwa', color: '#3B82F6' },
-              { key: 'dasaWisma', label: 'Dasa Wisma', color: '#22C55E' },
-              { key: 'kaderTotal', label: 'Kader', color: '#F59E0B' },
-              { key: 'posyandu', label: 'Posyandu', color: '#A855F7' },
-              { key: 'rumahSehat', label: 'Rumah Sehat', color: '#10B981' },
-              { key: 'jknBpjs', label: 'JKN/BPJS', color: '#EC4899' },
-            ]}
-            defaultMetric="kk"
-            title="Perbandingan per Dusun"
-            subtitle="Pilih indikator untuk lihat ranking dusun"
-          />
-        </div>
-        <div>
-          <KaderDonut
-            segments={[
-              { label: 'Kader Umum (Data Umum)', value: rekap?.kaderBreakdown?.kaderUmum || 0, color: '#059669' },
-              { label: 'Pokja I (PKBN/PKDRT/Pola Asuh)', value: rekap?.kaderBreakdown?.kaderPokja1 || 0, color: '#3B82F6' },
-              { label: 'Pokja III (Pangan/Sandang/RT)', value: rekap?.kaderBreakdown?.kaderPokja3 || 0, color: '#F59E0B' },
-              { label: 'Pokja IV (Posyandu/Gizi/KB)', value: rekap?.kaderBreakdown?.kaderPokja4 || 0, color: '#A855F7' },
-            ]}
-          />
-        </div>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.15 }}
-      >
-        <StackedBumilBar data={rekap?.perDusunMetrics || []} />
-      </motion.div>
-
-      <div className="grid lg:grid-cols-3 gap-6">
-        
-        {/* Status Kelengkapan Matrix */}
-        <div className="lg:col-span-2 glass rounded-3xl overflow-hidden">
-          <div className="p-4 border-b border-white/40 bg-white/30 flex justify-between items-center">
-            <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-              <ClipboardList className="w-4 h-4 text-primary-600" /> Matrix Kelengkapan Data
-            </h3>
-            <div className="flex gap-3 text-xs font-medium text-gray-500">
-              <span className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded-full bg-green-500"></div> Lengkap</span>
-              <span className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded-full bg-amber-500"></div> Cek</span>
-              <span className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded-full bg-red-300"></div> Belum</span>
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-white/30 border-b border-white/40 text-xs text-gray-500 uppercase">
-                <tr>
-                  <th className="px-4 py-3 font-semibold">Dusun</th>
-                  {activeTables.map(t => (
-                    <th key={t} className="px-2 py-3 text-center font-semibold" title={tableLabel[t]?.label || t}>
-                      {tableLabel[t]?.short || t}
-                    </th>
-                  ))}
-                  <th className="px-3 py-3 text-center font-semibold">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {(completeness.perDesa || []).map((d) => (
-                  <tr
-                    key={d.id}
-                    className="hover:bg-primary-50/40 cursor-pointer transition-colors"
-                    onClick={() => router.push(`/dashboard/dusun/${d.id}?tahun=${tahun}&bulan=${bulan}`)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        router.push(`/dashboard/dusun/${d.id}?tahun=${tahun}&bulan=${bulan}`);
-                      }
-                    }}
-                    aria-label={`Lihat detail ${d.nama}`}
-                  >
-                    <td className="px-4 py-2 font-medium text-gray-700 group">
-                      <span className="inline-flex items-center gap-1">
-                        {d.nama}
-                        <span className="text-primary-600 opacity-0 group-hover:opacity-100 transition-opacity text-xs">→</span>
-                      </span>
-                    </td>
-                    {activeTables.map(t => {
-                      const status = d.tableStatuses?.[t]?.status || 'belum_lengkap';
-                      const label = d.tableStatuses?.[t]?.label || getStatusLabel(status);
-                      return (
-                      <td key={t} className="px-2 py-2 text-center">
-                        <div className={`mx-auto w-2.5 h-2.5 rounded-full ${getStatusDotClass(status)}`} title={label} />
-                      </td>
-                    );
-                    })}
-                    <td className="px-3 py-2 text-center">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
-                        d.status === 'lengkap' ? 'bg-green-50 text-green-700' :
-                        d.status === 'perlu_dicek' ? 'bg-amber-50 text-amber-700' :
-                        'bg-red-50 text-red-700'
-                      }`}>{d.statusLabel || getStatusLabel(d.status)}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Demographics Summary */}
-        <div className="space-y-6">
-          <div className="glass rounded-3xl p-5">
-            <h3 className="flex items-center gap-2 text-sm font-bold text-gray-800 mb-4">
-              <ChartPie className="w-4 h-4 text-accent-500" /> Komposisi Jiwa (L/P)
-            </h3>
-            <div className="flex items-center justify-between gap-4">
-              <svg viewBox="0 0 100 100" className="w-24 h-24 shrink-0">
-                {(() => {
-                  const l = rekap?.dataUmum?.total_jiwa_l || 1;
-                  const p = rekap?.dataUmum?.total_jiwa_p || 1;
-                  const total = l + p;
-                  const lPct = l / total;
-                  const circumference = 2 * Math.PI * 40;
-                  return (
-                    <>
-                      <circle cx="50" cy="50" r="40" fill="none" stroke="#f3f4f6" strokeWidth="12" />
-                      <circle cx="50" cy="50" r="40" fill="none" stroke="#3B82F6" strokeWidth="12" strokeLinecap="round"
-                        transform="rotate(-90 50 50)" strokeDasharray={`${lPct * circumference} ${circumference}`} />
-                      <circle cx="50" cy="50" r="40" fill="none" stroke="#F472B6" strokeWidth="12" strokeLinecap="round"
-                        transform="rotate(-90 50 50)" strokeDasharray={`${(1 - lPct) * circumference} ${circumference}`} strokeDashoffset={`${-lPct * circumference}`} />
-                      <text x="50" y="54" textAnchor="middle" fill="#1f2937" fontSize="12" fontWeight="700">
-                        <AnimatedCounter as="tspan" value={total} />
-                      </text>
-                    </>
-                  );
-                })()}
-              </svg>
-              <div className="space-y-3 flex-1">
-                <div>
-                  <div className="text-xs text-gray-500 mb-0.5">Laki-laki</div>
-                  <div className="text-lg font-bold text-blue-600">
-                    <AnimatedCounter value={rekap?.dataUmum?.total_jiwa_l || 0} />
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500 mb-0.5">Perempuan</div>
-                  <div className="text-lg font-bold text-pink-500">
-                    <AnimatedCounter value={rekap?.dataUmum?.total_jiwa_p || 0} />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="glass rounded-3xl p-5 overflow-hidden">
-            <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-              <h3 className="flex items-center gap-2 text-sm font-bold text-gray-800">
-                <ChartLineUp className="w-4 h-4 text-accent-500" /> Tren Penduduk
-              </h3>
-              <DesaCompareSelector
-                desaList={completeness.perDesa || []}
-                selected={compareDesaIds}
-                onChange={setCompareDesaIds}
-              />
-            </div>
-            <div className="h-44 w-full">
-              <TrendCompareChart
-                aggregate={trend}
-                byDesa={compareData?.byDesa}
-                desaIds={compareDesaIds}
-                field="total_jiwa"
-              />
-            </div>
-            {compareDesaIds.length > 0 && compareData?.byDesa && (
-              <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-100">
-                {compareDesaIds.map((id, idx) => {
-                  const colors = ['#059669', '#3B82F6', '#F59E0B', '#EF4444', '#A855F7'];
-                  const c = colors[idx % colors.length];
-                  const nama = compareData.byDesa[id]?.nama || `Dusun ${id}`;
-                  return (
-                    <span key={id} className="inline-flex items-center gap-1.5 text-xs">
-                      <span className="w-3 h-1 rounded-sm" style={{ background: c }} />
-                      <span className="text-gray-700">{nama}</span>
-                    </span>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-    </motion.div>
-  );
-}
-
-
-// ── Helper: dropdown pilih desa untuk comparison ─────────────────────────────
-function DesaCompareSelector({ desaList, selected, onChange }) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState('');
-
-  const filtered = (desaList || []).filter((d) => d.nama.toLowerCase().includes(search.toLowerCase()));
-
-  const toggle = (id) => {
-    if (selected.includes(id)) {
-      onChange(selected.filter((x) => x !== id));
-    } else {
-      if (selected.length >= 5) return; // max 5 untuk legibility
-      onChange([...selected, id]);
+  const completeness = rekap?.completeness;
+  const dusunList = (completeness?.perDusun || completeness?.perDesa || []).map(d => ({ ...d, id: String(d.id) }));
+  const period = loadedPeriod || { tahun, bulan, jenis: jenisData };
+  const metrics = (rekap?.perDusunMetrics || []).map(d => {
+    const id = String(d.id);
+    const dusunStatus = dusunList.find(item => item.id === id);
+    const normalized = { ...d, id };
+    for (const metric of METRICS) {
+      const coverage = getMetricCoverage(dusunStatus, metric.sources, period.jenis);
+      normalized[metric.key] = coverage === 'tracked' ? d[metric.key] : null;
+      normalized[`${metric.key}Coverage`] = coverage;
     }
-  };
-
-  const label = selected.length === 0
-    ? 'Agregat semua dusun'
-    : selected.length === 1
-      ? (desaList.find((d) => d.id === selected[0])?.nama || 'Dusun')
-      : `${selected.length} dusun terpilih`;
+    return normalized;
+  });
+  const chartMetrics = period.jenis === 'all'
+    ? METRICS
+    : METRICS.filter(metric => metric.sources.length === 1 && metric.sources[0] === period.jenis);
+  const metricSummaries = Object.fromEntries(METRICS.map(metric => {
+    const available = metrics.filter(row => row[`${metric.key}Coverage`] === 'tracked');
+    const coverageStates = metrics.map(row => row[`${metric.key}Coverage`]);
+    const summaryCoverage = available.length
+      ? 'tracked'
+      : coverageStates.length && coverageStates.every(value => value === 'out_of_filter')
+        ? 'out_of_filter'
+        : coverageStates.length && coverageStates.every(value => value === 'unfilled')
+          ? 'unfilled'
+          : coverageStates.includes('partial') || coverageStates.includes('unfilled')
+            ? 'partial'
+            : 'unknown';
+    return [metric.key, {
+      value: available.length ? available.reduce((sum, row) => sum + Number(row[metric.key] || 0), 0) : null,
+      tracked: available.length,
+      total: dusunList.length,
+      coverage: summaryCoverage,
+    }];
+  }));
+  const total = Number(completeness?.total || 0);
+  const complete = Number(completeness?.complete || 0);
+  const percent = total ? Math.round(complete / total * 100) : 0;
+  const focused = dusunList.find(d => d.id === selectedDusun);
+  const focusedMetrics = metrics.find(d => d.id === selectedDusun);
+  const periodLabel = `${MONTHS[period.bulan - 1]} ${period.tahun}`;
+  const targetPeriodLabel = `${MONTHS[bulan - 1]} ${tahun}`;
+  const filterLabel = TABLE_FILTERS.find(f => f.value === period.jenis)?.label || 'Semua Data';
+  const isStale = !!rekap && (period.tahun !== tahun || period.bulan !== bulan || period.jenis !== jenisData);
+  const selectDusun = id => setSelectedDusun(id == null ? null : String(id));
 
   return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen(!open)}
-        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-white border border-gray-200 hover:bg-gray-50 rounded-lg"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-      >
-        <MapPin className="w-3.5 h-3.5 text-gray-500" /> {label}
-      </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1.5 w-64 bg-white border border-gray-100 rounded-xl shadow-lg z-20 overflow-hidden">
-            <div className="p-2 border-b border-gray-50">
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Cari dusun..."
-                className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:ring-2 focus:ring-primary-500 outline-none"
-              />
-            </div>
-            <div className="max-h-60 overflow-y-auto py-1">
-              <button
-                onClick={() => { onChange([]); setOpen(false); }}
-                className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 font-medium text-primary-700"
-              >
-                Agregat semua dusun
-              </button>
-              <div className="border-t border-gray-50 my-1" />
-              {filtered.map((d) => (
-                <label key={d.id} className="flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-gray-50 cursor-pointer">
-                  <input type="checkbox" checked={selected.includes(d.id)} onChange={() => toggle(d.id)} />
-                  <span className="text-gray-700">{d.nama}</span>
-                </label>
-              ))}
-              {filtered.length === 0 && <div className="px-3 py-2 text-xs text-gray-400">Tidak ditemukan</div>}
-            </div>
-            <div className="px-3 py-1.5 border-t border-gray-50 text-[10px] text-gray-400">Maksimal 5 dusun untuk perbandingan</div>
+    <div className="space-y-5 max-w-[1600px] mx-auto">
+      <ConfirmModal isOpen={!!confirmExport} type="warning" title="Tetap export laporan?"
+        message={`Masih ada ${confirmExport?.needsCheck || 0} dusun perlu dicek dan ${confirmExport?.incomplete || 0} dusun belum lengkap. Tetap export laporan?`}
+        confirmText="Ya, export" cancelText="Batal"
+        onConfirm={() => { const type = confirmExport?.type; setConfirmExport(null); if (type) _performDownload(type); }}
+        onCancel={() => setConfirmExport(null)} />
+      <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-sm text-primary-700 dark:text-primary-300 font-semibold">TP PKK Desa Belikurip</p>
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900 dark:text-white mt-1">Studio Data</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-300 mt-2 max-w-2xl">Pantau pelaporan, temukan dusun yang perlu ditinjau, dan lanjutkan pekerjaan dari satu ruang.</p>
+        </div>
+        <span className="text-xs text-gray-600 dark:text-gray-300 shrink-0">Kecamatan Baturetno</span>
+      </header>
+      <div className="glass rounded-2xl p-3 md:p-4">
+        <DashboardToolbar tahun={tahun} setTahun={setTahun} years={years}
+          bulan={bulan} setBulan={setBulan} months={MONTHS}
+          jenisData={jenisData} setJenisData={setJenisData} tableFilters={TABLE_FILTERS}
+          onDownloadExcel={() => handleDownload('excel')} onDownloadWord={() => handleDownload('word')}
+          onDownloadTemplate={handleDownloadTemplate} downloading={downloading} downloadingTemplate={downloadingTemplate}
+          actionsDisabled={loading || isStale || !rekap} />
+      </div>
+      <div role="status" aria-live="polite" className={`text-xs min-h-5 ${fetchError ? 'text-red-700 dark:text-red-300' : 'text-gray-600 dark:text-gray-300'}`}>
+        {fetchError ? <span className="inline-flex items-center gap-2 flex-wrap"><ExclamationCircle className="w-4 h-4" /> Gagal memuat {targetPeriodLabel}.{rekap && ` Data ${periodLabel} tetap ditampilkan.`}<button type="button" onClick={fetchRekap} className="font-bold underline underline-offset-4">Coba lagi</button></span>
+          : loading ? `${rekap ? `Menampilkan ${periodLabel} · ${filterLabel}. ` : ''}Memuat ${targetPeriodLabel} · ${TABLE_FILTERS.find(f => f.value === jenisData)?.label}…`
+          : `Data ${periodLabel} · ${filterLabel}`}
+      </div>
+      {!rekap ? loading ? <DashboardSkeleton /> : <div className="glass rounded-3xl p-8 text-center text-sm text-gray-600 dark:text-gray-300">Data belum dapat ditampilkan. Gunakan Coba lagi untuk memuat periode ini.</div> : (
+        <div className="space-y-5" aria-busy={loading} data-displayed-period={`${period.tahun}-${period.bulan}-${period.jenis}`}>
+          <div className="grid gap-5 xl:grid-cols-12">
+            <section className="glass rounded-3xl p-5 md:p-7 xl:col-span-7 relative overflow-hidden" aria-label="Kelengkapan seluruh dusun">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="font-bold text-lg text-gray-900 dark:text-white">Semua dusun</h2>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{periodLabel} · {filterLabel}</p>
+                </div>
+                <span className="glass-pill px-3 py-1 rounded-full text-xs font-semibold text-primary-700 dark:text-primary-300">{total} dusun</span>
+              </div>
+              <div className="flex items-center gap-5 md:gap-9 mt-6">
+                <div className="relative w-36 h-36 md:w-44 md:h-44 shrink-0" role="img" aria-label={total ? `${complete} dari ${total} dusun lengkap, ${percent} persen, ${periodLabel}, ${filterLabel}` : `Belum ada dusun pada ${periodLabel}`}>
+                  <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90" aria-hidden="true">
+                    <circle cx="60" cy="60" r="50" fill="none" stroke="currentColor" strokeWidth="9" className="text-primary-100 dark:text-white/10" />
+                    <motion.circle cx="60" cy="60" r="50" fill="none" stroke="currentColor" strokeWidth="9" strokeLinecap="round" pathLength="100"
+                      initial={false} animate={{ strokeDasharray: `${percent} 100` }} transition={{ duration: reduceMotion ? 0 : 0.6 }} className="text-primary-600 dark:text-primary-400" />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col justify-center items-center" aria-hidden="true"><span className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900 dark:text-white">{total ? <AnimatedCounter value={percent} suffix="%" /> : '—'}</span><span aria-label="Dusun Lengkap" className="text-xs text-gray-600 dark:text-gray-300 mt-1">Dusun Lengkap</span></div>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white"><AnimatedCounter value={complete} /> <span className="text-base font-medium text-gray-500 dark:text-gray-400">dari {total} dusun</span></p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-2 leading-relaxed">Memenuhi pemeriksaan kelengkapan untuk jenis data yang dipilih.</p>
+                  <div className="flex flex-wrap gap-x-5 gap-y-2 mt-4 text-xs">
+                    <span className="text-amber-700 dark:text-amber-300"><strong><AnimatedCounter value={completeness.needsCheck || 0} /></strong> perlu dicek</span>
+                    <span className="text-red-700 dark:text-red-300"><strong><AnimatedCounter value={completeness.incomplete || 0} /></strong> belum lengkap</span>
+                  </div>
+                </div>
+              </div>
+              <div className="border-t border-white/60 dark:border-white/10 mt-6 pt-4">
+                <h3 className="text-xs font-bold text-gray-700 dark:text-gray-200 mb-3">Ringkasan Data Umum</h3>
+                <div className="grid grid-cols-3 gap-3">
+                  {[['KK', 'kk'], ['Jiwa', 'jiwa'], ['Dasa Wisma', 'dasaWisma']].map(([label, key]) => {
+                    const summary = metricSummaries[key];
+                    return <div key={label}>
+                      <p className="text-xs text-gray-600 dark:text-gray-300">{label}</p>
+                      <p className="text-lg font-bold text-gray-900 dark:text-white mt-1">{summary.value == null ? '—' : <AnimatedCounter value={summary.value} />}</p>
+                      <p className="text-[10px] leading-snug text-gray-500 dark:text-gray-400 mt-1">{summary.tracked ? `Sumber dapat diperiksa di ${summary.tracked}/${summary.total} dusun` : metricCoverageLabel(summary.coverage)}</p>
+                    </div>;
+                  })}
+                </div>
+              </div>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-3">Tanda — menunjukkan sumber di luar filter atau belum berisi nilai pada kolom yang diperiksa. API menghitung kolom angka kosong atau nonnumerik sebagai 0, sehingga angka agregat tetap perlu dibaca bersama status sumber.</p>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-2">Data Umum, Rekap Dawis, dan Bumil mengikuti bulan terpilih. Pokja I sampai IV merupakan catatan tahunan.</p>
+            </section>
+            <section className="glass rounded-3xl p-5 md:p-6 xl:col-span-5" aria-label="Fokus dusun">
+              <div className="flex items-center justify-between gap-3"><h2 className="font-bold text-lg text-gray-900 dark:text-white">Fokus dusun</h2>{focused && <button type="button" onClick={() => selectDusun(null)} className="text-xs font-semibold text-primary-700 dark:text-primary-300 hover:underline">Lihat semua</button>}</div>
+              <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">Pilih dusun di sini, grafik, atau heatmap.</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mt-4">Dusun</p>
+              <div className="flex flex-wrap gap-1.5 mt-4">
+                {dusunList.map(d => <button key={d.id} type="button" aria-pressed={selectedDusun === d.id} onClick={() => selectDusun(d.id)} onFocus={() => setHighlightedDusun(d.id)} onBlur={() => setHighlightedDusun(null)}
+                  className={`px-2.5 py-2 text-xs rounded-xl font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-600 ${selectedDusun === d.id ? 'bg-primary-600 text-white' : 'glass-pill text-gray-700 dark:text-gray-200 hover:bg-primary-50 dark:hover:bg-white/10'}`}>{d.nama}</button>)}
+              </div>
+              <div className="mt-5 border-t border-white/60 dark:border-white/10 pt-4 min-h-40">
+                {focused ? <><div className="flex justify-between gap-3 items-center"><h3 className="font-bold text-gray-900 dark:text-white">{focused.nama}</h3><span className={`text-xs rounded-full px-2.5 py-1 font-semibold ${statusColor(focused.status)}`}>{statusLabel(focused.status)}</span></div>
+                  <p className="text-xs text-gray-600 dark:text-gray-300 mt-2">{focused.filled} dari {focused.total} tabel lengkap · {periodLabel}</p>
+                  <div className="grid grid-cols-3 gap-2 mt-4">{[['KK', 'kk'], ['Jiwa', 'jiwa'], ['Kader', 'kaderTotal']].map(([label, key]) => {
+                    const value = focusedMetrics?.[key];
+                    return <div key={label}><p className="text-xs text-gray-500 dark:text-gray-400">{label}</p><p className="text-lg font-bold text-gray-900 dark:text-white">{value == null ? '—' : <AnimatedCounter value={value} />}</p></div>;
+                  })}</div>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-2">Nilai — menandai sumber di luar filter atau belum berisi nilai pada kolom yang diperiksa.</p>
+                  <Link className="inline-flex items-center gap-2 text-sm font-semibold text-primary-700 dark:text-primary-300 mt-4" href={`/dashboard/dusun/${focused.id}?tahun=${period.tahun}&bulan=${period.bulan}`}>Buka detail dusun <ArrowRight className="w-4 h-4" /></Link>
+                </> : <div className="text-sm text-gray-600 dark:text-gray-300 flex gap-3 items-start py-2"><MapPin className="w-5 h-5 shrink-0 text-primary-600" /><p>Pilih salah satu dusun untuk melihat ringkasannya. Persentase di sebelah kiri selalu mencakup seluruh dusun.</p></div>}
+              </div>
+            </section>
           </div>
-        </>
+          <div className="grid gap-5 xl:grid-cols-12 items-start">
+            <div className="xl:col-span-8">{chartMetrics.length
+              ? <DusunBarChart data={metrics} metrics={chartMetrics} defaultMetric="kk" title="Perbandingan dusun" subtitle={`Nilai agregasi API untuk ${periodLabel}. — berarti sumber tidak tercakup atau tidak memiliki nilai pada kolom yang diperiksa.`} selectedDusunId={selectedDusun} highlightedDusunId={highlightedDusun} onSelectDusun={selectDusun} onHighlightDusun={setHighlightedDusun} />
+              : <section className="glass rounded-3xl p-5 md:p-6" aria-label="Perbandingan dusun"><h2 className="text-lg font-bold text-gray-900 dark:text-white">Perbandingan dusun</h2><p role="status" className="text-sm text-gray-600 dark:text-gray-300 mt-2">Belum ada indikator per dusun yang tersedia pada filter {filterLabel}. Pilih Semua Data atau filter dengan indikator grafik yang tersedia.</p></section>}
+            </div>
+            <div className="xl:col-span-4 space-y-5">
+              <TodoTodayPanel completeness={completeness} />
+              <section className="glass rounded-3xl p-5"><h2 className="text-sm font-bold text-gray-900 dark:text-white">Tinjau laporan</h2><p className="text-xs text-gray-600 dark:text-gray-300 mt-1">{periodLabel} · {filterLabel}</p>
+                <div className="mt-3 max-h-60 overflow-y-auto space-y-1">{dusunList.filter(d => d.status !== 'lengkap').length ? dusunList.filter(d => d.status !== 'lengkap').map(d => <button type="button" key={d.id} aria-pressed={selectedDusun === d.id} onClick={() => selectDusun(d.id)} className="w-full text-left flex items-center justify-between gap-3 p-2.5 rounded-xl hover:bg-white/60 dark:hover:bg-white/10 focus-visible:outline-primary-600"><span className="text-sm font-semibold text-gray-800 dark:text-gray-100">{d.nama}</span><span className={`rounded-full text-[11px] px-2 py-1 ${statusColor(d.status)}`}>{statusLabel(d.status)}</span></button>) : <p className="text-sm text-gray-600 dark:text-gray-300 py-2 flex items-center gap-2"><CheckCircle className="w-4 h-4 text-green-600" />Semua dusun lengkap pada filter ini.</p>}</div>
+              </section>
+            </div>
+          </div>
+          <CompletenessHeatmap tahun={period.tahun} activeBulan={period.bulan} jenisData={period.jenis} selectedDusunId={selectedDusun} highlightedDusunId={highlightedDusun} onHighlightDusun={setHighlightedDusun}
+            onSelectBulan={(month, dusunId) => { setBulan(Number(month)); if (dusunId != null) selectDusun(dusunId); }} currentRekap={rekap} />
+          <details className="glass rounded-3xl p-5"><summary className="cursor-pointer text-sm font-semibold text-gray-800 dark:text-gray-100">Pemeriksaan silang kualitas data</summary><div className="mt-4"><DataQualityAuditor rekap={rekap} tahun={period.tahun} bulan={period.bulan} /></div></details>
+        </div>
       )}
     </div>
   );
 }
 
-// ── Helper: chart trend dengan opsi multi-line untuk comparison ──────────────
-function TrendCompareChart({ aggregate, byDesa, desaIds, field }) {
-  const COLORS = ['#059669', '#3B82F6', '#F59E0B', '#EF4444', '#A855F7'];
-
-  // Data series
-  const series = [];
-  if (!desaIds || desaIds.length === 0) {
-    if (!aggregate || aggregate.length === 0) {
-      return (
-        <svg viewBox="0 0 320 140" preserveAspectRatio="xMidYMid meet" className="block w-full h-full">
-          <text x="160" y="70" textAnchor="middle" fill="#9ca3af" fontSize="11">Belum ada data</text>
-        </svg>
-      );
-    }
-    series.push({ label: 'Total', color: COLORS[0], rows: aggregate, primary: true });
-  } else {
-    desaIds.forEach((id, idx) => {
-      const d = byDesa?.[id];
-      if (d) series.push({ label: d.nama, color: COLORS[idx % COLORS.length], rows: d.rows, primary: idx === 0 });
-    });
-  }
-
-  if (series.length === 0) {
-    return (
-      <svg viewBox="0 0 320 140" preserveAspectRatio="xMidYMid meet" className="block w-full h-full">
-        <text x="160" y="70" textAnchor="middle" fill="#9ca3af" fontSize="11">Belum ada data</text>
-      </svg>
-    );
-  }
-
-  const padLeft = 40, padRight = 40, padTop = 20, padBottom = 22;
-  const W = 320, H = 140;
-  const innerW = W - padLeft - padRight;
-  const innerH = H - padTop - padBottom;
-
-  const allValues = series.flatMap((s) => s.rows.map((r) => Number(r[field] || 0)));
-  const max = Math.max(...allValues, 1);
-  const years = (series[0]?.rows || []).map((r) => r.tahun);
-  const n = years.length;
-  const stepX = n > 1 ? innerW / (n - 1) : 0;
-  const xAt = (i) => padLeft + (n > 1 ? i * stepX : innerW / 2);
-  const yAt = (v) => padTop + innerH - (v / max) * innerH;
-
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" className="block w-full h-full">
-      {/* Lines */}
-      {series.map((s, sidx) => {
-        const pts = s.rows.map((r, i) => `${xAt(i)},${yAt(Number(r[field] || 0))}`).join(' L ');
-        return <path key={sidx} d={`M ${pts}`} fill="none" stroke={s.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity={s.primary ? 1 : 0.85} />;
-      })}
-
-      {/* Points + labels (only primary series) */}
-      {series.map((s, sidx) => s.rows.map((r, i) => {
-        const x = xAt(i);
-        const y = yAt(Number(r[field] || 0));
-        const anchor = i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle';
-        return (
-          <g key={`${sidx}-${i}`}>
-            <circle cx={x} cy={y} r={s.primary ? 3.5 : 2.5} fill="#fff" stroke={s.color} strokeWidth="2" />
-            {s.primary && (
-              <text x={x} y={y - 10} textAnchor={anchor} fill="#1f2937" fontSize="10" fontWeight="700">
-                {Number(r[field] || 0).toLocaleString('id-ID')}
-              </text>
-            )}
-          </g>
-        );
-      }))}
-
-      {/* X axis (tahun) */}
-      {years.map((y, i) => (
-        <text key={`yr-${i}`} x={xAt(i)} y={H - 6} textAnchor={i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'} fill="#64748b" fontSize="10">{y}</text>
-      ))}
-    </svg>
-  );
+function DashboardSkeleton() {
+  return <div aria-label="Memuat ringkasan dashboard" className="space-y-5"><div className="grid xl:grid-cols-12 gap-5"><div className="glass rounded-3xl h-80 animate-pulse xl:col-span-7" /><div className="glass rounded-3xl h-80 animate-pulse xl:col-span-5" /></div><div className="glass rounded-3xl h-96 animate-pulse" /></div>;
 }

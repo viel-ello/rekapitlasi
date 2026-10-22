@@ -1,0 +1,3 @@
+{
+  "/api/public/dusun/[id]/route": "app/api/public/dusun/[id]/route.js"
+}

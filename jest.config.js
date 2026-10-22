@@ -25,6 +25,7 @@ const config = {
       testMatch: ['<rootDir>/__tests__/client/**/*.test.js'],
       moduleNameMapper: {
         '^@/(.*)$': '<rootDir>/$1',
+        '\\.(?:css|scss)$': '<rootDir>/__mocks__/styleMock.js',
       },
       setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
       transformIgnorePatterns: [

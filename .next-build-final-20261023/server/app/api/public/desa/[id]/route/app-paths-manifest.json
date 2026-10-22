@@ -1,0 +1,3 @@
+{
+  "/api/public/desa/[id]/route": "app/api/public/desa/[id]/route.js"
+}

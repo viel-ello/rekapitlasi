@@ -3,6 +3,7 @@
 import { useRef } from 'react';
 import { motion, useInView, useReducedMotion } from 'framer-motion';
 import { DUSUN_LIST as DUSUN } from '@/lib/dusunNames';
+import { useAmbientMotionPreference } from '@/lib/useAmbientMotionPreference';
 
 const FLOW_EASE = [0.22, 1, 0.36, 1];
 
@@ -10,7 +11,9 @@ const FLOW_EASE = [0.22, 1, 0.36, 1];
 export default function RecapFlowIllustration() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, amount: 0.3 });
-  const reduceMotion = useReducedMotion();
+  const systemReducedMotion = useReducedMotion();
+  const { motionAllowed } = useAmbientMotionPreference();
+  const reduceMotion = systemReducedMotion || !motionAllowed;
   const showFinalState = isInView || reduceMotion;
 
   return (

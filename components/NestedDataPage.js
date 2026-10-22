@@ -20,6 +20,7 @@ import { MONTHS } from '@/lib/dataPages';
 import { captureScrollState, restoreScrollState } from '@/lib/preserveScroll';
 import { getDusunCached } from '@/lib/fetchDusun';
 import { resolveTree, annotate, flattenLeaves, buildHeaderRows } from '@/lib/nestedTable';
+import { useLocalDraft } from '@/lib/useLocalDraft';
 
 /**
  * Komponen generic untuk tabel dengan multi-row header arbitrary depth.
@@ -49,45 +50,6 @@ function VerticalText({ children, height = 130 }) {
       >
         {children}
       </div>
-      {/* Modal Formulir Bertahap (SteppedForm wizard) */}
-      {wizardDusun && (
-        <SteppedForm
-          isOpen={!!wizardDusun}
-          onClose={() => setWizardDusun(null)}
-          title={`Formulir ${config.title}`}
-          subtitle={`Dusun ${wizardDusun.nama}`}
-          dusunName={wizardDusun.nama}
-          tahun={tahun}
-          bulanName={hasMonth ? MONTHS[bulan - 1] : undefined}
-          steps={getStepGroups(config, leaves)}
-          initialData={getRowSnapshot(wizardDusun.id) || {}}
-          validation={validateRow(getRowSnapshot(wizardDusun.id) || {}, leaves, prevYearData[wizardDusun.id] || null)}
-          isSaving={saving === wizardDusun.id}
-          onSave={async (newFormData) => {
-            const payload = { dusun_id: wizardDusun.id, tahun };
-            if (hasMonth) payload.bulan = bulan;
-            leaves.forEach((col) => {
-              payload[col.key] = String(newFormData[col.key] ?? '');
-            });
-            const res = await fetch(config.apiEndpoint, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload),
-            });
-            if (!res.ok) {
-              const err = await res.json();
-              throw new Error(err.error || 'Gagal menyimpan data');
-            }
-            setData((prev) => ({
-              ...prev,
-              [wizardDusun.id]: { ...(prev[wizardDusun.id] || {}), ...newFormData, dusun_id: wizardDusun.id },
-            }));
-            setSaveStatus((prev) => ({ ...prev, [wizardDusun.id]: 'saved' }));
-            setToast({ type: 'success', message: 'Data berhasil disimpan via formulir bertahap' });
-            setWizardDusun(null);
-          }}
-        />
-      )}
     </div>
   );
 }
@@ -185,6 +147,139 @@ export default function NestedDataPage({
     return { resolvedTree, leaves, totalDepth: maxDepth, headerRows };
   }, [effectiveColumns, tree]);
 
+  const isDusunEditable = useCallback(
+    (id) => canEdit && (userDusunId == null || Number(id) === Number(userDusunId)),
+    [canEdit, userDusunId]
+  );
+
+  const prevPeriod = useMemo(() => {
+    if (!hasMonth) return null;
+    if (bulan === 1) {
+      return { tahun: tahun - 1, bulan: 12 };
+    }
+    return { tahun, bulan: bulan - 1 };
+  }, [hasMonth, tahun, bulan]);
+
+  const [confirmCarryOver, setConfirmCarryOver] = useState(false);
+  const [carryingOver, setCarryingOver] = useState(false);
+
+  const {
+    hasDraft,
+    draftTimestamp,
+    showBanner: showDraftBanner,
+    saveDraft,
+    clearDraft,
+    restoreDraft,
+    dismissBanner: dismissDraftBanner,
+  } = useLocalDraft({
+    tableName: config.tableName,
+    tahun,
+    bulan: hasMonth ? bulan : null,
+    dusunId: userDusunId,
+    onRestore: (draft) => {
+      if (!draft) return;
+      let count = 0;
+      const map = pendingChangesRef.current;
+      Object.entries(draft).forEach(([dIdStr, rowChanges]) => {
+        const dId = Number(dIdStr);
+        if (isDusunEditable(dId)) {
+          let row = map.get(dId);
+          if (!row) {
+            row = {};
+            map.set(dId, row);
+          }
+          Object.assign(row, rowChanges);
+          setDirtyIds((prev) => new Set(prev).add(dId));
+          setSaveStatus((prev) => {
+            const next = { ...prev };
+            delete next[dId];
+            return next;
+          });
+          count++;
+        }
+      });
+      setDataVersion((v) => v + 1);
+      setToast({
+        type: 'success',
+        message: `Draf tersimpan lokal berhasil dipulihkan untuk ${count} dusun`,
+      });
+      setTimeout(() => setToast(null), 4000);
+    },
+  });
+
+  const handleCarryOver = async () => {
+    if (!prevPeriod || !canEdit) return;
+    setCarryingOver(true);
+    try {
+      const res = await fetch(`${config.apiEndpoint}?tahun=${prevPeriod.tahun}&bulan=${prevPeriod.bulan}`);
+      if (!res.ok) {
+        throw new Error('Gagal mengambil data periode lalu');
+      }
+      const prevRows = await res.json();
+      if (!prevRows || prevRows.length === 0) {
+        setToast({
+          type: 'warning',
+          message: `Tidak ada data pada periode ${MONTHS[prevPeriod.bulan - 1]} ${prevPeriod.tahun}`,
+        });
+        setTimeout(() => setToast(null), 4000);
+        return;
+      }
+
+      let copiedCount = 0;
+      const map = pendingChangesRef.current;
+      const draftToSave = {};
+
+      prevRows.forEach((r) => {
+        const dId = r.dusun_id ?? r.desa_id;
+        if (dId != null && isDusunEditable(dId)) {
+          let row = map.get(dId);
+          if (!row) {
+            row = {};
+            map.set(dId, row);
+          }
+          leaves.forEach((col) => {
+            const val = r[col.key];
+            if (val !== undefined && val !== null) {
+              row[col.key] = String(val);
+            }
+          });
+          draftToSave[dId] = { ...row };
+          setDirtyIds((prev) => new Set(prev).add(dId));
+          setSaveStatus((prev) => {
+            const next = { ...prev };
+            delete next[dId];
+            return next;
+          });
+          copiedCount++;
+        }
+      });
+
+      if (copiedCount > 0) {
+        saveDraft(draftToSave);
+        setDataVersion((v) => v + 1);
+        setToast({
+          type: 'success',
+          message: `Berhasil menyalin data dari ${MONTHS[prevPeriod.bulan - 1]} ${prevPeriod.tahun} untuk ${copiedCount} dusun (draf belum disimpan)`,
+        });
+      } else {
+        setToast({
+          type: 'warning',
+          message: 'Tidak ada dusun yang dapat disalin untuk akun Anda',
+        });
+      }
+      setTimeout(() => setToast(null), 4000);
+    } catch (err) {
+      setToast({
+        type: 'error',
+        message: err.message || 'Gagal menyalin data periode lalu',
+      });
+      setTimeout(() => setToast(null), 4000);
+    } finally {
+      setCarryingOver(false);
+      setConfirmCarryOver(false);
+    }
+  };
+
   useEffect(() => { fetchDusun(); checkPermission(); fetchOverrides(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (dusun.length > 0) {
@@ -269,6 +364,11 @@ export default function NestedDataPage({
       map.set(dusunId, row);
     }
     row[key] = value;
+    const draftSnapshot = {};
+    for (const [id, r] of map.entries()) {
+      draftSnapshot[id] = { ...r };
+    }
+    saveDraft(draftSnapshot);
     // Tandai dusun sebagai dirty (sekali per dusun, tidak per karakter).
     setDirtyIds((prev) => {
       if (prev.has(dusunId)) return prev;
@@ -341,6 +441,9 @@ export default function NestedDataPage({
       setSaveStatus((prev) => ({ ...prev, [dusunId]: 'saved' }));
       const issues = getRowIssueCount(dusunId);
       setToast({ type: issues > 0 ? 'warning' : 'success', message: issues > 0 ? `Disimpan dengan ${issues} peringatan` : 'Berhasil disimpan' });
+      if (pendingChangesRef.current.size === 0) {
+        clearDraft();
+      }
     } catch (err) {
       setSaveStatus((prev) => ({ ...prev, [dusunId]: 'error' }));
       setToast({ type: 'error', message: err.message });
@@ -350,7 +453,7 @@ export default function NestedDataPage({
     if (hasMonth) { setMonthsWithData((prev) => new Set(prev).add(bulan)); }
     setTimeout(() => setToast(null), 3500);
     setTimeout(() => setSaveStatus((prev) => ({ ...prev, [dusunId]: null })), 5000);
-  }, [data, prevYearData, tahun, bulan, canEdit, config, leaves, hasMonth]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [data, prevYearData, tahun, bulan, canEdit, config, leaves, hasMonth, clearDraft]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const _performSaveAll = async () => {
     const scrollSnapshot = captureScrollState();
@@ -364,6 +467,9 @@ export default function NestedDataPage({
     setSaving(null);
     restoreScrollState(scrollSnapshot);
     if (hasMonth && ok > 0) { setMonthsWithData((prev) => new Set(prev).add(bulan)); }
+    if (fail === 0) {
+      clearDraft();
+    }
     setToast({ type: fail === 0 ? 'success' : 'error', message: `Berhasil ${ok}${fail > 0 ? `, gagal ${fail}` : ''}` });
     setTimeout(() => setToast(null), 4000);
   };
@@ -402,6 +508,7 @@ export default function NestedDataPage({
   const cancelPending = () => {
     pendingChangesRef.current = new Map();
     setDirtyIds(new Set());
+    clearDraft();
     fetchData(tahun);
   };
   const getTotal = (key) => dusun.reduce((sum, d) => {
@@ -410,7 +517,6 @@ export default function NestedDataPage({
     const num = Number(snap?.[key]);
     return sum + (Number.isFinite(num) ? num : 0);
   }, 0);
-  const isDusunEditable = (id) => canEdit && (userDusunId == null || Number(id) === Number(userDusunId));
 
   const totalCols = 2 + leaves.length;
 
@@ -554,12 +660,75 @@ export default function NestedDataPage({
         }}
         onCancel={() => setConfirmCancel(false)}
       />
+      {confirmCarryOver && (
+        <ConfirmModal
+          isOpen={confirmCarryOver}
+          type="warning"
+          title="Salin Data Bulan Lalu?"
+          message={`Salin data dari ${MONTHS[(prevPeriod?.bulan || 1) - 1]} ${prevPeriod?.tahun} ke dalam draf ${hasMonth ? MONTHS[bulan - 1] : ''} ${tahun}? Nilai akan dimuat ke formulir dan belum disimpan ke database.`}
+          confirmText="Ya, Salin Data"
+          cancelText="Batal"
+          onConfirm={handleCarryOver}
+          onCancel={() => setConfirmCarryOver(false)}
+        />
+      )}
+      {wizardDusun && (
+        <SteppedForm
+          isOpen={!!wizardDusun}
+          onClose={() => setWizardDusun(null)}
+          title={`Formulir ${config.title}`}
+          subtitle={`Dusun ${wizardDusun.nama}`}
+          dusunName={wizardDusun.nama}
+          tahun={tahun}
+          bulanName={hasMonth ? MONTHS[bulan - 1] : undefined}
+          steps={getStepGroups(config, leaves)}
+          initialData={getRowSnapshot(wizardDusun.id) || {}}
+          validation={validateRow(getRowSnapshot(wizardDusun.id) || {}, leaves, prevYearData[wizardDusun.id] || null)}
+          isSaving={saving === wizardDusun.id}
+          onSave={async (newFormData) => {
+            const payload = { dusun_id: wizardDusun.id, tahun };
+            if (hasMonth) payload.bulan = bulan;
+            leaves.forEach((col) => {
+              payload[col.key] = String(newFormData[col.key] ?? '');
+            });
+            const res = await fetch(config.apiEndpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+            if (!res.ok) {
+              const err = await res.json();
+              throw new Error(err.error || 'Gagal menyimpan data');
+            }
+            setData((prev) => ({
+              ...prev,
+              [wizardDusun.id]: { ...(prev[wizardDusun.id] || {}), ...newFormData, dusun_id: wizardDusun.id },
+            }));
+            if (pendingChangesRef.current.has(wizardDusun.id)) {
+              pendingChangesRef.current.delete(wizardDusun.id);
+            }
+            setDirtyIds((prev) => {
+              const next = new Set(prev);
+              next.delete(wizardDusun.id);
+              return next;
+            });
+            setSaveStatus((prev) => ({ ...prev, [wizardDusun.id]: 'saved' }));
+            setToast({ type: 'success', message: 'Data berhasil disimpan via formulir bertahap' });
+            setTimeout(() => setToast(null), 4000);
+            setWizardDusun(null);
+          }}
+        />
+      )}
       {toast && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 ${
-          toast.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' :
-          toast.type === 'warning' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-          'bg-red-50 text-red-700 border border-red-200'
-        }`}>
+        <div
+          role={toast.type === 'error' ? 'alert' : 'status'}
+          aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
+          className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 ${
+            toast.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' :
+            toast.type === 'warning' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+            'bg-red-50 text-red-700 border border-red-200'
+          }`}
+        >
           {toast.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <ExclamationCircle className="w-5 h-5" />}
           {toast.message}
         </div>
@@ -604,18 +773,36 @@ export default function NestedDataPage({
               Formulir Bertahap
             </button>
           )}
+          {canEdit && hasMonth && (
+            <button
+              type="button"
+              onClick={() => setConfirmCarryOver(true)}
+              disabled={carryingOver}
+              className="inline-flex items-center gap-1.5 px-3 py-2 glass-pill text-emerald-800 dark:text-emerald-200 hover:bg-white/80 dark:hover:bg-white/20 text-xs sm:text-sm font-semibold rounded-xl transition-all shadow-sm"
+              title="Salin data dari periode bulan sebelumnya ke formulir aktif"
+            >
+              {carryingOver ? (
+                <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg className="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                </svg>
+              )}
+              Salin Bulan Lalu
+            </button>
+          )}
           {canEdit && (
             <button onClick={saveAll} disabled={saving === 'all'} className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors disabled:opacity-50">
               {saving === 'all' ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <FloppyDisk className="w-4 h-4" />}
               Simpan Semua
             </button>
           )}
-          <select value={tahun} onChange={(e) => setTahun(Number(e.target.value))} aria-label="Pilih tahun" className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary-500 outline-none shadow-sm">
-            {years.map((y) => <option key={y} value={y}>{y}</option>)}
+          <select value={tahun} onChange={(e) => setTahun(Number(e.target.value))} aria-label="Pilih tahun" className="px-3 py-2 glass-pill rounded-xl text-sm font-semibold text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 outline-none">
+            {years.map((y) => <option key={y} value={y} className="bg-white dark:bg-surface-dark text-gray-800 dark:text-gray-100">{y}</option>)}
           </select>
           {hasMonth && (
-            <select value={bulan} onChange={(e) => setBulan(Number(e.target.value))} className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary-500 outline-none shadow-sm" aria-label="Pilih bulan" title="Bulan bertanda ● sudah memiliki data">
-              {MONTHS.map((m, i) => <option key={m} value={i + 1}>{monthsWithData.has(i + 1) ? `● ${m}` : m}</option>)}
+            <select value={bulan} onChange={(e) => setBulan(Number(e.target.value))} className="px-3 py-2 glass-pill rounded-xl text-sm font-semibold text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 outline-none" aria-label="Pilih bulan" title="Bulan bertanda ● sudah memiliki data">
+              {MONTHS.map((m, i) => <option key={m} value={i + 1} className="bg-white dark:bg-surface-dark text-gray-800 dark:text-gray-100">{monthsWithData.has(i + 1) ? `● ${m}` : m}</option>)}
             </select>
           )}
         </div>
@@ -624,18 +811,45 @@ export default function NestedDataPage({
       {/* Title block (custom per page) */}
       {titleBlock && titleBlock(tahun, hasMonth ? bulan : undefined)}
 
+      {showDraftBanner && hasDraft && canEdit && dirtyCount === 0 && (
+        <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl glass-panel border border-primary-300 dark:border-primary-700 p-4 shadow-md">
+          <div className="flex items-center gap-2.5 text-sm font-medium text-primary-900 dark:text-primary-100">
+            <ClipboardList className="w-5 h-5 text-primary-600 shrink-0" />
+            <span>
+              Ditemukan draf tersimpan lokal{draftTimestamp ? ` (${draftTimestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` : ''}. Pulihkan perubahan yang belum tersimpan?
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={restoreDraft}
+              className="px-3 py-1.5 text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors shadow-sm"
+            >
+              Pulihkan Draf
+            </button>
+            <button
+              type="button"
+              onClick={clearDraft}
+              className="px-3 py-1.5 text-xs font-medium glass-pill text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 rounded-lg"
+            >
+              Buang Draf
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="relative max-w-sm flex-1 min-w-[200px]">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Search className="h-4 w-4 text-gray-400" /></div>
           <input type="text" placeholder={`Cari ${unitLabel.toLowerCase()}...`} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none shadow-sm" />
+            className="w-full pl-10 pr-4 py-2 glass-input rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none" />
         </div>
         <button
           type="button"
           onClick={() => setOnlyIssues((v) => !v)}
           aria-pressed={onlyIssues}
-          className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border transition-colors ${
-            onlyIssues ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+          className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${
+            onlyIssues ? 'bg-amber-500 text-white shadow-sm' : 'glass-pill text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
           }`}
         >
           <ExclamationCircle className="w-4 h-4" /> Hanya bermasalah
@@ -649,7 +863,7 @@ export default function NestedDataPage({
             <span>{dirtyCount} {unitLabel.toLowerCase()} memiliki perubahan belum tersimpan</span>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setConfirmCancel(true)} className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">Batalkan</button>
+            <button onClick={() => setConfirmCancel(true)} className="px-3 py-1.5 text-xs font-semibold glass-pill text-gray-700 dark:text-gray-200 hover:text-red-600 dark:hover:text-red-400">Batalkan</button>
             <button onClick={saveAll} disabled={saving === 'all'} className="px-3 py-1.5 text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg disabled:opacity-50">
               {saving === 'all' ? 'Menyimpan...' : 'Simpan Semua'}
             </button>
@@ -659,8 +873,8 @@ export default function NestedDataPage({
 
       <div className="md:hidden">
         {filteredDusun.length > 1 && (
-          <div className="sticky top-16 z-20 mb-3 flex items-center gap-2 rounded-xl border border-gray-200 bg-white/95 backdrop-blur px-3 py-2 shadow-sm">
-            <span className="text-xs font-medium text-gray-500 flex-shrink-0">Lompat ke:</span>
+          <div className="sticky top-16 z-20 mb-3 flex items-center gap-2 rounded-xl border border-glass-border-light dark:border-glass-border-dark glass px-3 py-2 shadow-sm">
+            <span className="text-xs font-medium text-gray-600 dark:text-gray-300 flex-shrink-0">Lompat ke:</span>
             <select
               value=""
               onChange={(e) => {
@@ -671,7 +885,7 @@ export default function NestedDataPage({
                   document.getElementById(`dusun-card-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }, 50);
               }}
-              className="flex-1 min-w-0 px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+              className="flex-1 min-w-0 px-2 py-1.5 glass-input rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
               aria-label="Lompat ke dusun"
             >
               <option value="">Pilih dusun...</option>
@@ -680,7 +894,7 @@ export default function NestedDataPage({
           </div>
         )}
         {filteredDusun.map((d, i) => <MobileCard key={d.id} d={d} i={i} />)}
-        {filteredDusun.length === 0 && <div className="text-center py-8 text-gray-500 bg-white rounded-xl border border-gray-100">{unitLabel} tidak ditemukan</div>}
+        {filteredDusun.length === 0 && <div className="text-center py-8 text-gray-500 dark:text-gray-400 glass rounded-xl border border-gray-100 dark:border-gray-800">{unitLabel} tidak ditemukan</div>}
       </div>
 
       <div className="hidden md:block nested-table glass rounded-3xl p-3">
@@ -820,6 +1034,7 @@ export default function NestedDataPage({
                       const valObj = validation[col.key] || { valid: true };
                       const hasError = valObj.severity === 'error';
                       const hasWarning = valObj.severity === 'warning';
+                      const errorClass = hasError ? 'cell-error' : hasWarning ? 'cell-warning' : '';
                       const isText = col.type === 'text';
                       // Word mode: cell lebih lega, textarea auto-grow.
                       const cellMinWidth = isWord
@@ -844,10 +1059,8 @@ export default function NestedDataPage({
                                 onChange={(e) => handleChange(d.id, col.key, e.target.value)}
                                 placeholder={isText ? '' : '0'}
                                 aria-label={`${col.fullLabel || col.label} — ${d.nama}`}
-                                className="w-full text-[13px] py-1.5 px-2 rounded-md border outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-surface-dark text-gray-900 dark:text-gray-100"
+                                className={`w-full text-[13px] py-1.5 px-2 rounded-md border outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-surface-dark text-gray-900 dark:text-gray-100 ${errorClass}`}
                                 style={{
-                                  border: hasError ? '1px solid #fca5a5' : hasWarning ? '1px solid #fcd34d' : undefined,
-                                  background: hasError ? '#fef2f2' : hasWarning ? '#fffbeb' : undefined,
                                   textAlign: isText ? 'left' : 'center',
                                   fontFamily: 'inherit',
                                   lineHeight: 1.4,
@@ -858,7 +1071,7 @@ export default function NestedDataPage({
                               <input type="text"
                                 key={`${d.id}-${col.key}-${dataVersion}`}
                                 aria-label={`${col.fullLabel || col.label} — ${d.nama}`}
-                                className="bg-white dark:bg-surface-dark text-gray-900 dark:text-gray-100"
+                                className={`bg-white dark:bg-surface-dark text-gray-900 dark:text-gray-100 ${errorClass}`}
                                 style={{ width: '100%', padding: '2px 4px', fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 4, outline: 'none' }}
                                 defaultValue={rowData[col.key] ?? ''}
                                 onChange={(e) => handleChange(d.id, col.key, e.target.value)} />
@@ -868,12 +1081,11 @@ export default function NestedDataPage({
                                 type="text"
                                 inputMode="decimal"
                                 aria-label={`${col.fullLabel || col.label} — ${d.nama}`}
-                                className="bg-white dark:bg-surface-dark text-gray-900 dark:text-gray-100"
+                                className={`bg-white dark:bg-surface-dark text-gray-900 dark:text-gray-100 ${errorClass}`}
                                 style={{
                                   width: '100%', padding: '2px 4px', fontSize: 12, textAlign: 'center',
-                                  border: hasError ? '1px solid #fca5a5' : hasWarning ? '1px solid #fcd34d' : '1px solid #e5e7eb',
+                                  border: '1px solid #e5e7eb',
                                   borderRadius: 4,
-                                  background: hasError ? '#fef2f2' : hasWarning ? '#fffbeb' : undefined,
                                   outline: 'none',
                                 }}
                                 defaultValue={rowData[col.key] ?? ''}

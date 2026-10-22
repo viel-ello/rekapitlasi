@@ -70,8 +70,7 @@
    Liquid Glass (glassmorphism) — utilities & ambient backdrop
    ============================================================ */
 @layer components {
-  /* Ambient kaca statis: memberi kedalaman pada latar tanpa menambah gerakan
-     atau mengganggu keterbacaan konten. */
+  /* Intro ambient berlangsung sekali saat sesi dimulai, lalu latar tetap diam. */
   .glass-ambient {
     position: fixed;
     inset: 0;
@@ -93,91 +92,56 @@
       radial-gradient(44rem 36rem at 72% 108%, rgba(4, 120, 87, 0.18), transparent 72%),
       linear-gradient(145deg, #0d1712 0%, #0b1310 52%, #101b15 100%);
   }
-  .glass-ambient::before {
-    content: '';
+  .glass-ambient__shapes {
     position: absolute;
-    left: -9vw;
-    top: 7vh;
-    width: min(54vw, 760px);
-    height: min(68vh, 680px);
-    border: 1px solid rgba(255, 255, 255, 0.42);
-    border-radius: 58% 42% 61% 39% / 42% 51% 49% 58%;
-    transform: perspective(900px) rotateX(14deg) rotateY(-16deg) rotateZ(-14deg);
-    background:
-      radial-gradient(ellipse at 28% 20%, rgba(255, 255, 255, 0.76), rgba(255, 255, 255, 0.28) 11%, rgba(225, 250, 237, 0.12) 30%, transparent 57%),
-      radial-gradient(ellipse at 75% 78%, rgba(4, 120, 87, 0.13), transparent 52%),
-      linear-gradient(145deg, rgba(255, 255, 255, 0.22), rgba(110, 231, 183, 0.04) 54%, rgba(4, 120, 87, 0.08));
-    box-shadow:
-      inset 16px 18px 44px rgba(255, 255, 255, 0.22),
-      inset -20px -18px 50px rgba(4, 120, 87, 0.07),
-      0 28px 42px rgba(16, 105, 72, 0.06);
-    opacity: 0.62;
+    inset: 0;
     pointer-events: none;
   }
-  .dark .glass-ambient::before {
-    background:
-      radial-gradient(ellipse at 28% 20%, rgba(209, 250, 229, 0.18), rgba(167, 243, 208, 0.09) 13%, rgba(16, 90, 61, 0.08) 34%, transparent 58%),
-      radial-gradient(ellipse at 75% 78%, rgba(0, 0, 0, 0.20), transparent 54%),
-      linear-gradient(145deg, rgba(167, 243, 208, 0.06), rgba(16, 90, 61, 0.10) 58%, rgba(0, 0, 0, 0.12));
-    border-color: rgba(209, 250, 229, 0.13);
-    box-shadow:
-      inset 16px 18px 44px rgba(209, 250, 229, 0.07),
-      inset -20px -18px 50px rgba(0, 0, 0, 0.20),
-      0 28px 42px rgba(0, 0, 0, 0.16);
-    opacity: 0.68;
-  }
-  .glass-ambient::after {
-    content: '';
+  .glass-ambient__shapes-art {
     position: absolute;
-    right: -11vw;
-    bottom: -16vh;
-    width: min(59vw, 820px);
-    height: min(70vh, 700px);
-    border: 1px solid rgba(255, 255, 255, 0.34);
-    border-radius: 39% 61% 48% 52% / 58% 42% 58% 42%;
-    transform: perspective(1000px) rotateX(-12deg) rotateY(15deg) rotateZ(12deg);
-    background:
-      radial-gradient(ellipse at 34% 24%, rgba(255, 255, 255, 0.66), rgba(255, 255, 255, 0.22) 12%, rgba(209, 250, 229, 0.12) 32%, transparent 58%),
-      radial-gradient(ellipse at 80% 72%, rgba(4, 120, 87, 0.16), transparent 55%),
-      linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(167, 243, 208, 0.06) 48%, rgba(4, 120, 87, 0.09));
-    box-shadow:
-      inset 14px 16px 40px rgba(255, 255, 255, 0.18),
-      inset -22px -20px 54px rgba(4, 120, 87, 0.08),
-      0 30px 48px rgba(16, 105, 72, 0.07);
-    opacity: 0.60;
+    inset: 0;
+    background: url('/ambient-lumbung.svg') center / 100% 100% no-repeat;
+    opacity: 0.88;
     pointer-events: none;
   }
-  .dark .glass-ambient::after {
+  .dark .glass-ambient__shapes {
+    filter: saturate(0.72) brightness(0.7);
+  }
+  .dark .glass-ambient__shapes-art {
+    opacity: 0.78;
+  }
+  .glass-ambient__glow {
+    position: absolute;
+    inset: 0;
     background:
-      radial-gradient(ellipse at 34% 24%, rgba(209, 250, 229, 0.16), rgba(167, 243, 208, 0.08) 14%, rgba(16, 90, 61, 0.08) 34%, transparent 58%),
-      radial-gradient(ellipse at 80% 72%, rgba(0, 0, 0, 0.24), transparent 56%),
-      linear-gradient(145deg, rgba(167, 243, 208, 0.05), rgba(16, 90, 61, 0.10) 52%, rgba(0, 0, 0, 0.14));
-    border-color: rgba(209, 250, 229, 0.12);
-    box-shadow:
-      inset 14px 16px 40px rgba(209, 250, 229, 0.06),
-      inset -22px -20px 54px rgba(0, 0, 0, 0.22),
-      0 30px 48px rgba(0, 0, 0, 0.18);
-    opacity: 0.72;
+      radial-gradient(ellipse 31rem 22rem at 4% 92%, rgba(250, 226, 183, 0.20), transparent 72%),
+      radial-gradient(ellipse 34rem 25rem at 96% 6%, rgba(110, 231, 183, 0.16), transparent 70%);
+    pointer-events: none;
+  }
+  .dark .glass-ambient__glow {
+    background:
+      radial-gradient(ellipse 31rem 22rem at 4% 92%, rgba(189, 137, 60, 0.09), transparent 72%),
+      radial-gradient(ellipse 34rem 25rem at 96% 6%, rgba(16, 185, 129, 0.12), transparent 70%);
   }
   @media (max-width: 767px) {
-    .glass-ambient::before {
-      left: -34vw;
-      top: 4vh;
-      width: 82vw;
-      height: 42vh;
-      opacity: 0.40;
-      transform: perspective(900px) rotateX(14deg) rotateY(-16deg) rotateZ(-14deg) scale(0.9);
+    .glass-ambient__shapes-art {
+      background-image: url('/ambient-lumbung-mobile.svg');
     }
-    .glass-ambient::after {
-      right: -36vw;
-      bottom: -8vh;
-      width: 88vw;
-      height: 44vh;
-      opacity: 0.34;
-      transform: perspective(1000px) rotateX(-12deg) rotateY(15deg) rotateZ(12deg) scale(0.9);
+    .dark .glass-ambient__shapes {
+      filter: saturate(0.72) brightness(0.76);
     }
-    .dark .glass-ambient::before { opacity: 0.42; }
-    .dark .glass-ambient::after { opacity: 0.51; }
+    .dark .glass-ambient__shapes-art {
+      background-image: url('/ambient-lumbung-mobile.svg');
+      opacity: 0.68;
+    }
+    .glass-ambient__shapes-art {
+      opacity: 0.76;
+    }
+    .glass-ambient__glow {
+      background:
+        radial-gradient(ellipse 19rem 18rem at 0% 100%, rgba(250, 226, 183, 0.16), transparent 72%),
+        radial-gradient(ellipse 20rem 18rem at 100% 0%, rgba(110, 231, 183, 0.13), transparent 70%);
+    }
   }
 
   /* 1. VisionOS Translucent Frosted Card (KPI cards, charts, containers)
@@ -1312,6 +1276,34 @@
 .dark .nested-table table tbody tr[style*="F0FDF4"] td {
   background-color: #14463a !important;
   color: #6ee7b7 !important;
+}
+
+/* Table cell validation states */
+.cell-error {
+  border-color: #f87171 !important;
+  background-color: rgba(254, 242, 242, 0.95) !important;
+  color: #991b1b !important;
+}
+.cell-warning {
+  border-color: #fbbf24 !important;
+  background-color: rgba(254, 252, 232, 0.95) !important;
+  color: #92400e !important;
+}
+.dark .cell-error,
+.dark .nested-table table input.cell-error,
+.dark .nested-table table textarea.cell-error {
+  border-color: rgba(248, 113, 113, 0.85) !important;
+  background-color: rgba(127, 29, 29, 0.35) !important;
+  color: #fecaca !important;
+  box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.45) !important;
+}
+.dark .cell-warning,
+.dark .nested-table table input.cell-warning,
+.dark .nested-table table textarea.cell-warning {
+  border-color: rgba(251, 191, 36, 0.85) !important;
+  background-color: rgba(120, 53, 15, 0.35) !important;
+  color: #fef3c7 !important;
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.45) !important;
 }
 
 /* Kaca tetap terbaca tanpa menghilangkan pantulan dan difusi latar. */

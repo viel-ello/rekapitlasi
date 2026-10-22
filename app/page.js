@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import {
   ArrowRightToBracket,
   Globe,
@@ -13,12 +14,15 @@ import {
 } from 'flowbite-react-icons/outline';
 import AnimatedCounter from '@/components/AnimatedCounter';
 import RecapFlowIllustration from '@/components/RecapFlowIllustration';
+import AmbientBackdrop from '@/components/AmbientBackdrop';
+import AmbientMotionToggle from '@/components/AmbientMotionToggle';
+import { useAmbientMotionPreference } from '@/lib/useAmbientMotionPreference';
 
 const FEATURES = [
   {
     icon: ClipboardList,
     title: 'Rekap data PKK terpadu',
-    desc: 'Data Umum, Pokja I-IV, Kegiatan Warga, dan Bumil dalam satu sistem konsisten antar dusun.',
+    desc: 'Data Umum, Pokja I–IV, Rekapitulasi Dawis, dan Bumil dalam satu alur pencatatan antar dusun.',
   },
   {
     icon: ChartLineUp,
@@ -34,14 +38,20 @@ const FEATURES = [
 
 export default function WelcomePage() {
   const [summary, setSummary] = useState(null);
+  const [preview, setPreview] = useState('pencatatan');
+  const [summaryState, setSummaryState] = useState('loading');
+  const { motionAllowed } = useAmbientMotionPreference();
+  const entrance = (delay) => ({ initial: motionAllowed ? { opacity: 0, y: 14 } : false, animate: { opacity: 1, y: 0 }, transition: { duration: 0.45, delay } });
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const res = await fetch('/api/public/summary', { cache: 'no-store' });
-        if (res.ok && !cancelled) setSummary(await res.json());
-      } catch { /* silent — fallback ke konten statis */ }
+        if (!res.ok) throw new Error('unavailable');
+        const payload = await res.json();
+        if (!cancelled) { setSummary(payload); setSummaryState('ready'); }
+      } catch { if (!cancelled) setSummaryState('unavailable'); }
     })();
     return () => { cancelled = true; };
   }, []);
@@ -49,20 +59,21 @@ export default function WelcomePage() {
   return (
     <div className="relative min-h-screen bg-dashboard text-gray-800">
       {/* Ambient backdrop untuk efek VisionOS Liquid Glass di halaman awal */}
-      <div className="glass-ambient" aria-hidden="true" />
+      <AmbientBackdrop />
 
       <div className="relative z-[1]">
         {/* Header */}
         <header className="glass-header sticky top-0 z-30">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
             <Link href="/" className="flex items-center gap-2.5 min-w-0">
-              <img src="/logo.png" alt="Logo TP PKK Desa Belikurip" className="w-9 h-9 rounded-full object-cover flex-shrink-0 ring-2 ring-white/70 shadow-sm" />
+              <img src="/logo.png" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = '/map-baturetno.svg'; }} alt="Logo TP PKK Desa Belikurip" className="w-9 h-9 rounded-full object-cover flex-shrink-0 ring-2 ring-white/70 shadow-sm" />
               <div className="min-w-0">
                 <div className="text-sm font-bold text-gray-800 truncate">Lumbung PKK</div>
                 <div className="text-[11px] text-gray-600 truncate">Desa Belikurip</div>
               </div>
             </Link>
             <div className="flex items-center gap-2">
+              <AmbientMotionToggle compact />
               <Link
                 href="/publik"
                 className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full glass-pill text-sm font-medium text-gray-700 hover:text-primary-700 transition-colors"
@@ -82,16 +93,11 @@ export default function WelcomePage() {
         {/* Hero */}
         <section className="relative overflow-hidden">
           <div className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-10 pb-10 sm:pt-14 sm:pb-14">
-            <div className="glass-panel rounded-3xl p-6 sm:p-10">
-              <div className="grid lg:grid-cols-2 gap-8 lg:gap-10 items-center">
-                <div className="max-w-3xl">
-                  <span className="inline-block px-3.5 py-1 rounded-full glass-pill text-primary-800 text-xs font-semibold uppercase tracking-wide mb-4">
-                    TP PKK · Desa Belikurip · Kecamatan Baturetno · Wonogiri
-                  </span>
-                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 leading-tight">
-                    Lumbung Data PKK
-                    <br className="hidden sm:block" />
-                    <span className="text-primary-700"> Desa Belikurip</span>
+            <div className="grid lg:grid-cols-[1.05fr_1fr] gap-8 lg:gap-12 items-center">
+                <motion.div {...entrance(0)} className="max-w-3xl py-3 sm:py-8">
+                  <p className="text-sm font-semibold text-primary-800 mb-5">TP PKK Desa Belikurip</p>
+                  <h1 className="text-4xl sm:text-5xl lg:text-[3.6rem] font-bold tracking-tight text-gray-900 leading-[1.08]">
+                    Dari catatan dusun,<br />menjadi laporan desa.
                   </h1>
                   <p className="mt-4 text-sm sm:text-base text-gray-700 max-w-2xl leading-relaxed">
                     Aplikasi internal untuk mencatat, memantau, dan melaporkan data kegiatan PKK 9 dusun di Desa Belikurip.
@@ -112,22 +118,25 @@ export default function WelcomePage() {
                       <Globe className="w-4 h-4" /> Lihat Data Publik
                     </Link>
                   </div>
-                </div>
+                  <p className="mt-6 text-xs text-gray-500">Kecamatan Baturetno, Kabupaten Wonogiri</p>
+                </motion.div>
 
                 {/* Ilustrasi relief 3D non-geografis Desa Belikurip */}
-                <div className="relative">
-                  <div className="glass rounded-3xl p-4 sm:p-6">
-                    <RecapFlowIllustration />
+                <motion.div {...entrance(0.12)} className="relative glass-panel rounded-[2rem] p-4 sm:p-5">
+                  <div className="flex gap-1 rounded-2xl bg-white/50 p-1" role="tablist" aria-label="Pratinjau alur aplikasi">
+                    {['pencatatan', 'kelengkapan', 'laporan'].map((tab, index, tabs) => <button key={tab} type="button" id={`preview-${tab}`} role="tab" aria-selected={preview === tab} aria-controls="home-preview" tabIndex={preview === tab ? 0 : -1} onClick={() => setPreview(tab)} onKeyDown={(event) => { const next = event.key === 'ArrowRight' ? (index + 1) % tabs.length : event.key === 'ArrowLeft' ? (index + tabs.length - 1) % tabs.length : event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : null; if (next !== null) { event.preventDefault(); setPreview(tabs[next]); document.getElementById(`preview-${tabs[next]}`)?.focus(); } }} className={`flex-1 min-h-11 rounded-xl px-2 text-xs sm:text-sm font-semibold capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 ${preview === tab ? 'bg-white text-primary-800 shadow-sm' : 'text-gray-600 hover:bg-white/60'}`}>{tab}</button>)}
                   </div>
-                </div>
-              </div>
+                  <div id="home-preview" role="tabpanel" aria-labelledby={`preview-${preview}`} className="mt-4 min-h-[330px] sm:min-h-[365px] flex flex-col justify-center">
+                    {preview === 'pencatatan' ? <><RecapFlowIllustration /><p className="mt-3 px-2 text-xs text-gray-600">Alur pencatatan sembilan dusun, rekap, dan laporan PKK.</p></> : preview === 'kelengkapan' ? <div className="p-3 sm:p-5"><h2 className="text-xl font-bold text-gray-900">Lihat bagian yang perlu dilengkapi.</h2><p className="text-sm text-gray-600 mt-3">Status pengisian dan hasil validasi ditampilkan per dusun dan periode.</p><div className="mt-6 grid grid-cols-3 gap-2">{[['Lengkap', summary?.completeness?.complete], ['Perlu dicek', summary?.completeness?.needsCheck], ['Belum lengkap', summary?.completeness?.incomplete]].map(([label, value]) => <div key={label} className="rounded-2xl bg-white/65 p-3"><strong className="block text-2xl text-primary-800 tabular-nums">{summary ? value ?? '—' : '—'}</strong><span className="text-xs text-gray-600">{label}</span></div>)}</div><p className="text-xs text-gray-500 mt-4" role="status">{summaryState === 'loading' ? 'Memuat ringkasan publik…' : !summary ? 'Ringkasan belum tersedia. Fitur pencatatan tetap dapat diakses melalui halaman masuk.' : `Periode bulan ${summary.bulan}, tahun ${summary.tahun}. Status menunjukkan kelengkapan pencatatan.`}</p></div> : <div className="p-3 sm:p-5"><ChartPie className="h-10 w-10 text-primary-700" /><h2 className="text-xl font-bold text-gray-900 mt-5">Laporan mengikuti periode.</h2><p className="text-sm text-gray-600 mt-3">Petugas dapat mengunduh template, mengimpor Excel dengan pratinjau, dan mengekspor laporan Excel atau Word.</p><div className="mt-6 rounded-2xl bg-white/65 p-4 text-sm text-primary-900">Warga dapat membuka ringkasan agregat dan detail per dusun tanpa masuk.</div><Link href="/publik" className="mt-5 inline-flex min-h-11 items-center text-sm font-semibold text-primary-700 underline focus-visible:ring-2 focus-visible:ring-primary-600">Buka ringkasan publik</Link></div>}
+                  </div>
+                </motion.div>
             </div>
           </div>
         </section>
 
         {/* Public KPI strip */}
         {summary && (
-          <section className="py-2">
+          <motion.section {...entrance(0.22)} className="py-2">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                 <KpiTile label="Dusun Aktif" value={summary.totalDusun ?? summary.totalDesa} icon={Users} tone="primary" />
@@ -154,11 +163,11 @@ export default function WelcomePage() {
                 <Link href="/publik" className="text-primary-700 font-semibold hover:underline">buka data publik</Link>.
               </p>
             </div>
-          </section>
+          </motion.section>
         )}
 
         {/* Features */}
-        <section className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        <motion.section {...entrance(0.3)} className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
           <h2 className="text-base sm:text-lg font-bold text-gray-900 mb-5">Yang dilakukan aplikasi ini</h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {FEATURES.map(({ icon: Icon, title, desc }) => (
@@ -171,7 +180,7 @@ export default function WelcomePage() {
               </div>
             ))}
           </div>
-        </section>
+        </motion.section>
 
         {/* Footer */}
         <footer className="glass-header border-t border-white/60 mt-6">

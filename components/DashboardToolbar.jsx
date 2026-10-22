@@ -8,8 +8,8 @@
  * Desktop: semua sejajar.
  */
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useRef, useState } from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
   Download, Upload, FileLines, ClipboardList, DotsHorizontal,
 } from 'flowbite-react-icons/outline';
@@ -31,9 +31,12 @@ export default function DashboardToolbar({
   jenisData, setJenisData, tableFilters,
   onDownloadExcel, onDownloadWord, onDownloadTemplate,
   downloading, downloadingTemplate,
+  actionsDisabled = false,
 }) {
   const [showTemplate, setShowTemplate] = useState(false);
   const [showOverflow, setShowOverflow] = useState(false);
+  const overflowTrigger = useRef(null);
+  const reduceMotion = useReducedMotion();
 
   return (
     <div className="space-y-2">
@@ -57,6 +60,16 @@ export default function DashboardToolbar({
                   type="button"
                   role="tab"
                   aria-selected={isActive}
+                  tabIndex={isActive ? 0 : -1}
+                  onKeyDown={(event) => {
+                    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+                    event.preventDefault();
+                    const tabs = Array.from(event.currentTarget.parentElement.querySelectorAll('[role="tab"]'));
+                    const index = tabs.indexOf(event.currentTarget);
+                    const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+                    setJenisData(tableFilters[next].value);
+                    tabs[next]?.focus();
+                  }}
                   onClick={() => setJenisData(tab.value)}
                   className={`relative px-2.5 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${
                     isActive
@@ -67,8 +80,8 @@ export default function DashboardToolbar({
                   {isActive && (
                     <motion.div
                       layoutId="dashboardFilterPill"
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                      className="absolute inset-0 bg-primary-600 rounded-lg shadow-sm -z-10"
+                      transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 400, damping: 30 }}
+                      className="absolute inset-0 bg-primary-600 rounded-lg shadow-sm"
                     />
                   )}
                   <span className="relative z-10">{tab.label || tab.short}</span>
@@ -97,7 +110,7 @@ export default function DashboardToolbar({
           <motion.button
             whileTap={{ scale: 0.96 }}
             onClick={() => onDownloadExcel()}
-            disabled={downloading === 'excel'}
+            disabled={actionsDisabled || downloading === 'excel'}
             className="inline-flex items-center gap-1.5 px-3 py-2 hover:bg-green-500/15 text-green-700 dark:text-green-300 text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
             title="Unduh laporan Excel"
             aria-label="Unduh laporan Excel"
@@ -108,7 +121,7 @@ export default function DashboardToolbar({
           <motion.button
             whileTap={{ scale: 0.96 }}
             onClick={() => onDownloadWord()}
-            disabled={downloading === 'word'}
+            disabled={actionsDisabled || downloading === 'word'}
             className="inline-flex items-center gap-1.5 px-3 py-2 hover:bg-blue-500/15 text-blue-700 dark:text-blue-300 text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
             title="Unduh laporan Word"
             aria-label="Unduh laporan Word"
@@ -129,10 +142,12 @@ export default function DashboardToolbar({
         {/* Overflow menu — Template + (future) actions */}
         <div className="relative ml-auto sm:ml-0">
           <motion.button
+            ref={overflowTrigger}
             whileTap={{ scale: 0.94 }}
             onClick={() => setShowOverflow(!showOverflow)}
             className="inline-flex items-center justify-center w-9 h-9 glass-pill text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white rounded-xl"
             aria-label="Tindakan lain"
+            aria-expanded={showOverflow}
             title="Tindakan lain"
           >
             <DotsHorizontal className="w-4 h-4" />
@@ -147,6 +162,7 @@ export default function DashboardToolbar({
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: -6 }}
                   transition={{ type: "spring", stiffness: 420, damping: 28 }}
+                  onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); setShowOverflow(false); overflowTrigger.current?.focus(); } }}
                   className="absolute right-0 mt-2 w-56 glass-panel rounded-2xl shadow-lg z-20 py-1.5"
                 >
                   <button

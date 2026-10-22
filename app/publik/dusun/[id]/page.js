@@ -6,6 +6,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { ArrowLeft, CheckCircle, ExclamationCircle, ChartLineUp } from 'flowbite-react-icons/outline';
 import PublicHeader from '@/components/PublicHeader';
 import { usePublicYears } from '@/lib/usePublicYears';
+import AmbientBackdrop from '@/components/AmbientBackdrop';
 
 const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
@@ -39,7 +40,7 @@ const COLUMN_LABEL = {
 const STATUS_LABEL = { lengkap: 'Lengkap', perlu_dicek: 'Perlu Dicek', belum_lengkap: 'Belum Lengkap' };
 
 function fmt(n) {
-  return Number(n || 0).toLocaleString('id-ID');
+  return n == null ? '—' : Number(n).toLocaleString('id-ID');
 }
 
 export default function PublikDusunDetail() {
@@ -84,17 +85,17 @@ export default function PublikDusunDetail() {
 
   return (
     <div className="relative min-h-screen bg-[#f6f9f6]">
-      <div className="glass-ambient" aria-hidden="true" />
+      <AmbientBackdrop />
       <div className="relative z-[1]">
       <PublicHeader />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        <Link
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4"><Link
           href={`/publik?tahun=${tahun}&bulan=${bulan}`}
-          className="inline-flex items-center gap-1 text-sm text-primary-700 hover:text-primary-800 mb-3"
+          className="inline-flex items-center gap-1 min-h-11 text-sm text-primary-700 hover:text-primary-800 focus-visible:ring-2 focus-visible:ring-primary-600"
         >
           <ArrowLeft className="w-4 h-4" /> Kembali ke daftar dusun
-        </Link>
+        </Link></div>
 
         {yearsError && <p role="status" className="text-sm text-amber-800 mb-3">{yearsError} <button type="button" className="underline" onClick={retryYears}>Coba lagi</button></p>}
 
@@ -108,13 +109,14 @@ export default function PublikDusunDetail() {
         ) : (
           <>
             {/* Header */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 mb-4 sm:mb-5">
+            <div className="glass-panel rounded-3xl p-5 sm:p-8 mb-4 sm:mb-5">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                 <div>
                   <div className="text-xs text-gray-500">Dusun</div>
-                  <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+                  <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-gray-900">
                     {data?.dusun?.nama || (loading ? 'Memuat...' : 'Dusun')}
                   </h1>
+                  <p className="mt-2 text-sm text-gray-600">Catatan publik periode {MONTHS[bulan - 1]} {tahun}</p>
                   {data?.statusLabel && (
                     <span className={`inline-block mt-2 px-2.5 py-1 rounded-full text-xs font-medium border ${
                       data.status === 'lengkap' ? 'bg-green-50 text-green-700 border-green-200' :
@@ -173,7 +175,7 @@ export default function PublikDusunDetail() {
                   ? Object.keys(row).filter((k) => !['dusun_id', 'desa_id', 'tahun', 'bulan'].includes(k))
                   : [];
                 return (
-                  <div key={t} className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5">
+                  <div key={t} className="glass rounded-3xl p-4 sm:p-5">
                     <div className="flex items-center justify-between gap-3 mb-3">
                       <h3 className="text-sm font-bold text-gray-800">{TABLE_LABEL[t]}</h3>
                       {status && (

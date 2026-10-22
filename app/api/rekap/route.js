@@ -141,7 +141,7 @@ export async function GET(request) {
     const { data: bumilList } = await queryWithOptionalMonth(
       () => supabase
         .from('data_bumil')
-        .select('tahun, dusun_id, ibu_hamil, ibu_melahirkan, ibu_nifas, bayi_lahir_l, bayi_lahir_p')
+        .select('*')
         .eq('tahun', tahun),
       bulan
     );
@@ -261,27 +261,35 @@ export async function GET(request) {
     // ── Completeness check ──
     const hiddenKeysPerTable = await getHiddenKeysPerTable();
 
+    const prefetchedCurrent = {
+      data_umum: umumList || [],
+      data_pokja1: p1List || [],
+      data_pokja2: p2List || [],
+      data_pokja3: p3List || [],
+      data_pokja4: p4List || [],
+      data_rekap_dawis: dawisList || [],
+      data_bumil: bumilList || [],
+    };
+
     const tableChecks = await Promise.all(
       selectedTables.map(async (tableName) => {
         const allKeys = getTableKeys(tableName);
         const hidden = hiddenKeysPerTable[tableName] || new Set();
         const keys = allKeys.filter((k) => !hidden.has(k));
 
-        const fetchRows = (year) => {
-          const buildQuery = () => supabase.from(tableName).select('*').eq('tahun', year);
+        const fetchPreviousYearRows = () => {
+          const buildQuery = () => supabase.from(tableName).select('*').eq('tahun', Number(tahun) - 1);
           return MONTHLY_TABLES.has(tableName)
             ? queryWithOptionalMonth(buildQuery, bulan)
             : buildQuery();
         };
 
-        const [{ data: currentRows }, { data: previousRows }] = await Promise.all([
-          fetchRows(tahun),
-          fetchRows(Number(tahun) - 1),
-        ]);
+        const currentRows = prefetchedCurrent[tableName] || [];
+        const { data: previousRows } = await fetchPreviousYearRows();
         const currentMap = {};
         const previousMap = {};
 
-        (currentRows || []).forEach((row) => {
+        currentRows.forEach((row) => {
           const id = unitIdOf(row);
           if (id != null) currentMap[id] = row;
         });

@@ -48,6 +48,7 @@ function unitIdOf(row) {
  *   - tanpa `bulan`: aggregate sum semua bulan jadi 1 row per dusun.
  */
 const METADATA_KEYS = new Set(['id', 'dusun_id', 'desa_id', 'tahun', 'bulan', 'created_at', 'updated_at', 'keterangan']);
+const SNAPSHOT_TABLES = new Set(['data_umum', 'data_rekap_dawis']);
 
 function sanitizeCellText(val) {
   if (val == null) return '';
@@ -61,6 +62,7 @@ function sanitizeCellText(val) {
 async function fetchDusunData(table, tahun, bulan = null, dusunByName) {
   const TABLES_WITH_MONTH = new Set(['data_bumil', 'data_rekap_dawis', 'data_umum']);
   const isMonthly = TABLES_WITH_MONTH.has(table);
+  const isSnapshot = SNAPSHOT_TABLES.has(table);
 
   let q = supabase.from(table).select('*').eq('tahun', tahun);
   if (isMonthly && bulan != null) q = q.eq('bulan', bulan);
@@ -71,13 +73,26 @@ async function fetchDusunData(table, tahun, bulan = null, dusunByName) {
     map[dusunNama] = {};
   }
 
+  if (isMonthly && bulan == null && isSnapshot) {
+    // SNAPSHOT TABLE ANNUAL EXPORT: Ambil data bulan terakhir yang tersedia per dusun (mencegah inflasi 12x)
+    const sortedRows = (rows || []).slice().sort((a, b) => (Number(a.bulan) || 0) - (Number(b.bulan) || 0));
+    for (const row of sortedRows) {
+      const id = unitIdOf(row);
+      const dusunName = Object.keys(dusunByName).find((nama) => dusunByName[nama].id === id);
+      if (dusunName) {
+        map[dusunName] = row;
+      }
+    }
+    return map;
+  }
+
   for (const row of rows || []) {
     const id = unitIdOf(row);
     const dusunName = Object.keys(dusunByName).find((nama) => dusunByName[nama].id === id);
     if (!dusunName) continue;
 
     if (isMonthly && bulan == null) {
-      // Aggregate semua bulan
+      // Aggregate semua bulan (kumulatif untuk tabel event seperti data_bumil)
       const existing = map[dusunName];
       for (const [k, v] of Object.entries(row)) {
         if (METADATA_KEYS.has(k)) {

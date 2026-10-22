@@ -53,6 +53,35 @@ function applyOverride(col, override) {
   };
 }
 
+function sanitizeCellText(val) {
+  if (val == null) return '';
+  if (typeof val === 'number') return val;
+  const str = String(val);
+  if (!Number.isNaN(Number(str)) && str.trim() !== '') return str;
+  if (/^[=+\-@\t\r]/.test(str)) return `'${str}`;
+  return str;
+}
+
+function resolveCellValue(raw, col) {
+  const isExplicitText = col?.type === 'text';
+  const isNanText = raw != null && raw !== '' && typeof raw !== 'number' && Number.isNaN(Number(raw));
+  if (isExplicitText || isNanText) {
+    const textVal = raw == null ? '' : String(raw);
+    return {
+      isText: true,
+      textVal: sanitizeCellText(textVal),
+      rawText: textVal,
+    };
+  }
+  const numVal = raw == null || raw === '' ? 0 : Number(raw);
+  return {
+    isText: false,
+    numVal: Number.isNaN(numVal) ? 0 : numVal,
+    rawText: String(Number.isNaN(numVal) ? 0 : numVal),
+  };
+}
+
+
 async function gatherReport(config) {
   const overrides = await fetchOverrides();
 
@@ -187,15 +216,26 @@ async function buildExcel(report, config) {
         i + 1,
         r._dusun_nama || r._desa_nama,
         r.tahun,
-        ...sheet.columns.map((c) => Number(r[c.key] || 0)),
+        ...sheet.columns.map((c) => {
+          const res = resolveCellValue(r[c.key], c);
+          return res.isText ? res.textVal : res.numVal;
+        }),
       ];
       const rr = ws.addRow(rowVals);
-      rr.eachCell((c) => {
+      rr.eachCell((c, colNum) => {
         c.font = { size: 10 };
         c.border = BORDER;
-        if (typeof c.value === 'number') {
+        if (colNum === 1) {
+          c.alignment = { horizontal: 'center' };
+        } else if (colNum === 2) {
+          c.alignment = { horizontal: 'left' };
+        } else if (colNum === 3) {
+          c.alignment = { horizontal: 'center' };
+        } else if (typeof c.value === 'number') {
           c.alignment = { horizontal: 'right' };
           c.numFmt = '#,##0';
+        } else {
+          c.alignment = { horizontal: 'left' };
         }
       });
     });
@@ -234,9 +274,18 @@ async function buildWord(report, config) {
 
     const dataRows = sheet.rows.map((r, i) => new TableRow({
       children: [
-        i + 1, r._dusun_nama || r._desa_nama, r.tahun, ...sheet.columns.map((c) => Number(r[c.key] || 0)),
-      ].map((v) => new TableCell({
-        children: [new Paragraph({ children: [new TextRun({ text: String(v), size: 18 })], alignment: AlignmentType.CENTER })],
+        i + 1,
+        r._dusun_nama || r._desa_nama,
+        r.tahun,
+        ...sheet.columns.map((c) => {
+          const res = resolveCellValue(r[c.key], c);
+          return res.isText ? res.rawText : String(res.numVal);
+        }),
+      ].map((v, colIdx) => new TableCell({
+        children: [new Paragraph({
+          children: [new TextRun({ text: String(v), size: 18 })],
+          alignment: colIdx > 2 && !sheet.columns[colIdx - 3]?.type ? AlignmentType.RIGHT : (colIdx === 1 ? AlignmentType.LEFT : AlignmentType.CENTER),
+        })],
         borders: cellBorder,
       })),
     }));
@@ -325,12 +374,19 @@ async function buildPdf(report, config) {
       let xx = doc.page.margins.left;
       const rowH = 18;
       const cells = [
-        String(i + 1), r._dusun_nama || r._desa_nama || '-', String(r.tahun),
-        ...sheet.columns.map((c) => Number(r[c.key] || 0).toLocaleString('id-ID')),
+        String(i + 1),
+        r._dusun_nama || r._desa_nama || '-',
+        String(r.tahun),
+        ...sheet.columns.map((c) => {
+          const res = resolveCellValue(r[c.key], c);
+          return res.isText ? res.rawText : res.numVal.toLocaleString('id-ID');
+        }),
       ];
       cells.forEach((val, idx) => {
         doc.rect(xx, y, widths[idx], rowH).strokeColor('#cccccc').stroke();
-        doc.fillColor('#000000').text(val, xx + 2, y + 4, { width: widths[idx] - 4, align: idx >= 3 ? 'right' : (idx === 1 ? 'left' : 'center'), ellipsis: true });
+        const isColText = idx >= 3 && sheet.columns[idx - 3]?.type === 'text';
+        const align = idx === 0 || idx === 2 ? 'center' : (idx === 1 || isColText ? 'left' : 'right');
+        doc.fillColor('#000000').text(val, xx + 2, y + 4, { width: widths[idx] - 4, align, ellipsis: true });
         xx += widths[idx];
       });
       y += rowH;

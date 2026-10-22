@@ -26,19 +26,24 @@ export default function AnimatedCounter({
   const shouldReduceMotion = useReducedMotion();
   const target = normalizeNumber(value);
   const [display, setDisplay] = useState(shouldReduceMotion ? target : normalizeNumber(start));
+  const currentValue = useRef(shouldReduceMotion ? target : normalizeNumber(start));
 
   useEffect(() => {
     if (shouldReduceMotion) {
+      currentValue.current = target;
       setDisplay(target);
       return;
     }
     if (!isInView) return;
 
-    const controls = animate(normalizeNumber(start), target, {
+    const controls = animate(currentValue.current, target, {
       duration,
       delay,
       ease: 'easeOut',
-      onUpdate: (latest) => setDisplay(Math.round(latest)),
+      onUpdate: (latest) => {
+        currentValue.current = latest;
+        setDisplay(Math.round(latest));
+      },
     });
 
     return () => controls.stop();

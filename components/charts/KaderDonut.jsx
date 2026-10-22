@@ -38,7 +38,12 @@ export default function KaderDonut({ segments = [] }) {
         Distribusi Kader
       </h3>
       <div className="flex items-center justify-between gap-4">
-        <svg viewBox="0 0 100 100" className="w-32 h-32 shrink-0">
+        <svg
+          viewBox="0 0 100 100"
+          className="w-32 h-32 shrink-0"
+          role="img"
+          aria-label={`Grafik donat distribusi kader, total ${total} kader`}
+        >
           {/* Background ring */}
           <circle cx="50" cy="50" r="40" fill="none" className="stroke-gray-100 dark:stroke-surface-dark-elevated" strokeWidth="14" />
           {/* Animated segments */}

@@ -141,3 +141,112 @@ Integrity mode: development
 - [ ] Unit & Client Test Suite: `npm test` lulus 100% tanpa regresi.
 - [ ] Production Build: `npm run build` kompilasi bersih 0 error.
 - [ ] Dukungan `prefers-reduced-motion` berfungsi dengan benar.
+
+
+## Follow-up — 2026-10-22T15:08:05Z
+
+# Lumbung Data PKK Desa Belikurip — Comprehensive Technical Audit Resolution & High-Impact Improvisations
+
+Eksekusi menyeluruh terhadap penyelesaian audit teknis Full-Stack (Backend, UI/UX, Aksesibilitas, DevOps), implementasi fitur operasional kader dusun (1-Click Carry-Over Data Bulan Lalu dan Auto-Draft LocalStorage / PWA), serta penggabungan improvisasi unggulan (Cross-Table Data Quality Auditor, Completeness Heatmap 9 Dusun × 12 Bulan, dan Portal Publik 2.0 Infografis Kilas Dusun & Komparasi) pada aplikasi web **Lumbung Data PKK Desa Belikurip**.
+
+Pekerjaan dipecah ke beberapa subagent dengan mekanisme **adversarial peer auditing**: subagent implementer membangun fitur dan perbaikan, subagent auditor/challenger secara independen menguji kode, menantang potensi regresi, menguji kepatuhan aksesibilitas WCAG AA dan VisionOS Liquid Glass, serta memastikan seluruh 31 test suites dan build Next.js lulus 100%.
+
+Working directory: `c:\Users\ipw26\OneDrive\Documents\rekapitlasi`
+Integrity mode: development
+
+## Fitur yang Dikecualikan (TIDAK Dikerjakan Sesuai Arahan Pengguna):
+- ❌ Rate Limiter AI pada `/api/chat`
+- ❌ Peta Geospasial Choropleth
+- ❌ Pengingat WhatsApp 1-Klik
+- ❌ Sistem Peringatan Dini (Early Warning)
+- ❌ Generator Narasi Laporan Tahunan AI
+- ❌ Blok Tanda Tangan Resmi pada Ekspor
+
+---
+
+## Requirements
+
+### R1. Perbaikan Kritis Backend, Agregasi Ekspor, & Report Builder (P0)
+- **Pencegahan Korupsi NaN & Formula Injection (`app/api/reports/build/route.js`)**:
+  - Kolom teks (`keterangan`, dll.) tidak boleh dipaksa cast dengan `Number(...)`. Cek apakah `c.type === 'text'` atau `Number.isNaN(Number(r[c.key]))`. Jika string, sanitasi dengan `sanitizeCellText`; hanya gunakan `Number(r[c.key] || 0)` untuk nilai numerik valid di generator Excel, Word, dan PDF.
+  - Terapkan `sanitizeCellText` di `buildExcel`.
+- **Perbaikan Inflasi Stok 12x Lipat pada Ekspor Tahunan (`app/api/export/word/route.js` & `excel/route.js`)**:
+  - Pada ekspor tahunan tanpa `bulan`, untuk tabel bulanan berkarakter stok/snapshot (`data_umum` dan `data_rekap_dawis`), ambil baris bulan terakhir yang terisi (*latest available month* per dusun), alih-alih menjumlahkan seluruh 12 bulan yang membuat KK, Jiwa, RT/RW menggelembung 12x lipat.
+  - Tambahkan dukungan parameter `?bulan=MM` pada GET `/api/export/word/route.js` dan teruskan `bulan` dari tombol unduh Word di dashboard (`app/dashboard/page.js`).
+- **Upsert pada Mutasi AI (`app/api/chat/confirm-mutation/route.js`)**:
+  - Ganti query `.update(...)` dengan `.upsert(...)` berdasar `onConflict: v.isMonthly ? 'dusun_id,tahun,bulan' : 'dusun_id,tahun'` agar permintaan mutasi AI pada baris periode baru tidak gagal dengan error 404.
+- **Optimasi Overfetching Query Supabase (`app/api/rekap/route.js`)**:
+  - Gunakan kembali data tabel tahun berjalan yang sudah diambil sebelumnya (`umumList`, `p1List`..`p4List`, `bumilList`, `dawisList`) pada blok pengecekan completeness, menghemat 7 pemanggilan Supabase per load dashboard.
+
+### R2. Harmonisasi UI/UX, Dark Mode, & Aksesibilitas (P1)
+- **Perbaikan Bingkai Error/Warning Validasi di Dark Mode (`app/globals.css` & `NestedDataPage.js`)**:
+  - Pasang kelas semantik `.cell-error` dan `.cell-warning` pada input di `NestedDataPage.js`.
+  - Di `app/globals.css`, tambahkan selektor `.dark .nested-table table input.cell-error` dan `.cell-warning` dengan warna border dan background merah/kuning semi-transparan agar tidak tertimpa oleh aturan `!important` di dark mode.
+- **Konsistensi Liquid Glass pada Header `NestedDataPage.js`**:
+  - Ganti kelas hardcoded `bg-white border-gray-200` pada dropdown tahun/bulan, kolom pencarian, dan tombol filter dengan `.glass-pill`, `.glass-input`, dan pasangan warna `dark:text-gray-100`.
+- **ConfirmModal pada Tombol "Batalkan" di `BumilDataPage.js`**:
+  - Pasang `ConfirmModal` tipe bahaya saat pengguna menekan tombol "Batalkan" di `BumilDataPage.js` agar perubahan yang belum disimpan tidak terhapus seketika tanpa peringatan.
+- **Aksesibilitas SVG Chart & Toast**:
+  - Pastikan notifikasi toast memiliki atribut `role="status"` dan `aria-live="polite"`.
+  - Pasang `role="img"` dan `aria-label` deskriptif pada elemen `<svg>` di `DusunBarChart.jsx`, `KaderDonut.jsx`, dan `StackedBumilBar.jsx`.
+
+### R3. Fitur Operasional 1-Click Carry-Over Data Periode Lalu
+- Di toolbar `NestedDataPage.js` dan `BumilDataPage.js`, sediakan tombol "Salin Data Bulan Lalu" saat kader membuka periode bulanan yang masih kosong:
+  - Mengambil data periode sebelumnya (bulan - 1 atau Desember tahun lalu) untuk dusun yang dapat diedit pengguna.
+  - Memuat nilai-nilai stok ke dalam draft, menandai status dusun sebagai `dirty`, dan menampilkan konfirmasi aman sebelum pengguna menekan "Simpan Semua".
+
+### R4. Auto-Draft LocalStorage & Mode Offline PWA
+- Buat helper/hook `lib/useLocalDraft.js` yang mencatat perubahan belum tersimpan ke `localStorage` secara otomatis per `tableName + tahun + bulan`:
+  - Jika browser tertutup tidak sengaja, tampilkan banner notifikasi yang menawarkan pemulihan draft saat halaman dibuka kembali.
+  - Bersihkan draft lokal secara otomatis begitu "Simpan Semua" berhasil dieksekusi.
+- Tambahkan berkas `app/manifest.js` untuk mendukung instalasi Web App (PWA) di perangkat Android/ponsel kader.
+
+### R5. Penggabungan Fitur Improvisasi (Smart Data Quality Auditor & Portal Publik 2.0)
+- **Cross-Table Data Quality Auditor (`lib/dataQuality.js` & `components/DataQualityAuditor.jsx`)**:
+  - Buat fungsi pemeriksa konsistensi logis lintas-tabel (misal: jumlah Balita di Pokja IV vs Rekap Dawis, rasio KK vs Jiwa di Data Umum, status Bumil Risti vs pendampingan).
+  - Tampilkan kartu notifikasi audit cerdas bergaya VisionOS Translucent Liquid Glass di Dashboard dengan level prioritas dan tombol navigasi langsung ke tabel terkait.
+- **Liquid Glass Completeness Heatmap (`components/CompletenessHeatmap.jsx`)**:
+  - Tampilkan matriks visual keterisian data 9 Dusun × 12 Bulan dengan indikator warna status (*Lengkap, Sebagian, Kosong*), tooltip interaktif, dan animasi masuk halus di Dashboard.
+- **Portal Publik 2.0: Infografis "Kilas 9 Dusun" (`app/publik/page.js` & `components/public/KilasDusunInfographic.jsx`)**:
+  - Tampilkan kartu infografis capaian 9 dusun yang interaktif, visual, dan responsif di smartphone pada halaman publik.
+- **Matriks Komparasi Dusun & Shareable Report Card (`components/public/DusunBenchmarkMatrix.jsx` & `components/public/ShareableReportCard.jsx`)**:
+  - Sediakan fitur perbandingan capaian 2–3 dusun berdampingan (*Side-by-side Benchmark*) dan kartu infografis ringkas estetik yang siap dibagikan ke WhatsApp warga/kader.
+
+### R6. DevOps & Test Safety Guard (P2)
+- Di `e2e/auth.setup.mjs`, panggil fungsi pengaman `isProductionUrl(baseURL)` untuk menolak eksekusi jika target URL mengandung domain produksi atau `E2E_ALLOW_PROD_READ !== '1'`.
+
+### R7. Siklus Audit Adversarial Antar-Subagent
+- Subagent implementer menyerahkan kode perbaikan dan fitur baru beserta alasan teknisnya.
+- Subagent auditor independen melakukan pengujian dan verifikasi:
+  - Memeriksa bahwa tidak ada regresi pada 31 test suites yang ada (`npm test`).
+  - Memeriksa keutuhan skema database Supabase dan backward-compatibility kolom.
+  - Memeriksa kepatuhan VisionOS Liquid Glass dan rasio kontras WCAG AA (≥ 4.5:1).
+  - Menolak implementasi jika terdapat bug baru, inkonsistensi styling, atau penurunan performa.
+
+---
+
+## Acceptance Criteria
+
+### Fungsional & Kualitas Data
+- [ ] Export Custom Report Builder di Excel, Word, dan PDF tidak mencetak `NaN` pada kolom keterangan atau teks.
+- [ ] Ekspor tahunan Word & Excel pada tabel bulanan (`data_umum`, `data_rekap_dawis`) mengambil nilai stok bulan terakhir yang terisi, bukan menjumlahkan 12 bulan.
+- [ ] Mutasi AI melalui `confirm-mutation` berhasil melakukan upsert jika data periode baru belum ada di DB.
+- [ ] Endpoint `/api/rekap` menghemat 7 pemanggilan Supabase per load dengan memanfaatkan prefetched data.
+- [ ] Tombol "Salin Data Bulan Lalu" berhasil menyalin data stok periode lalu ke state aktif dengan konfirmasi modal.
+- [ ] Auto-draft `localStorage` menyimpan draft belum tersimpan dan membersihkannya saat data tersimpan.
+- [ ] Berkas `app/manifest.js` terpasang dan valid untuk PWA.
+- [ ] Modul Cross-Table Data Quality Auditor mendeteksi ketidaksinkronan data dan menampilkannya di Dashboard.
+- [ ] Matriks Completeness Heatmap 9 Dusun × 12 Bulan terpasang dan interaktif di Dashboard.
+- [ ] Portal publik `/publik` memiliki Infografis Kilas Dusun, Matriks Komparasi Dusun, dan Shareable Report Card.
+
+### Visual & Pengalaman Pengguna (UI/UX)
+- [ ] Indikator error dan warning validasi pada input tabel `NestedDataPage.js` tetap terlihat jelas dengan warna merah/kuning di mode gelap.
+- [ ] Header `NestedDataPage.js` konsisten menggunakan styling Liquid Glass (`.glass-pill`, `.glass-input`, `dark:text-*`).
+- [ ] Tombol "Batalkan" di `BumilDataPage.js` memunculkan `ConfirmModal` sebelum menghapus perubahan.
+- [ ] Grafik SVG di Dashboard memiliki atribut `role="img"` dan `aria-label`.
+- [ ] Seluruh kartu baru mematuhi standar VisionOS Translucent Liquid Glass (`blur(40px) saturate(200%)`, specular rim, opasitas 0.30–0.56, warna zamrud PKK).
+
+### Kualitas Kode & Verifikasi Sistem
+- [ ] Seluruh unit test Jest (`npm test`) lulus 100% tanpa regresi (minimal 31 test suites passing, 0 failed).
+- [ ] Kompilasi produksi Next.js 16 (`npm run build`) sukses bersih tanpa error.
+- [ ] Guard `isProductionUrl` di Playwright auth setup aktif melindungi lingkungan produksi.

@@ -23,7 +23,11 @@ export default function StackedBumilBar({ data = [] }) {
   const max = Math.max(...totals, 1);
 
   return (
-    <div className="glass rounded-3xl p-5 overflow-hidden">
+    <div
+      className="glass rounded-3xl p-5 overflow-hidden"
+      role="region"
+      aria-label="Grafik komposisi ibu hamil, melahirkan, nifas, dan bayi lahir per dusun"
+    >
       <div className="pb-4 border-b border-white/60 dark:border-white/10 flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h3 className="text-sm font-bold text-gray-800 dark:text-gray-100 uppercase tracking-wide">Bumil & Bayi per Dusun</h3>
@@ -53,7 +57,11 @@ export default function StackedBumilBar({ data = [] }) {
                 className="grid grid-cols-[7rem_minmax(0,1fr)_3rem] items-center gap-2"
               >
                 <span className="text-xs font-medium text-gray-700 dark:text-gray-200 truncate">{d.nama}</span>
-                <div className="h-3 rounded-full bg-gray-100 dark:bg-surface-dark-elevated overflow-hidden flex">
+                <div
+                  className="h-3 rounded-full bg-gray-100 dark:bg-surface-dark-elevated overflow-hidden flex"
+                  role="group"
+                  aria-label={`Komposisi ${d.nama}, total ${total}`}
+                >
                   {SERIES.map((s, si) => {
                     const v = Number(d[s.key] || 0);
                     const percent = max > 0 ? (v / max) * 100 : 0;

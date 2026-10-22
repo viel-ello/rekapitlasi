@@ -423,9 +423,17 @@ export const ALL_EXPORT_SECTIONS = [
   BUMIL_DEF,
 ];
 
+const SNAPSHOT_TABLES = new Set(['data_umum', 'data_rekap_dawis']);
+const TABLES_WITH_MONTH = new Set(['data_bumil', 'data_rekap_dawis', 'data_umum']);
+
 /* ─── Build a section ─── */
-async function buildTableSection(secDef, tahun, dusunList = []) {
-  const { data: tableData } = await supabase.from(secDef.table).select('*').eq('tahun', tahun);
+async function buildTableSection(secDef, tahun, dusunList = [], bulan = null) {
+  const isMonthly = TABLES_WITH_MONTH.has(secDef.table);
+  const isSnapshot = SNAPSHOT_TABLES.has(secDef.table);
+
+  let q = supabase.from(secDef.table).select('*').eq('tahun', tahun);
+  if (isMonthly && bulan != null) q = q.eq('bulan', bulan);
+  const { data: tableData } = await q;
   const allData = tableData || [];
 
   const children = [];
@@ -433,10 +441,11 @@ async function buildTableSection(secDef, tahun, dusunList = []) {
   const colCount = 2 + secDef.flatKeys.length + (hasKet ? 1 : 0);
 
   // Title
+  const monthTitle = bulan != null ? ` · BULAN : ${String(bulan).padStart(2, '0')}` : '';
   children.push(
     new Paragraph({ children: [new TextRun({ text: secDef.mainTitle || 'DATA KEGIATAN PKK', bold: true, size: 24, font: 'Times New Roman' })], alignment: AlignmentType.CENTER, spacing: { after: 100 } }),
     new Paragraph({ children: [new TextRun({ text: 'TP PKK DESA BELIKURIP · KECAMATAN BATURETNO', bold: true, size: 24, font: 'Times New Roman' })], alignment: AlignmentType.CENTER, spacing: { after: 100 } }),
-    new Paragraph({ children: [new TextRun({ text: `TAHUN : ${tahun}`, bold: true, size: 24, font: 'Times New Roman' })], alignment: AlignmentType.CENTER, spacing: { after: 100 } }),
+    new Paragraph({ children: [new TextRun({ text: `TAHUN : ${tahun}${monthTitle}`, bold: true, size: 24, font: 'Times New Roman' })], alignment: AlignmentType.CENTER, spacing: { after: 100 } }),
     new Paragraph({ children: [new TextRun({ text: secDef.name, bold: true, size: 24, font: 'Times New Roman' })], alignment: AlignmentType.CENTER, spacing: { after: 200 } }),
   );
 
@@ -458,7 +467,9 @@ async function buildTableSection(secDef, tahun, dusunList = []) {
   // Fallback data for Bumil (RT, RW, Dawis from rekap dawis)
   let dawisData = [];
   if (secDef.table === 'data_bumil') {
-    const { data: dData } = await supabase.from('data_rekap_dawis').select('*').eq('tahun', tahun);
+    let dq = supabase.from('data_rekap_dawis').select('*').eq('tahun', tahun);
+    if (bulan != null) dq = dq.eq('bulan', bulan);
+    const { data: dData } = await dq;
     dawisData = dData || [];
   }
 
@@ -466,15 +477,28 @@ async function buildTableSection(secDef, tahun, dusunList = []) {
     const rows = allData.filter((r) => (r.dusun_id ?? r.desa_id) === d.id);
     const dawisRows = dawisData.filter((r) => (r.dusun_id ?? r.desa_id) === d.id);
 
+    // Latest available month row for snapshot tables when bulan is null (annual export)
+    let targetRow = null;
+    if (isMonthly && bulan == null && isSnapshot) {
+      targetRow = rows.slice().sort((a, b) => (Number(b.bulan) || 0) - (Number(a.bulan) || 0))[0] || null;
+    }
+
+    // Latest dawis row for bumil fallback when bulan is null
+    const latestDawisRow = dawisRows.slice().sort((a, b) => (Number(b.bulan) || 0) - (Number(a.bulan) || 0))[0] || null;
+
     const aggregated = {};
     secDef.flatKeys.forEach((k) => {
-      let sum = rows.reduce((s, r) => s + (Number(r[k]) || 0), 0);
-      if (sum === 0 && secDef.table === 'data_bumil') {
-        if (k === 'jml_rt') sum = dawisRows.reduce((s, r) => s + (Number(r.jml_rt) || 0), 0);
-        if (k === 'jml_rw') sum = dawisRows.reduce((s, r) => s + (Number(r.jml_rw) || 0), 0);
-        if (k === 'jml_dasa_wisma') sum = dawisRows.reduce((s, r) => s + (Number(r.jml_dawis) || 0), 0);
+      if (targetRow) {
+        aggregated[k] = Number(targetRow[k]) || 0;
+      } else {
+        let sum = rows.reduce((s, r) => s + (Number(r[k]) || 0), 0);
+        if (sum === 0 && secDef.table === 'data_bumil') {
+          if (k === 'jml_rt') sum = latestDawisRow ? (Number(latestDawisRow.jml_rt) || 0) : 0;
+          if (k === 'jml_rw') sum = latestDawisRow ? (Number(latestDawisRow.jml_rw) || 0) : 0;
+          if (k === 'jml_dasa_wisma') sum = latestDawisRow ? (Number(latestDawisRow.jml_dawis) || 0) : 0;
+        }
+        aggregated[k] = sum;
       }
-      aggregated[k] = sum;
     });
 
     const cells = [
@@ -489,7 +513,9 @@ async function buildTableSection(secDef, tahun, dusunList = []) {
     });
 
     if (hasKet) {
-      const ketText = rows.map((r) => r.keterangan).filter(Boolean).join('; ');
+      const ketText = targetRow
+        ? (targetRow.keterangan || '')
+        : rows.map((r) => r.keterangan).filter(Boolean).join('; ');
       cells.push(dataCell(ketText)); // KET
     }
 
@@ -541,6 +567,7 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const tahun = searchParams.get('tahun') || new Date().getFullYear();
+    const bulan = searchParams.get('bulan') ? Number(searchParams.get('bulan')) : null;
 
     const { data: dusunRows } = await supabase
       .from('dusun')
@@ -552,7 +579,7 @@ export async function GET(request) {
     const sections = [];
 
     for (const secDef of ALL_EXPORT_SECTIONS) {
-      const content = await buildTableSection(secDef, tahun, dusunList);
+      const content = await buildTableSection(secDef, tahun, dusunList, bulan);
       sections.push({
         properties: {
           page: {
@@ -577,12 +604,13 @@ export async function GET(request) {
       username: user.username,
       action: 'export',
       tableName: 'semua',
-      detail: `Export Word tahun ${tahun}`,
+      detail: `Export Word tahun ${tahun}${bulan != null ? ` bulan ${bulan}` : ''}`,
     });
 
+    const stamp = `${tahun}${bulan != null ? `_Bulan_${String(bulan).padStart(2, '0')}` : ''}`;
     return new NextResponse(buffer, { status: 200, headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'Content-Disposition': `attachment; filename="Data_Kegiatan_PKK_${tahun}.docx"`,
+      'Content-Disposition': `attachment; filename="Data_Kegiatan_PKK_${stamp}.docx"`,
     }});
   } catch (error) {
     console.error('Word export error:', error);
