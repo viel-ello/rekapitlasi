@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Lock, FloppyDisk, Search, ExclamationCircle, CheckCircle } from 'flowbite-react-icons/outline';
+import { Lock, FloppyDisk, Search, ExclamationCircle, CheckCircle, ClipboardList } from 'flowbite-react-icons/outline';
 import ConfirmModal from '@/components/ConfirmModal';
+import SteppedForm from '@/components/ui/SteppedForm';
+import { getStepGroups } from '@/lib/dataPages';
 import { validateRow, countIssues } from '@/lib/validation';
 import { applyColumnOverrides } from '@/lib/columnOverrides';
 import { useYears } from '@/lib/useYears';
@@ -50,6 +52,8 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
   const [initialLoading, setInitialLoading] = useState(true);
   // Expanded state per dusun di parent — supaya tidak reset tiap re-render.
   const [expandedIds, setExpandedIds] = useState(() => new Set());
+  // Dusun yang sedang dibuka dalam mode Formulir Bertahap (SteppedForm wizard).
+  const [wizardDusun, setWizardDusun] = useState(null);
 
   const { years } = useYears();
 
@@ -219,6 +223,39 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
     setTimeout(() => setToast(null), 3000);
     setTimeout(() => setSaveStatus((prev) => ({ ...prev, [dusunId]: null })), 5000);
   }, [data, prevYearData, tahun, apiEndpoint, columns, effectiveColumns, canEdit, dynamicColumns]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const saveRowWithData = async (dusunId, newRowData) => {
+    if (!canEdit) return;
+    const scrollSnapshot = captureScrollState();
+    setSaving(dusunId);
+    try {
+      const payload = { dusun_id: dusunId, tahun, custom_columns: {} };
+      columns.forEach((col) => {
+        payload[col.key] = String(newRowData[col.key] ?? '');
+      });
+      dynamicColumns.forEach((col) => {
+        const val = newRowData.custom_columns?.[col.column_key];
+        payload.custom_columns[col.column_key] = col.column_type === 'number' ? Number(val || 0) : (val || '');
+      });
+      const res = await fetch(apiEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Gagal menyimpan data');
+      }
+      setSaveStatus((prev) => ({ ...prev, [dusunId]: 'saved' }));
+      setToast({ type: 'success', message: 'Data berhasil disimpan via formulir bertahap' });
+    } catch (err) {
+      setSaveStatus((prev) => ({ ...prev, [dusunId]: 'error' }));
+      setToast({ type: 'error', message: err.message });
+    }
+    setSaving(null);
+    restoreScrollState(scrollSnapshot);
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const _performSaveAll = async () => {
     const scrollSnapshot = captureScrollState();
@@ -410,22 +447,33 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
             </div>
 
             {dusunEditable && (
-              <button
-                onClick={() => saveRow(d.id)}
-                disabled={isSaving}
-                className={`w-full mt-4 inline-flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-colors ${
-                  isSaved ? 'bg-green-100 text-green-700' :
-                  isError ? 'bg-red-100 text-red-700' :
-                  isDirty ? 'bg-primary-600 hover:bg-primary-700 text-white' :
-                  'bg-gray-100 text-gray-600'
-                }`}
-                style={{ minHeight: 44 }}
-                aria-label={`Simpan data ${d.nama}`}
-              >
-                {isSaving ? <><div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> Menyimpan...</> :
-                 isSaved ? <><CheckCircle className="w-4 h-4" /> Tersimpan</> :
-                 <><FloppyDisk className="w-4 h-4" /> Simpan Perubahan</>}
-              </button>
+              <div className="flex flex-col gap-2 mt-4">
+                <button
+                  type="button"
+                  onClick={() => setWizardDusun(d)}
+                  className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold glass-pill text-primary-800 dark:text-primary-200 hover:bg-white/80 dark:hover:bg-white/20 transition-colors shadow-sm"
+                  style={{ minHeight: 40 }}
+                >
+                  <ClipboardList className="w-4 h-4 text-primary-600" />
+                  Isi via Formulir Bertahap (Wizard)
+                </button>
+                <button
+                  onClick={() => saveRow(d.id)}
+                  disabled={isSaving}
+                  className={`w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-colors ${
+                    isSaved ? 'bg-green-100 text-green-700' :
+                    isError ? 'bg-red-100 text-red-700' :
+                    isDirty ? 'bg-primary-600 hover:bg-primary-700 text-white' :
+                    'bg-gray-100 text-gray-600'
+                  }`}
+                  style={{ minHeight: 44 }}
+                  aria-label={`Simpan data ${d.nama}`}
+                >
+                  {isSaving ? <><div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> Menyimpan...</> :
+                   isSaved ? <><CheckCircle className="w-4 h-4" /> Tersimpan</> :
+                   <><FloppyDisk className="w-4 h-4" /> Simpan Perubahan</>}
+                </button>
+              </div>
             )}
           </div>
         )}
@@ -490,6 +538,20 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
         <div className="flex flex-wrap items-center gap-3">
           <EditModeSwitcher mode={mode} onChange={setMode} />
           <DensityToggle density={density} onChange={setDensity} />
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => {
+                const target = userDusunId != null ? dusun.find((d) => d.id === Number(userDusunId)) : (filteredDusun[0] || dusun[0]);
+                if (target) setWizardDusun(target);
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 glass-pill text-primary-800 dark:text-primary-200 hover:bg-white/80 dark:hover:bg-white/20 text-sm font-semibold rounded-xl transition-all shadow-sm"
+              title="Buka mode input langkah demi langkah (Typeform style)"
+            >
+              <ClipboardList className="w-4 h-4 text-primary-600" />
+              Formulir Bertahap
+            </button>
+          )}
           {canEdit && (
             <button
               onClick={saveAll}
@@ -631,7 +693,22 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
                 return (
                   <tr key={d.id} className="group">
                     <td style={{ position: 'sticky', left: 0, zIndex: 10, textAlign: 'center' }} className="bg-white dark:bg-surface-dark text-gray-800 dark:text-gray-100 group-hover:bg-primary-50/50 dark:group-hover:bg-primary-950/30 transition-colors">{i + 1}</td>
-                    <td className="col-desa group-hover:bg-primary-50/50 dark:group-hover:bg-primary-950/30 transition-colors" style={{ left: 40 }}>{d.nama}</td>
+                    <td className="col-desa group-hover:bg-primary-50/50 dark:group-hover:bg-primary-950/30 transition-colors" style={{ left: 40 }}>
+                      <div className="flex items-center justify-between gap-1">
+                        <span>{d.nama}</span>
+                        {dusunEditable && (
+                          <button
+                            type="button"
+                            onClick={() => setWizardDusun(d)}
+                            className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity p-1 rounded-full glass-pill hover:bg-primary-100 dark:hover:bg-primary-900/40 text-primary-700 dark:text-primary-300"
+                            title={`Buka formulir bertahap ${d.nama}`}
+                            aria-label={`Buka formulir bertahap ${d.nama}`}
+                          >
+                            <ClipboardList className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
                     {effectiveColumns.map((col) => {
                       const valObj = validation[col.key] || { valid: true };
                       const hasError = valObj.severity === 'error';
@@ -754,6 +831,27 @@ export default function PokjaDataPage({ title, subtitle, icon, apiEndpoint, colu
           </table>
         </div>
       </div>
+
+      {/* Modal Formulir Bertahap (SteppedForm wizard) */}
+      {wizardDusun && (
+        <SteppedForm
+          isOpen={!!wizardDusun}
+          onClose={() => setWizardDusun(null)}
+          title={`Formulir ${title}`}
+          subtitle={`Dusun ${wizardDusun.nama}`}
+          dusunName={wizardDusun.nama}
+          tahun={tahun}
+          steps={getStepGroups(tableName, effectiveColumns)}
+          initialData={data[wizardDusun.id] || {}}
+          validation={validateRow(data[wizardDusun.id] || {}, effectiveColumns, prevYearData[wizardDusun.id] || null)}
+          isSaving={saving === wizardDusun.id}
+          onSave={async (newFormData) => {
+            setData((prev) => ({ ...prev, [wizardDusun.id]: newFormData }));
+            await saveRowWithData(wizardDusun.id, newFormData);
+            setWizardDusun(null);
+          }}
+        />
+      )}
     </div>
   );
 }

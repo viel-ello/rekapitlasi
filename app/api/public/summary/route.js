@@ -1,168 +1,39 @@
-/**
- * @file GET /api/public/summary?tahun=&bulan=
- * Public aggregate ringkasan untuk welcome + portal publik.
- * TIDAK butuh auth. Hanya mengembalikan agregat dari tabel di allowlist.
- *
- * Migration v5: unit data dusun. Response shape backward-compat (`totalDesa`/`desa` field tetap, isi dusun).
- */
 import { NextResponse } from 'next/server';
-import { supabaseAnon as supabase } from '@/lib/supabase';
-import { PUBLIC_DUSUN_FIELDS, PUBLIC_COLUMNS, PUBLIC_TABLES } from '@/lib/publicData';
-import {
-  COMPLETENESS_STATUS,
-  evaluateRecordCompleteness,
-  getTableKeys,
-  mergeStatus,
-  OPERATIONAL_TABLES,
-} from '@/lib/dataQuality';
+import { getPublicYears, publicPeriod, readPublicPeriod, publicUnitStatus, PUBLIC_TABLES } from '@/lib/publicRepository';
+import { toNumericValue } from '@/lib/chartStats';
 
 export const dynamic = 'force-dynamic';
 
-const ALLOWED_TABLES_FOR_COMPLETENESS = OPERATIONAL_TABLES.filter((t) => !t.aliasOf).map((t) => t.table);
-
-function clampYear(input) {
-  const n = Number(input);
-  if (!Number.isInteger(n) || n < 2000 || n > 2100) return new Date().getFullYear();
-  return n;
-}
-
-function clampMonth(input) {
-  const n = Number(input);
-  if (!Number.isInteger(n) || n < 1 || n > 12) return 12;
-  return n;
-}
-
-function unitIdOf(row) {
-  // Fresh schema hanya punya dusun_id. Fallback ke desa_id hanya untuk
-  // mendukung row dari archive table yang masih memiliki kolom legacy.
-  return row?.dusun_id ?? row?.desa_id ?? null;
-}
-
-function indexByUnit(rows) {
-  const out = {};
-  for (const r of rows || []) {
-    const id = unitIdOf(r);
-    if (id != null) out[id] = r;
-  }
-  return out;
-}
-
 export async function GET(request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const tahun = clampYear(searchParams.get('tahun') || new Date().getFullYear());
-    const bulan = clampMonth(searchParams.get('bulan') || 12);
-
-    // Dusun allowlist field
-    const { data: dusunList } = await supabase
-      .from('dusun')
-      .select(PUBLIC_DUSUN_FIELDS.join(','))
-      .eq('is_active', 1)
-      .order('nomor_urut');
-
-    const totalDusun = (dusunList || []).length;
-
-    const fetchTable = async (table, fields) => {
-      // Schema baru hanya pakai dusun_id. desa_id tidak ada lagi.
-      const cols = ['dusun_id', ...fields].join(',');
-      let query = supabase.from(table).select(cols).eq('tahun', tahun);
-      if (table === 'data_bumil' || table === 'data_rekap_dawis' || table === 'data_umum') query = query.eq('bulan', bulan);
-      const { data } = await query;
-      return data || [];
-    };
-
-    const [umum, p1, p2, p3, p4, dawis, bumil] = await Promise.all([
-      fetchTable('data_umum', PUBLIC_COLUMNS.data_umum),
-      fetchTable('data_pokja1', PUBLIC_COLUMNS.data_pokja1),
-      fetchTable('data_pokja2', PUBLIC_COLUMNS.data_pokja2),
-      fetchTable('data_pokja3', PUBLIC_COLUMNS.data_pokja3),
-      fetchTable('data_pokja4', PUBLIC_COLUMNS.data_pokja4),
-      fetchTable('data_rekap_dawis', PUBLIC_COLUMNS.data_rekap_dawis),
-      fetchTable('data_bumil', PUBLIC_COLUMNS.data_bumil),
-    ]);
-
-    const sumColumn = (rows, col) => rows.reduce((s, r) => s + Number(r?.[col] || 0), 0);
-
+    const { tahun, bulan } = publicPeriod(new URL(request.url).searchParams);
+    const [source, years] = await Promise.all([readPublicPeriod(tahun, bulan), getPublicYears()]);
+    const sum = (table, key) => source.rows[table].reduce((total, row) => total + toNumericValue(row[key]), 0);
     const totals = {
-      total_kk: sumColumn(umum, 'jml_kk'),
-      total_jiwa: sumColumn(umum, 'jml_jiwa_l') + sumColumn(umum, 'jml_jiwa_p'),
-      total_dasa_wisma: sumColumn(umum, 'jml_dasa_wisma'),
-      total_kader_pokja1: sumColumn(p1, 'kader_pkbn') + sumColumn(p1, 'kader_pkdrt') + sumColumn(p1, 'kader_pola_asuh'),
-      total_paket_pokja2: sumColumn(p2, 'paket_a_wrg') + sumColumn(p2, 'paket_b_wrg') + sumColumn(p2, 'paket_c_wrg'),
-      total_rumah_sehat: sumColumn(p3, 'rumah_sehat') + sumColumn(dawis, 'rumah_sehat'),
-      total_posyandu: sumColumn(p4, 'posyandu_jumlah'),
-      total_bumil: sumColumn(bumil, 'ibu_hamil'),
-      total_kelahiran: sumColumn(bumil, 'bayi_lahir_l') + sumColumn(bumil, 'bayi_lahir_p'),
-      total_jkn_bpjs: sumColumn(dawis, 'jkn_bpjs'),
+      total_kk: sum('data_umum', 'jml_kk'),
+      total_jiwa: sum('data_umum', 'jml_jiwa_l') + sum('data_umum', 'jml_jiwa_p'),
+      total_dasa_wisma: sum('data_umum', 'jml_dasa_wisma'),
+      total_kader_pokja1: sum('data_pokja1', 'kader_pkbn') + sum('data_pokja1', 'kader_pkdrt') + sum('data_pokja1', 'kader_pola_asuh'),
+      total_paket_pokja2: sum('data_pokja2', 'paket_a_wrg') + sum('data_pokja2', 'paket_b_wrg') + sum('data_pokja2', 'paket_c_wrg'),
+      total_rumah_sehat: sum('data_pokja3', 'rumah_sehat') + sum('data_rekap_dawis', 'rumah_sehat'),
+      total_posyandu: sum('data_pokja4', 'posyandu_jumlah'),
+      total_bumil: sum('data_bumil', 'ibu_hamil'),
+      total_kelahiran: sum('data_bumil', 'bayi_lahir_l') + sum('data_bumil', 'bayi_lahir_p'),
+      total_jkn_bpjs: sum('data_rekap_dawis', 'jkn_bpjs'),
     };
-
-    const tableMaps = {
-      data_umum: indexByUnit(umum),
-      data_pokja1: indexByUnit(p1),
-      data_pokja2: indexByUnit(p2),
-      data_pokja3: indexByUnit(p3),
-      data_pokja4: indexByUnit(p4),
-      data_rekap_dawis: indexByUnit(dawis),
-      data_kegiatan_warga: indexByUnit(dawis), // alias
-      data_bumil: indexByUnit(bumil),
-    };
-
-    const perDusun = (dusunList || []).map((d) => {
-      const statuses = [];
-      for (const t of ALLOWED_TABLES_FOR_COMPLETENESS) {
-        const keys = getTableKeys(t);
-        const result = evaluateRecordCompleteness(tableMaps[t]?.[d.id], keys);
-        statuses.push(result.status);
-      }
-      return { id: d.id, nama: d.nama, status: mergeStatus(statuses) };
-    });
-
+    const dusun = source.dusun.map((row) => ({ id: row.id, nama: row.nama, status: publicUnitStatus(source, row.id).status }));
     const completeness = {
-      complete: perDusun.filter((p) => p.status === COMPLETENESS_STATUS.COMPLETE).length,
-      needsCheck: perDusun.filter((p) => p.status === COMPLETENESS_STATUS.NEEDS_CHECK).length,
-      incomplete: perDusun.filter((p) => p.status === COMPLETENESS_STATUS.INCOMPLETE).length,
+      complete: dusun.filter((row) => row.status === 'lengkap').length,
+      needsCheck: dusun.filter((row) => row.status === 'perlu_dicek').length,
+      incomplete: dusun.filter((row) => row.status === 'belum_lengkap').length,
     };
-
-    // Terakhir diperbarui: ambil updated_at terbaru dari data_umum periode ini.
-    let lastUpdated = null;
-    try {
-      let upQ = supabase
-        .from('data_umum')
-        .select('updated_at')
-        .eq('tahun', tahun)
-        .eq('bulan', bulan)
-        .order('updated_at', { ascending: false })
-        .limit(1);
-      const { data: upRows } = await upQ;
-      lastUpdated = upRows?.[0]?.updated_at || null;
-    } catch { /* silent */ }
-
-    // Data ringkas per dusun untuk chart publik sederhana (KK & jiwa).
-    const umumByUnit = tableMaps.data_umum || {};
-    const perDusunChart = (dusunList || []).map((d) => {
-      const u = umumByUnit[d.id] || {};
-      return {
-        nama: d.nama,
-        kk: Number(u.jml_kk || 0),
-        jiwa: Number(u.jml_jiwa_l || 0) + Number(u.jml_jiwa_p || 0),
-      };
+    const timestamps = source.rows.data_umum.map((row) => row.updated_at).filter((value) => value && Number.isFinite(Date.parse(value))).sort((a, b) => Date.parse(b) - Date.parse(a));
+    const perDusunChart = source.dusun.map((row) => {
+      const umum = source.rows.data_umum.find((item) => item.dusun_id === row.id);
+      return { nama: row.nama, hasData: !!umum, kk: toNumericValue(umum?.jml_kk), jiwa: toNumericValue(umum?.jml_jiwa_l) + toNumericValue(umum?.jml_jiwa_p) };
     });
-
-    return NextResponse.json({
-      tahun,
-      bulan,
-      totalDusun,
-      totalDesa: totalDusun, // alias
-      totals,
-      completeness,
-      lastUpdated,
-      perDusunChart,
-      dusun: perDusun,
-      desa: perDusun, // alias backward-compat
-      tables: PUBLIC_TABLES,
-    });
-  } catch (error) {
-    console.error('Public summary error:', error);
-    return NextResponse.json({ error: 'Gagal memuat ringkasan publik' }, { status: 500 });
+    return NextResponse.json({ tahun, bulan, totalDusun: dusun.length, totalDesa: dusun.length, totals, completeness, lastUpdated: timestamps[0] || null, perDusunChart, dusun, desa: dusun, tables: PUBLIC_TABLES, years: years.map((row) => row.tahun), hasData: source.hasData, availability: source.availability, periods: source.periods });
+  } catch {
+    return NextResponse.json({ error: 'Ringkasan publik belum dapat dimuat. Silakan coba lagi.' }, { status: 503 });
   }
 }

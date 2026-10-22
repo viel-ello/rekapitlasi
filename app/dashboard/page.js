@@ -75,7 +75,10 @@ function MiniTrendCard({ label, rows, field, tone = 'primary' }) {
   return (
     <motion.div
       variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}
-      className={`glass rounded-3xl p-4 hover:shadow-card-hover transition-shadow`}
+      whileHover={{ y: -4, scale: 1.015 }}
+      whileTap={{ scale: 0.985 }}
+      transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+      className={`glass rounded-3xl p-4 hover:shadow-card-hover cursor-pointer transition-shadow`}
     >
       <div className="flex items-start justify-between gap-3 mb-2">
         <div>
@@ -361,28 +364,54 @@ export default function DashboardPage() {
 
       {/* Operational KPI Cards */}
       <motion.div 
-        variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 } } }}
-        initial="hidden" animate="show"
+        variants={{
+          hidden: { opacity: 0 },
+          show: {
+            opacity: 1,
+            transition: {
+              staggerChildren: 0.08,
+              delayChildren: 0.1,
+            },
+          },
+        }}
+        initial="hidden"
+        animate="show"
         className="grid grid-cols-2 lg:grid-cols-4 gap-4"
       >
         {kpiCards.map((card, i) => {
           const Icon = card.icon;
           return (
             <motion.div 
-              key={i} variants={{ hidden: { opacity: 0, y: 15 }, show: { opacity: 1, y: 0 } }}
-              className="rounded-3xl p-5 transition-shadow glass hover:shadow-card-hover"
+              key={i}
+              variants={{
+                hidden: { opacity: 0, y: 16 },
+                show: {
+                  opacity: 1,
+                  y: 0,
+                  transition: { type: 'spring', stiffness: 350, damping: 25 },
+                },
+              }}
+              whileHover={{ y: -4, scale: 1.015 }}
+              whileTap={{ scale: 0.985 }}
+              transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+              className="relative overflow-hidden group rounded-3xl p-5 glass hover:shadow-card-hover cursor-pointer"
             >
-              <div className="flex justify-between items-start mb-3">
-                <div className="p-2.5 rounded-2xl bg-white/50">
+              {/* Specular reflection sweep */}
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 rounded-3xl bg-gradient-to-br from-white/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+              />
+              <div className="flex justify-between items-start mb-3 relative z-10">
+                <div className="p-2.5 rounded-2xl bg-white/50 dark:bg-white/10 shadow-inner">
                   <Icon className={`w-5 h-5 ${card.color}`} />
                 </div>
               </div>
-              <div>
-                <div className="text-2xl font-bold tabular-nums text-gray-900">
+              <div className="relative z-10">
+                <div className="text-2xl font-bold tabular-nums text-gray-900 dark:text-gray-100">
                   {card.isText ? card.value : <AnimatedCounter value={card.value} />}
                 </div>
-                <div className="text-sm font-semibold mt-0.5 text-gray-700">{card.label}</div>
-                <div className="text-xs mt-1 truncate text-gray-500" title={card.subTitle || (typeof card.sub === 'string' ? card.sub : undefined)}>{card.sub}</div>
+                <div className="text-sm font-semibold mt-0.5 text-gray-700 dark:text-gray-200">{card.label}</div>
+                <div className="text-xs mt-1 truncate text-gray-500 dark:text-gray-400" title={card.subTitle || (typeof card.sub === 'string' ? card.sub : undefined)}>{card.sub}</div>
               </div>
             </motion.div>
           );

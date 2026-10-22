@@ -1,22 +1,39 @@
-## 2026-10-13T00:13:50Z
-[Message] timestamp=2026-10-13T00:13:50Z sender=d7ebc0ae-6f14-4eb2-9227-d9f3dcab3c46 priority=MESSAGE_PRIORITY_HIGH content=You are Challenger 1 (`challenger_1`).
-Your working directory is: `c:\Users\ipw26\OneDrive\Documents\rekapitlasi\.agents\teamwork\challenger_1`.
+# Dispatch Assignment: Challenger 1 - Stress & Interactive State Verification
 
-You MUST read the authoritative user request at:
-`c:\Users\ipw26\OneDrive\Documents\rekapitlasi\.agents\teamwork\ORIGINAL_REQUEST.md` (specifically section `## Follow-up — 2026-10-12T15:13:12Z`).
+## Objective
+Empirically stress-test the new interactive motion components:
+- `components/ui/Dialog.jsx`
+- `components/ui/SteppedForm.jsx`
+- `components/Sidebar.js`
+- `components/DashboardToolbar.jsx`
 
-You MUST also read `c:\Users\ipw26\OneDrive\Documents\rekapitlasi\PROJECT.md`.
+## Adversarial Tests to Execute
+1. Rapid Step Transitions in `SteppedForm`:
+   - Rapid forward/backward clicking, jumping directly across steps, verifying no NaN styles, no stuck slides, and consistent directional classes.
+2. Rapid Open/Close of `Dialog.jsx`:
+   - Mount and unmount dialog rapidly, assert that Escape key and click-outside work consistently and focus is restored.
+3. Rapid Tab Morphing:
+   - Verify `layoutId` sliding indicators under fast state switching, ensuring no duplicate pills or orphaned DOM nodes.
+4. Run automated test commands and stress harnesses to verify 0 regressions.
+5. Verdict: APPROVE (Empirically Sound) or REQUEST_CHANGES with reproducible failures.
 
-Objective:
-Adversarially challenge and stress-test the UI styling, dark mode cohesion, and WCAG AA contrast compliance across the entire codebase.
+## Deliverable
+Write your report to `.agents/teamwork/challenger_1/handoff.md` and report back via send_message.
 
-Methodology:
-1. Write and execute an empirical test script (e.g. Node.js script) that:
-   - Evaluates WCAG AA contrast ratios (>4.5:1 body, >3:1 headings) for all text tokens used over frosted glass surfaces in both light mode (`rgba(255, 255, 255, 0.82)`) and dark mode (`rgba(15, 23, 20, 0.82)`).
-   - Scans all components (`components/**/*.js`, `components/**/*.jsx`) for any remaining hardcoded inline backgrounds (e.g. `background: '#fff'`, `#f9fafb`) that break sticky headers or dark mode.
-   - Scans for invalid CSS classes (like `background-[#f0fdf4]`) or undefined Tailwind classes (like `dark:bg-card-dark`).
-2. Run `npm test -- --selectProjects server` to ensure no backend regressions were introduced.
+## 2026-10-22T12:01:23Z
+You are Challenger 1 for Milestone M5 Verification (Stress & Interactive State Verification).
+Your working directory is: c:\Users\ipw26\OneDrive\Documents\rekapitlasi\.agents\teamwork\challenger_1\
 
-Output requirement:
-Write your complete verification and stress-test report to `c:\Users\ipw26\OneDrive\Documents\rekapitlasi\.agents\teamwork\challenger_1\handoff.md` ending with an explicit verdict: **APPROVE** or **CHALLENGE_FAILED**.
-Send a message back when completed.
+You MUST read:
+1. c:\Users\ipw26\OneDrive\Documents\rekapitlasi\.agents\teamwork\ORIGINAL_REQUEST.md
+2. c:\Users\ipw26\OneDrive\Documents\rekapitlasi\PROJECT.md
+3. c:\Users\ipw26\OneDrive\Documents\rekapitlasi\.agents\teamwork\challenger_1\DISPATCH.md
+
+Empirically stress-test Dialog.jsx, SteppedForm.jsx, Sidebar.js, and DashboardToolbar.jsx:
+- Rapid step transitions in SteppedForm (spamming next/prev, direct step jumps).
+- Rapid mount/unmount and keyboard navigation in Dialog.jsx.
+- Rapid tab switching with layoutId.
+Run tests and harnesses.
+State your verdict clearly: APPROVE or REQUEST_CHANGES.
+Write your report to c:\Users\ipw26\OneDrive\Documents\rekapitlasi\.agents\teamwork\challenger_1\handoff.md and notify me via send_message.
+

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
@@ -16,6 +16,8 @@ export default function DashboardLayout({ children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showPwModal, setShowPwModal] = useState(false);
+  const mobileMenuTrigger = useRef(null);
+  const wasMobileOpen = useRef(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -23,20 +25,31 @@ export default function DashboardLayout({ children }) {
     //   - Mobile (<768px): selalu pakai mode mobile drawer (full-width).
     //     Tidak pernah `collapsed`. State `mobileOpen` mengontrol visibility.
     //   - Desktop (>=768px): user bisa toggle `collapsed` (icon only) atau full.
-    const handleResize = () => {
-      const mobile = window.innerWidth < 768;
+    const media = window.matchMedia('(max-width: 767px)');
+    const handleBreakpointChange = (event) => {
+      const mobile = event.matches;
       setIsMobile(mobile);
+      // This listener runs only when crossing the breakpoint, never for small resizes.
+      setMobileOpen(false);
       if (mobile) {
         // Saat masuk mobile, paksa collapsed=false supaya sidebar drawer
         // tampil full-width (label + icon), bukan icon-only.
         setSidebarCollapsed(false);
-        setMobileOpen(false);
       }
     };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    handleBreakpointChange(media);
+    media.addEventListener('change', handleBreakpointChange);
+    return () => media.removeEventListener('change', handleBreakpointChange);
   }, []);
+
+  useEffect(() => {
+    if (wasMobileOpen.current && !mobileOpen) {
+      // The mobile trigger is hidden after entering desktop; focus its visible equivalent.
+      const trigger = isMobile ? mobileMenuTrigger.current : document.querySelector('#dashboard-sidebar .sidebar-toggle');
+      trigger?.focus();
+    }
+    wasMobileOpen.current = mobileOpen;
+  }, [mobileOpen, isMobile]);
 
   useEffect(() => {
     const validateSession = async () => {
@@ -87,6 +100,7 @@ export default function DashboardLayout({ children }) {
         {mobileOpen && (
           <div
             className="fixed inset-0 bg-black/40 z-30 md:hidden"
+            aria-hidden="true"
             onClick={() => setMobileOpen(false)}
           />
         )}
@@ -97,20 +111,30 @@ export default function DashboardLayout({ children }) {
           // Mobile selalu pakai layout full-width (collapsed=false). Toggle
           // collapse hanya berlaku di desktop.
           collapsed={isMobile ? false : sidebarCollapsed}
-          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+          onToggle={() => setSidebarCollapsed((current) => !current)}
           mobileOpen={mobileOpen}
+          isMobile={isMobile}
           onMobileClose={() => setMobileOpen(false)}
           showPwModal={showPwModal}
           setShowPwModal={setShowPwModal}
         />
 
         <main
-          className="relative z-[1] transition-[margin-left] duration-300 ease-in-out flex flex-col min-h-screen"
-          style={{ marginLeft: mainMargin }}
+          aria-hidden={isMobile && mobileOpen ? true : undefined}
+          inert={isMobile && mobileOpen ? true : undefined}
+          className="relative z-[1] flex flex-col min-h-screen"
+          style={{
+            marginLeft: mainMargin,
+            transition: 'margin-left var(--sidebar-transition-duration) var(--sidebar-transition-ease)',
+          }}
         >
           <Topbar
             user={user}
-            onMobileMenuToggle={() => setMobileOpen(!mobileOpen)}
+            mobileMenuOpen={mobileOpen}
+            onMobileMenuToggle={() => {
+              if (!mobileOpen) mobileMenuTrigger.current = document.activeElement;
+              setMobileOpen((current) => !current);
+            }}
             onOpenPasswordModal={() => setShowPwModal(true)}
           />
           <div className="flex-1 p-4 md:p-6 lg:p-8">
@@ -118,9 +142,16 @@ export default function DashboardLayout({ children }) {
           </div>
         </main>
 
-        <AiChatBubble />
-        <ToastViewport />
-        <OnboardingTour />
+        <div
+          data-dashboard-auxiliary="true"
+          hidden={isMobile && mobileOpen}
+          aria-hidden={isMobile && mobileOpen ? true : undefined}
+          inert={isMobile && mobileOpen ? true : undefined}
+        >
+          <AiChatBubble />
+          <ToastViewport />
+          <OnboardingTour />
+        </div>
       </div>
     </ToastProvider>
   );

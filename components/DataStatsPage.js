@@ -44,10 +44,25 @@ function KpiCard({ label, value, sub, icon: Icon, tone = 'primary' }) {
 
   return (
     <motion.div
-      variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}
-      className={`glass rounded-3xl p-4`}
+      variants={{
+        hidden: { opacity: 0, y: 16 },
+        show: {
+          opacity: 1,
+          y: 0,
+          transition: { type: 'spring', stiffness: 350, damping: 25 },
+        },
+      }}
+      whileHover={{ y: -4, scale: 1.015 }}
+      whileTap={{ scale: 0.985 }}
+      transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+      className="relative overflow-hidden group glass rounded-3xl p-4 hover:shadow-card-hover cursor-pointer"
     >
-      <div className="flex items-start justify-between gap-3">
+      {/* Specular reflection sweep */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 rounded-3xl bg-gradient-to-br from-white/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+      />
+      <div className="flex items-start justify-between gap-3 relative z-10">
         <div>
           <div className="text-2xl font-bold text-gray-800 dark:text-gray-100 tabular-nums">
             <AnimatedCounter value={value} />
@@ -253,7 +268,16 @@ export default function DataStatsPage({ config }) {
       )}
 
       <motion.div
-        variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.08 } } }}
+        variants={{
+          hidden: { opacity: 0 },
+          show: {
+            opacity: 1,
+            transition: {
+              staggerChildren: 0.08,
+              delayChildren: 0.1,
+            },
+          },
+        }}
         initial="hidden"
         animate="show"
         className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4"

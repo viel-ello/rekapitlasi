@@ -1,24 +1,40 @@
-## 2026-10-13T00:13:50Z
-You are Challenger 2 (`challenger_2`).
-Your working directory is: `c:\Users\ipw26\OneDrive\Documents\rekapitlasi\.agents\teamwork\challenger_2`.
+# Dispatch Assignment: Challenger 2 - A11y, Performance & Invariant Stress Verification
 
-You MUST read the authoritative user request at:
-`c:\Users\ipw26\OneDrive\Documents\rekapitlasi\.agents\teamwork\ORIGINAL_REQUEST.md` (specifically section `## Follow-up — 2026-10-12T15:13:12Z`).
+## Objective
+Empirically stress-test accessibility, GPU invariants, and edge cases across:
+- `components/AnimatedCounter.js` & `components/ui/AnimatedCounter.jsx`
+- `app/dashboard/page.js` & `components/DataStatsPage.js`
+- `components/Topbar.js` & `components/ui/button.jsx`
+- `app/globals.css` and motion properties
 
-You MUST also read `c:\Users\ipw26\OneDrive\Documents\rekapitlasi\PROJECT.md`.
+## Adversarial Tests to Execute
+1. `AnimatedCounter` Edge Cases:
+   - Negative values, zero, non-numeric strings, fast prop re-renders.
+   - Verify `useReducedMotion()` immediately skips animation to formatted final value.
+2. `prefers-reduced-motion` Validation:
+   - Emulate reduced-motion and verify all motion components collapse smoothly to non-animated or minimal opacity fades.
+3. GPU Invariant Audit:
+   - Scan codebase for any runtime motion animating `backdrop-filter`, `filter`, or non-composite properties. Confirm only `transform`, `opacity`, and `boxShadow` are animated.
+4. Run client & server tests (`npm test`) and build (`npm run build`).
+5. Verdict: APPROVE (Empirically Sound) or REQUEST_CHANGES with reproducible failures.
 
-Objective:
-Adversarially challenge and stress-test data pipelines, export handlers, SQL migration safeguards, and security rate limiting.
+## Deliverable
+Write your report to `.agents/teamwork/challenger_2/handoff.md` and report back via send_message.
 
-Methodology:
-1. Write and execute an empirical test script (e.g. Node.js script) that:
-   - Tests `app/api/export/word/route.js`: verifies that docx buffer generation succeeds for all 7 reports (Data Umum, Pokja I–IV, Rekap Dawis, Bumil) with expected column counts and table structures.
-   - Tests formula injection sanitization logic across Excel export and log export (trigger characters `=,+,-,@,\t,\r` properly escaped with `'`).
-   - Tests rate limiter invocation in `app/api/chat/route.js` and `app/api/auth/password/route.js`.
-   - Inspects `supabase_reset_operational_data_to_zero_EXECUTE_MANUALLY.sql` and verifies zero un-commented TRUNCATE statements.
-   - Inspects `supabase_schema_updates_v14_fix_index_and_rls.sql` and verifies valid SQL statements for the 10 B-Tree indexes on `tahun`.
-2. Run `npm test -- --selectProjects server` and verify 100% pass rate.
+## 2026-10-22T12:01:23Z
+You are Challenger 2 for Milestone M5 Verification (A11y, Performance & Invariant Stress Verification).
+Your working directory is: c:\Users\ipw26\OneDrive\Documents\rekapitlasi\.agents\teamwork\challenger_2\
 
-Output requirement:
-Write your complete verification and stress-test report to `c:\Users\ipw26\OneDrive\Documents\rekapitlasi\.agents\teamwork\challenger_2\handoff.md` ending with an explicit verdict: **APPROVE** or **CHALLENGE_FAILED**.
-Send a message back when completed.
+You MUST read:
+1. c:\Users\ipw26\OneDrive\Documents\rekapitlasi\.agents\teamwork\ORIGINAL_REQUEST.md
+2. c:\Users\ipw26\OneDrive\Documents\rekapitlasi\PROJECT.md
+3. c:\Users\ipw26\OneDrive\Documents\rekapitlasi\.agents\teamwork\challenger_2\DISPATCH.md
+
+Empirically stress-test accessibility, GPU invariants, and edge cases:
+- AnimatedCounter edge cases (negative numbers, zero, strings, rapid updates).
+- prefers-reduced-motion verification across components.
+- GPU property check (no backdropFilter animated in motion props).
+Run tests and build.
+State your verdict clearly: APPROVE or REQUEST_CHANGES.
+Write your report to c:\Users\ipw26\OneDrive\Documents\rekapitlasi\.agents\teamwork\challenger_2\handoff.md and notify me via send_message.
+

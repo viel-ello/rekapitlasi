@@ -12,7 +12,7 @@ import {
   Users,
 } from 'flowbite-react-icons/outline';
 import AnimatedCounter from '@/components/AnimatedCounter';
-import MapWonogiri3D from '@/components/MapWonogiri3D';
+import RecapFlowIllustration from '@/components/RecapFlowIllustration';
 
 const FEATURES = [
   {
@@ -101,23 +101,23 @@ export default function WelcomePage() {
                   <div className="mt-6 flex flex-col sm:flex-row gap-3">
                     <Link
                       href="/login"
-                      className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-full shadow-md transition-colors"
+                      className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-full shadow-md transition-[color,background-color,transform] duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-700 focus-visible:ring-offset-2"
                     >
                       <ArrowRightToBracket className="w-4 h-4" /> Masuk Aplikasi
                     </Link>
                     <Link
                       href="/publik"
-                      className="inline-flex items-center justify-center gap-2 px-5 py-3 glass-pill hover:bg-white/70 text-gray-800 text-sm font-semibold rounded-full transition-colors"
+                      className="inline-flex items-center justify-center gap-2 px-5 py-3 glass-pill hover:bg-white/70 text-gray-800 text-sm font-semibold rounded-full transition-[color,background-color,transform] duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-700 focus-visible:ring-offset-2"
                     >
                       <Globe className="w-4 h-4" /> Lihat Data Publik
                     </Link>
                   </div>
                 </div>
 
-                {/* Peta 3D Kabupaten Wonogiri (Baturetno disorot) */}
+                {/* Ilustrasi relief 3D non-geografis Desa Belikurip */}
                 <div className="relative">
                   <div className="glass rounded-3xl p-4 sm:p-6">
-                    <MapWonogiri3D />
+                    <RecapFlowIllustration />
                   </div>
                 </div>
               </div>
@@ -132,8 +132,22 @@ export default function WelcomePage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                 <KpiTile label="Dusun Aktif" value={summary.totalDusun ?? summary.totalDesa} icon={Users} tone="primary" />
                 <KpiTile label="Dusun Lengkap" value={summary.completeness?.complete} sub={`dari ${summary.totalDusun ?? summary.totalDesa ?? 0}`} icon={CheckCircle} tone="green" />
-                <KpiTile label="Total KK" value={summary.totals?.total_kk} icon={ClipboardList} tone="blue" />
-                <KpiTile label="Posyandu" value={summary.totals?.total_posyandu} icon={ChartPie} tone="amber" />
+                <KpiTile
+                  label="Total KK"
+                  value={summary.totals?.total_kk}
+                  available={Boolean(summary.availability?.data_umum)}
+                  sub={summary.availability?.data_umum ? undefined : 'Belum ada catatan'}
+                  icon={ClipboardList}
+                  tone="blue"
+                />
+                <KpiTile
+                  label="Posyandu"
+                  value={summary.totals?.total_posyandu}
+                  available={Boolean(summary.availability?.data_pokja4)}
+                  sub={summary.availability?.data_pokja4 ? undefined : 'Belum ada catatan'}
+                  icon={ChartPie}
+                  tone="amber"
+                />
               </div>
               <p className="text-[11px] text-gray-600 mt-3 px-1">
                 Tahun {summary.tahun}. Data agregat publik. Untuk detail per dusun,{' '}
@@ -148,7 +162,7 @@ export default function WelcomePage() {
           <h2 className="text-base sm:text-lg font-bold text-gray-900 mb-5">Yang dilakukan aplikasi ini</h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {FEATURES.map(({ icon: Icon, title, desc }) => (
-              <div key={title} className="glass rounded-3xl p-5 hover:shadow-card-hover transition-all">
+              <div key={title} className="glass rounded-3xl p-5 transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-card-hover focus-within:-translate-y-1">
                 <div className="w-10 h-10 rounded-2xl glass-pill text-primary-700 flex items-center justify-center mb-3">
                   <Icon className="w-5 h-5" />
                 </div>
@@ -175,7 +189,7 @@ export default function WelcomePage() {
   );
 }
 
-function KpiTile({ label, value, sub, icon: Icon, tone = 'primary' }) {
+function KpiTile({ label, value, sub, icon: Icon, tone = 'primary', available = true }) {
   const tones = {
     primary: 'bg-primary-50/80 text-primary-700 border border-white/60',
     blue: 'bg-blue-50/80 text-blue-700 border border-white/60',
@@ -189,7 +203,7 @@ function KpiTile({ label, value, sub, icon: Icon, tone = 'primary' }) {
       </div>
       <div className="min-w-0">
         <div className="text-xl font-bold text-gray-900 tabular-nums">
-          {typeof value === 'number' ? <AnimatedCounter value={value} /> : (value ?? '—')}
+          {!available ? '—' : typeof value === 'number' ? <AnimatedCounter value={value} /> : (value ?? '—')}
         </div>
         <div className="text-xs font-medium text-gray-700 truncate">{label}{sub ? <span className="ml-1 text-gray-500">{sub}</span> : null}</div>
       </div>

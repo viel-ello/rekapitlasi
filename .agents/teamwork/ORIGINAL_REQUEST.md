@@ -84,3 +84,60 @@ Complete and verify all resolutions mandated by `reports/AUDIT_2026-10-12.md`:
 - [ ] `npm test -- --selectProjects server` passes 100% with 19 suites and 180 tests.
 - [ ] `npm run build` completes successfully.
 - [ ] Zero database mutations executed against live production environments.
+
+
+## Follow-up — 2026-10-22T11:33:14Z
+
+# Teamwork Project: Framer Motion & 21st.dev UI/UX Upgrade
+
+Requested team: multi-agent teamwork system with peer auditing and verification
+
+Tingkatkan kualitas UI/UX aplikasi **Lumbung Data PKK Desa Belikurip** secara menyeluruh menggunakan **Framer Motion** dan referensi desain interaktif dari **21st.dev** (interactive liquid glass cards, spring sliding tabs with layoutId, modal dialog physics with AnimatePresence, directional form step transitions, dan micro-interactions), dengan tetap mempertahankan standar VisionOS Translucent Liquid Glass dan palet warna zamrud PKK.
+
+Working directory: `c:\Users\ipw26\OneDrive\Documents\rekapitlasi`
+Integrity mode: development
+
+## Requirements
+
+### R1. Fluid Layout Morphing & Active Indicators (`layoutId`)
+- Terapkan sliding active indicator pill berbasis spring physics (`layoutId`) dari referensi 21st.dev pada:
+  - Sidebar Navigation (`components/Sidebar.js`): Gliding green glass indicator pill yang bergerak halus saat user berpindah menu.
+  - Tab Filter Dashboard Toolbar (`components/DashboardToolbar.jsx`): Sliding active pill untuk pilihan filter data.
+  - Stepped Form Progress Bar (`components/ui/FormProgressBar.jsx`): Sliding active indicator di atas step pills.
+  - Admin Panel Tabs (`app/dashboard/admin`): Sliding active tab highlight antar sub-panel.
+
+### R2. 21st.dev Liquid Glass Interactive Cards & Dashboard Physics
+- Tingkatkan kartu KPI statistik di Dashboard (`app/dashboard/page.js` & `components/DataStatsPage.js`):
+  - Staggered entrance animation berantai saat halaman pertama kali dimuat (`variants`, `staggerChildren`).
+  - Micro-interaction hover elevation dan subtle specular reflection sweep (`whileHover={{ y: -4, scale: 1.015 }}` dengan spring physics).
+  - Animasi count-up dinamis pada angka metrik penting menggunakan `AnimatedCounter.js`.
+
+### R3. Accessible Modal Dialog & Step Transitions dengan `AnimatePresence`
+- Tingkatkan `components/ui/Dialog.jsx` dengan `AnimatePresence`:
+  - Transisi backdrop fade-in/out (`opacity: 0 ↔ 1`) dan panel modal spring scale (`scale: 0.95 ↔ 1, y: 16 ↔ 0`).
+  - Pastikan exit animation berjalan tuntas sebelum elemen di-unmount dari DOM.
+- Terapkan directional slide transition pada `components/ui/SteppedForm.jsx`:
+  - Perpindahan antar langkah ("Lanjut" / "Kembali") bertransisi geser horizontal dua arah yang mulus (`custom={direction}`).
+
+### R4. Topbar Interactive Dropdowns & Micro-gestures
+- Tingkatkan menu notifikasi dan dropdown profil di `components/Topbar.js` menggunakan `AnimatePresence` dan spring pop entrance.
+- Tombol aksi primer (Unduh Excel, Simpan, Tambah Data) memiliki respons sentuhan pegas (`whileTap={{ scale: 0.97 }}`).
+
+### R5. A11y, Performance & Liquid Glass Invariants
+- Kepatuhan penuh terhadap `prefers-reduced-motion` (nonaktifkan atau sederhanakan pergeseran jika user memilih reduced motion).
+- Animasi hanya berjalan pada properti GPU (`transform`, `opacity`); hindari animasi `backdrop-filter` secara langsung di runtime motion agar tetap 60fps+.
+- Pertahankan identitas warna zamrud (`primary-50` hingga `primary-900`) dan standar VisionOS Liquid Glass (`.glass`, `.glass-card`, `.glass-panel`).
+
+## Acceptance Criteria
+
+### Visual & Motion Quality (21st.dev Standards)
+- [ ] Active pill navigasi di Sidebar meluncur mulus dengan spring physics (`layoutId`) tanpa flicker.
+- [ ] Kartu KPI Dashboard memuat dengan staggered entrance dan bereaksi taktil saat di-hover.
+- [ ] Dialog modal (`Dialog.jsx`) terbuka dan tertutup dengan transisi spring halus tanpa terputus seketika.
+- [ ] Stepped form memiliki animasi geser antar langkah yang responsif.
+- [ ] Dropdown notifikasi dan profil muncul dengan animasi pop halus ala VisionOS.
+
+### Code & Performance Standards
+- [ ] Unit & Client Test Suite: `npm test` lulus 100% tanpa regresi.
+- [ ] Production Build: `npm run build` kompilasi bersih 0 error.
+- [ ] Dukungan `prefers-reduced-motion` berfungsi dengan benar.

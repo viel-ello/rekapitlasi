@@ -1,34 +1,60 @@
-## 2026-10-13T00:13:49Z
+# Dispatch Assignment: Reviewer 1 - Navigation, Layout Morphing & Topbar (R1, R4)
 
-You are Reviewer 1 (`reviewer_1`).
-Your working directory is: `c:\Users\ipw26\OneDrive\Documents\rekapitlasi\.agents\teamwork\reviewer_1`.
+## Objective
+Independently review the work completed in Milestones M1 and M4:
+- `components/Sidebar.js`
+- `components/DashboardToolbar.jsx`
+- `components/ui/FormProgressBar.jsx`
+- `app/dashboard/admin/page.js`
+- `app/dashboard/admin/_components/ColumnsTab.jsx`
+- `app/dashboard/admin/tabs/ColumnsTab.jsx`
+- `components/DensityToggle.jsx`
+- `components/Topbar.js`
+- `components/ui/button.jsx`
 
-You MUST read the authoritative user request at:
-`c:\Users\ipw26\OneDrive\Documents\rekapitlasi\.agents\teamwork\ORIGINAL_REQUEST.md` (specifically section `## Follow-up — 2026-10-12T15:13:12Z`).
+## Review Criteria
+1. **Correctness & 21st.dev Quality**:
+   - Do the `layoutId` pills (`sidebarActivePill`, `dashboardFilterPill`, `formProgressActivePill`, `adminActiveTabIndicator`, `densityTogglePill`) follow spring physics smoothly?
+   - Is `.nav-item-active` retained for backward compatibility?
+   - Do Topbar dropdowns use `<AnimatePresence>` for both entrance and exit?
+   - Does `button.jsx` support `whileTap={{ scale: 0.97 }}` cleanly without breaking forwardRef or Radix Slot?
+2. **Robustness & Verification**:
+   - Run `npm test` and `npm run build`.
+   - Confirm all suites pass with 0 errors.
+3. **Verdict**: APPROVE or REQUEST_CHANGES with concrete technical evidence.
 
-You MUST also read:
-`c:\Users\ipw26\OneDrive\Documents\rekapitlasi\PROJECT.md`
-and the Milestone 1 Worker handoff report at:
-`c:\Users\ipw26\OneDrive\Documents\rekapitlasi\.agents\teamwork\worker_ui_m1\handoff.md`
+## Deliverable
+Write your report to `.agents/teamwork/reviewer_1/handoff.md` and report back via send_message.
 
-Objective:
-Perform an objective, rigorous review of Milestone 1: Apple iOS / VisionOS Frosted Glass ("Liquid Glass") design system and WCAG AA contrast compliance.
 
-Examine:
-1. `app/globals.css` & `tailwind.config.js`:
-   - Substantive frosted surface tokens: milky/smoky opacities (78%–88% light, 75%–85% dark e.g. `rgba(15, 23, 20, 0.82)`).
-   - Deep diffusion & saturation: `backdrop-filter: blur(28px) saturate(180%)` with `-webkit-backdrop-filter`.
-   - Top inner specular highlights (`inset 0 1px 1px 0 rgba(255, 255, 255, 0.50)` light, `0.12` dark), luminous rim border, diffuse elevation.
-   - Dark mode cohesion: verify elimination of opaque solid `#111c18` on sidebar, clean single `.dark` rules, absence of invalid/phantom classes (`background-[#f0fdf4]`, `dark:bg-card-dark`).
-2. Component adoption:
-   - Navigation Shell (`Sidebar.js`, `Topbar.js`), Toolbars (`DashboardToolbar.jsx`, `DensityToggle.jsx`), Dialogs (`Dialog.jsx`, `ConfirmModal.js`), Charts (`DusunBarChart.jsx`, `KaderDonut.jsx`, `StackedBumilBar.jsx`), and Data Pages (`PokjaDataPage.js`, `BumilDataPage.js`, `NestedDataPage.js`, `DataStatsPage.js`).
-   - Sticky table headers and cells: verify absence of inline `background: '#fff'` and `#f9fafb`, confirming they adapt properly to dark mode.
-3. WCAG AA Contrast Compliance:
-   - Verify text contrast (>4.5:1 body, >3:1 headings) on light and dark frosted surfaces.
-4. Run tests and build:
-   - Run `npm test -- --selectProjects server` to verify 100% pass (19 suites, 180 tests).
-   - Run `npm run build` to verify clean compilation without errors.
+## 2026-10-22T12:01:23Z
+You are Reviewer 1 for Milestone M5 Verification (Navigation, Layout Morphing & Topbar).
+Your working directory is: c:\Users\ipw26\OneDrive\Documents\rekapitlasi\.agents\teamwork\reviewer_1\
 
-Output requirement:
-Write your full review report to `c:\Users\ipw26\OneDrive\Documents\rekapitlasi\.agents\teamwork\reviewer_1\handoff.md` ending with an explicit verdict: **APPROVE** or **REQUEST_CHANGES**.
-Send a message back when completed.
+You MUST read:
+1. c:\Users\ipw26\OneDrive\Documents\rekapitlasi\.agents\teamwork\ORIGINAL_REQUEST.md
+2. c:\Users\ipw26\OneDrive\Documents\rekapitlasi\PROJECT.md
+3. c:\Users\ipw26\OneDrive\Documents\rekapitlasi\.agents\teamwork\reviewer_1\DISPATCH.md
+4. c:\Users\ipw26\OneDrive\Documents\rekapitlasi\.agents\teamwork\worker_m1\handoff.md
+5. c:\Users\ipw26\OneDrive\Documents\rekapitlasi\.agents\teamwork\worker_m4\handoff.md
+
+Review code changes in:
+- components/Sidebar.js
+- components/DashboardToolbar.jsx
+- components/ui/FormProgressBar.jsx
+- app/dashboard/admin/page.js
+- app/dashboard/admin/_components/ColumnsTab.jsx
+- app/dashboard/admin/tabs/ColumnsTab.jsx
+- components/DensityToggle.jsx
+- components/Topbar.js
+- components/ui/button.jsx
+
+Run test commands: npm test and npm run build.
+State your verdict clearly: APPROVE or REQUEST_CHANGES.
+Write your report to c:\Users\ipw26\OneDrive\Documents\rekapitlasi\.agents\teamwork\reviewer_1\handoff.md and notify me via send_message.
+
+
+## 2026-10-22T12:20:13Z
+**Context**: Milestone M5 Verification
+**Content**: Checking on your verification progress for Navigation and Topbar (Milestones M1 and M4). What is your current status?
+**Action**: Please report your findings or current step.

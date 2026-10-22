@@ -55,4 +55,45 @@ describe('Topbar', () => {
     render(<Topbar user={user} onMobileMenuToggle={() => {}} />);
     expect(screen.getByLabelText(/Notifikasi/)).toHaveAttribute('aria-haspopup', 'true');
   });
+
+  test('dropdown notifikasi terbuka saat diklik dan tertutup dengan Escape', async () => {
+    render(<Topbar user={user} onMobileMenuToggle={() => {}} />);
+    const notifBtn = screen.getByLabelText(/Notifikasi/);
+
+    expect(notifBtn).toHaveAttribute('aria-expanded', 'false');
+
+    // Buka
+    fireEvent.click(notifBtn);
+    expect(notifBtn).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('Belum ada notifikasi')).toBeInTheDocument();
+
+    // Escape menutup
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => expect(notifBtn).toHaveAttribute('aria-expanded', 'false'));
+  });
+
+  test('menutup dropdown profil saat klik di luar (click-outside)', async () => {
+    render(
+      <div>
+        <div data-testid="outside-element">Luar</div>
+        <Topbar user={user} onMobileMenuToggle={() => {}} />
+      </div>
+    );
+    const profileBtn = screen.getByLabelText('Menu profil');
+
+    fireEvent.click(profileBtn);
+    expect(profileBtn).toHaveAttribute('aria-expanded', 'true');
+
+    fireEvent.mouseDown(screen.getByTestId('outside-element'));
+    await waitFor(() => expect(profileBtn).toHaveAttribute('aria-expanded', 'false'));
+  });
+
+  test('memanggil onMobileMenuToggle saat tombol mobile menu diklik', () => {
+    const onMobileMenuToggle = jest.fn();
+    render(<Topbar user={user} onMobileMenuToggle={onMobileMenuToggle} />);
+    const mobileBtn = screen.getByLabelText('Buka menu');
+
+    fireEvent.click(mobileBtn);
+    expect(onMobileMenuToggle).toHaveBeenCalledTimes(1);
+  });
 });

@@ -17,6 +17,7 @@
  */
 
 import { useEffect, useId, useRef, useCallback } from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 
 const FOCUSABLE = [
   'a[href]', 'button:not([disabled])', 'textarea:not([disabled])',
@@ -40,6 +41,7 @@ export default function Dialog({
   const previousActiveRef = useRef(null);
   const autoId = useId();
   const titleId = labelledBy || (title ? `dialog-title-${autoId}` : undefined);
+  const shouldReduceMotion = useReducedMotion();
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Escape') {
@@ -51,7 +53,7 @@ export default function Dialog({
       const panel = panelRef.current;
       if (!panel) return;
       const items = Array.from(panel.querySelectorAll(FOCUSABLE)).filter(
-        (el) => el.offsetParent !== null || el === document.activeElement
+        (el) => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true'
       );
       if (items.length === 0) {
         e.preventDefault();
@@ -97,29 +99,52 @@ export default function Dialog({
     };
   }, [open, initialFocusRef]);
 
-  if (!open) return null;
-
   return (
-    <div className={containerClassName} onKeyDown={handleKeyDown}>
-      <div
-        className={backdropClassName}
-        onClick={closeOnBackdrop ? onClose : undefined}
-        aria-hidden="true"
-      />
-      <div
-        ref={panelRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={describedBy}
-        tabIndex={-1}
-        className={panelClassName}
-      >
-        {title && (
-          <h2 id={titleId} className="sr-only">{title}</h2>
-        )}
-        {children}
-      </div>
-    </div>
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          key="dialog-container"
+          className={containerClassName}
+          onKeyDown={handleKeyDown}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          {/* Backdrop with fade exit */}
+          <motion.div
+            key="dialog-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className={backdropClassName}
+            onClick={closeOnBackdrop ? onClose : undefined}
+            aria-hidden="true"
+          />
+
+          {/* Dialog Panel with Spring Scale & Slide */}
+          <motion.div
+            key="dialog-panel"
+            ref={panelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            aria-describedby={describedBy}
+            tabIndex={-1}
+            initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.95, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.95, y: 16 }}
+            transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+            className={panelClassName}
+          >
+            {title && (
+              <h2 id={titleId} className="sr-only">{title}</h2>
+            )}
+            {children}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

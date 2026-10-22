@@ -6,6 +6,10 @@
 
 const path = require('path');
 
+// Next's server-only marker is enforced by the app bundler, not by Jest's
+// Node test environment. The public route import below still needs a test stub.
+jest.mock('server-only', () => ({}), { virtual: true });
+
 beforeAll(() => {
   process.env.JWT_SECRET = 'test-secret-key-for-jwt-pkk-2025';
   process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';

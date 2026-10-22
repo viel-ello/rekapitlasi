@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { FloppyDisk, Lock, Search, CheckCircle, ExclamationCircle } from 'flowbite-react-icons/outline';
+import { FloppyDisk, Lock, Search, CheckCircle, ExclamationCircle, ClipboardList } from 'flowbite-react-icons/outline';
+import SteppedForm from '@/components/ui/SteppedForm';
+import { getStepGroups } from '@/lib/dataPages';
 import { DataPageIcon } from '@/components/DataPageIcon';
 import { applyColumnOverrides } from '@/lib/columnOverrides';
 import { useYears } from '@/lib/useYears';
@@ -47,6 +49,45 @@ function VerticalText({ children, height = 130 }) {
       >
         {children}
       </div>
+      {/* Modal Formulir Bertahap (SteppedForm wizard) */}
+      {wizardDusun && (
+        <SteppedForm
+          isOpen={!!wizardDusun}
+          onClose={() => setWizardDusun(null)}
+          title={`Formulir ${config.title}`}
+          subtitle={`Dusun ${wizardDusun.nama}`}
+          dusunName={wizardDusun.nama}
+          tahun={tahun}
+          bulanName={hasMonth ? MONTHS[bulan - 1] : undefined}
+          steps={getStepGroups(config, leaves)}
+          initialData={getRowSnapshot(wizardDusun.id) || {}}
+          validation={validateRow(getRowSnapshot(wizardDusun.id) || {}, leaves, prevYearData[wizardDusun.id] || null)}
+          isSaving={saving === wizardDusun.id}
+          onSave={async (newFormData) => {
+            const payload = { dusun_id: wizardDusun.id, tahun };
+            if (hasMonth) payload.bulan = bulan;
+            leaves.forEach((col) => {
+              payload[col.key] = String(newFormData[col.key] ?? '');
+            });
+            const res = await fetch(config.apiEndpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+            if (!res.ok) {
+              const err = await res.json();
+              throw new Error(err.error || 'Gagal menyimpan data');
+            }
+            setData((prev) => ({
+              ...prev,
+              [wizardDusun.id]: { ...(prev[wizardDusun.id] || {}), ...newFormData, dusun_id: wizardDusun.id },
+            }));
+            setSaveStatus((prev) => ({ ...prev, [wizardDusun.id]: 'saved' }));
+            setToast({ type: 'success', message: 'Data berhasil disimpan via formulir bertahap' });
+            setWizardDusun(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -104,6 +145,7 @@ export default function NestedDataPage({
   // (kalau di local MobileCard, akan unmount setiap kali parent re-render
   // karena MobileCard di-define inline → React anggap component baru).
   const [expandedIds, setExpandedIds] = useState(() => new Set());
+  const [wizardDusun, setWizardDusun] = useState(null);
   // Buffer perubahan input yang belum di-save. Pakai ref supaya saat user
   // ngetik tidak trigger re-render — input tetap responsif & focus tidak
   // hilang. Map dusunId -> { columnKey: stringValue }.
@@ -459,10 +501,21 @@ export default function NestedDataPage({
             })}
 
             {dusunEditable && (
+              <div className="flex flex-col gap-2 mt-3">
+                <button
+                  type="button"
+                  onClick={() => setWizardDusun(d)}
+                  className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold glass-pill text-primary-800 dark:text-primary-200 hover:bg-white/80 dark:hover:bg-white/20 transition-colors shadow-sm"
+                  style={{ minHeight: 40 }}
+                >
+                  <ClipboardList className="w-4 h-4 text-primary-600" />
+                  Isi via Formulir Bertahap (Wizard)
+                </button>
               <button onClick={() => saveRow(d.id)} disabled={isSaving}
                 className={`w-full mt-2 inline-flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-colors ${isSaved ? 'bg-green-100 text-green-700' : isError ? 'bg-red-100 text-red-700' : isDirty ? 'bg-primary-600 hover:bg-primary-700 text-white' : 'bg-gray-100 text-gray-600'}`}>
                 {isSaving ? 'Menyimpan...' : isSaved ? <><CheckCircle className="w-4 h-4" /> Tersimpan</> : <><FloppyDisk className="w-4 h-4" /> Simpan Perubahan</>}
               </button>
+              </div>
             )}
           </div>
         )}
@@ -537,6 +590,20 @@ export default function NestedDataPage({
         <div className="flex flex-wrap items-center gap-2">
           <DensityToggle density={density} onChange={setDensity} />
           <EditModeSwitcher mode={mode} onChange={setMode} />
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => {
+                const target = userDusunId != null ? dusun.find((d) => d.id === Number(userDusunId)) : (filteredDusun[0] || dusun[0]);
+                if (target) setWizardDusun(target);
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 glass-pill text-primary-800 dark:text-primary-200 hover:bg-white/80 dark:hover:bg-white/20 text-sm font-semibold rounded-xl transition-all shadow-sm"
+              title="Buka mode input langkah demi langkah (Typeform style)"
+            >
+              <ClipboardList className="w-4 h-4 text-primary-600" />
+              Formulir Bertahap
+            </button>
+          )}
           {canEdit && (
             <button onClick={saveAll} disabled={saving === 'all'} className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors disabled:opacity-50">
               {saving === 'all' ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <FloppyDisk className="w-4 h-4" />}
@@ -734,7 +801,20 @@ export default function NestedDataPage({
                       }}
                       className="bg-white dark:bg-surface-dark text-gray-800 dark:text-gray-100 border border-gray-200 dark:border-gray-800 group-hover:bg-primary-50/50 dark:group-hover:bg-primary-950/30"
                     >
-                      {d.nama}
+                      <div className="flex items-center justify-between gap-1">
+                        <span>{d.nama}</span>
+                        {dusunEditable && (
+                          <button
+                            type="button"
+                            onClick={() => setWizardDusun(d)}
+                            className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity p-1 rounded-full glass-pill hover:bg-primary-100 dark:hover:bg-primary-900/40 text-primary-700 dark:text-primary-300"
+                            title={`Buka formulir bertahap ${d.nama}`}
+                            aria-label={`Buka formulir bertahap ${d.nama}`}
+                          >
+                            <ClipboardList className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                     {leaves.map((col) => {
                       const valObj = validation[col.key] || { valid: true };

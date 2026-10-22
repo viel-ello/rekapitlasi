@@ -9,6 +9,7 @@
  */
 
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Download, Upload, FileLines, ClipboardList, DotsHorizontal,
 } from 'flowbite-react-icons/outline';
@@ -36,17 +37,65 @@ export default function DashboardToolbar({
 
   return (
     <div className="space-y-2">
-      {/* Filter row — compact selects */}
+      {/* Filter row — compact selects & data filter tabs */}
       <div className="flex items-center gap-2 flex-wrap">
         <SelectField label="Tahun" value={tahun} onChange={setTahun} options={years.map(y => ({ value: y, label: y }))} />
         <SelectField label="Bulan" value={bulan} onChange={setBulan} options={months.map((m, i) => ({ value: i + 1, label: m }))} />
-        <SelectField label="Data" value={jenisData} onChange={setJenisData} options={tableFilters.map(o => ({ value: o.value, label: o.label }))} flex="1" />
+        
+        {/* Data Filter Tabs with layoutId="dashboardFilterPill" */}
+        {tableFilters && tableFilters.length > 0 && (
+          <div
+            className="flex items-center gap-1 overflow-x-auto p-1 glass-pill rounded-xl max-w-full no-scrollbar"
+            role="tablist"
+            aria-label="Filter jenis data"
+          >
+            {tableFilters.map((tab) => {
+              const isActive = jenisData === tab.value;
+              return (
+                <button
+                  key={tab.value}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => setJenisData(tab.value)}
+                  className={`relative px-2.5 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${
+                    isActive
+                      ? 'text-white font-semibold'
+                      : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
+                  }`}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="dashboardFilterPill"
+                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      className="absolute inset-0 bg-primary-600 rounded-lg shadow-sm -z-10"
+                    />
+                  )}
+                  <span className="relative z-10">{tab.label || tab.short}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Hidden accessible select for screen readers / legacy fallback */}
+        {tableFilters && tableFilters.length > 0 && (
+          <select
+            value={jenisData}
+            onChange={(e) => setJenisData(e.target.value)}
+            aria-label="Data"
+            className="sr-only"
+          >
+            {tableFilters.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        )}
       </div>
 
       {/* Action row */}
       <div className="flex items-center gap-2 flex-wrap">
         <div className="flex glass-pill rounded-xl p-0.5 overflow-hidden items-center">
-          <button
+          <motion.button
+            whileTap={{ scale: 0.96 }}
             onClick={() => onDownloadExcel()}
             disabled={downloading === 'excel'}
             className="inline-flex items-center gap-1.5 px-3 py-2 hover:bg-green-500/15 text-green-700 dark:text-green-300 text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
@@ -54,9 +103,10 @@ export default function DashboardToolbar({
             aria-label="Unduh laporan Excel"
           >
             {downloading === 'excel' ? <Spinner /> : <Download className="w-4 h-4" />} Excel
-          </button>
+          </motion.button>
           <div className="w-px bg-white/60 dark:bg-white/10 my-1 h-5" aria-hidden="true"></div>
-          <button
+          <motion.button
+            whileTap={{ scale: 0.96 }}
             onClick={() => onDownloadWord()}
             disabled={downloading === 'word'}
             className="inline-flex items-center gap-1.5 px-3 py-2 hover:bg-blue-500/15 text-blue-700 dark:text-blue-300 text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
@@ -64,40 +114,51 @@ export default function DashboardToolbar({
             aria-label="Unduh laporan Word"
           >
             {downloading === 'word' ? <Spinner /> : <FileLines className="w-4 h-4" />} Word
-          </button>
+          </motion.button>
         </div>
 
-        <a
+        <motion.a
+          whileTap={{ scale: 0.96 }}
           href="/dashboard/admin"
           className="inline-flex items-center gap-1.5 px-3 py-2 glass-pill text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white text-sm font-semibold rounded-xl transition-colors"
           title="Import Excel di Admin Panel"
         >
           <Upload className="w-4 h-4" /> <span className="hidden sm:inline">Import</span>
-        </a>
+        </motion.a>
 
         {/* Overflow menu — Template + (future) actions */}
         <div className="relative ml-auto sm:ml-0">
-          <button
+          <motion.button
+            whileTap={{ scale: 0.94 }}
             onClick={() => setShowOverflow(!showOverflow)}
             className="inline-flex items-center justify-center w-9 h-9 glass-pill text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white rounded-xl"
             aria-label="Tindakan lain"
             title="Tindakan lain"
           >
             <DotsHorizontal className="w-4 h-4" />
-          </button>
-          {showOverflow && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setShowOverflow(false)} />
-              <div className="absolute right-0 mt-2 w-56 glass-panel rounded-2xl shadow-lg z-20 py-1.5 animate-in fade-in slide-in-from-top-2">
-                <button
-                  onClick={() => { setShowOverflow(false); setShowTemplate(true); }}
-                  className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-white/60 dark:hover:bg-surface-dark-elevated flex items-center gap-2"
+          </motion.button>
+          <AnimatePresence>
+            {showOverflow && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setShowOverflow(false)} />
+                <motion.div
+                  key="toolbar-overflow"
+                  initial={{ opacity: 0, scale: 0.95, y: -6 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: -6 }}
+                  transition={{ type: "spring", stiffness: 420, damping: 28 }}
+                  className="absolute right-0 mt-2 w-56 glass-panel rounded-2xl shadow-lg z-20 py-1.5"
                 >
-                  <Download className="w-4 h-4" /> Unduh Template Excel
-                </button>
-              </div>
-            </>
-          )}
+                  <button
+                    onClick={() => { setShowOverflow(false); setShowTemplate(true); }}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-white/60 dark:hover:bg-surface-dark-elevated flex items-center gap-2"
+                  >
+                    <Download className="w-4 h-4" /> Unduh Template Excel
+                  </button>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 

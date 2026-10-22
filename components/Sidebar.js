@@ -1,14 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   ChartPie, ClipboardList, Shield, BookOpen,
-  Users, Cog, AngleRight, AngleLeft, Lock,
+  Users, Cog, AngleLeft, Lock,
   ArrowRightToBracket, Swatchbook, Heart, UserCircle, ChartLineUp, PaperPlane
 } from 'flowbite-react-icons/outline';
 import Dialog from '@/components/ui/Dialog';
+import { motion, useReducedMotion } from 'framer-motion';
 
 const menuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: ChartPie },
@@ -28,19 +29,51 @@ const adminItems = [
 ];
 
 export default function Sidebar({
-  user, onLogout, collapsed, onToggle, mobileOpen, onMobileClose,
+  user, onLogout, collapsed, onToggle, mobileOpen, onMobileClose, isMobile = false,
   showPwModal: propPwModal, setShowPwModal: propSetPwModal,
 }) {
   const pathname = usePathname();
+  const reduceMotion = useReducedMotion();
   const [localPwModal, setLocalPwModal] = useState(false);
   const showPwModal = propPwModal !== undefined ? propPwModal : localPwModal;
   const setShowPwModal = propSetPwModal || setLocalPwModal;
   const [pwForm, setPwForm] = useState({ old: '', new: '', confirm: '' });
   const [pwMsg, setPwMsg] = useState(null);
+  const asideRef = useRef(null);
 
-  const isActive = (href) => href === '/dashboard'
-    ? pathname === href
-    : pathname === href || pathname.startsWith(`${href}/`);
+  useEffect(() => {
+    if (isMobile && mobileOpen) {
+      asideRef.current?.querySelector('button, a[href]')?.focus();
+    }
+  }, [isMobile, mobileOpen]);
+
+  const handleDrawerKeyDown = (event) => {
+    if (!isMobile || !mobileOpen) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onMobileClose?.();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const items = asideRef.current?.querySelectorAll('a[href], button:not([disabled]), input:not([disabled])');
+    if (!items?.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (event.shiftKey && (document.activeElement === first || !asideRef.current.contains(document.activeElement))) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && (document.activeElement === last || !asideRef.current.contains(document.activeElement))) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
+  const isActive = (href) => {
+    if (!pathname) return false;
+    return href === '/dashboard'
+      ? pathname === href
+      : pathname === href || pathname.startsWith(`${href}/`);
+  };
 
   const handlePwSubmit = async (e) => {
     e.preventDefault();
@@ -66,85 +99,121 @@ export default function Sidebar({
   };
 
   return (
-    <aside className={`sidebar ${collapsed ? 'sidebar-collapsed' : ''} ${mobileOpen ? 'sidebar-mobile-open' : 'sidebar-mobile-hidden'}`}>
+    <aside id="dashboard-sidebar" ref={asideRef} onKeyDown={handleDrawerKeyDown}
+      role={isMobile ? 'dialog' : undefined} aria-modal={isMobile && mobileOpen ? true : undefined}
+      aria-label={isMobile ? 'Menu navigasi' : undefined} aria-hidden={isMobile && !mobileOpen ? true : undefined}
+      inert={isMobile && !mobileOpen ? true : undefined}
+      className={`sidebar ${collapsed ? 'sidebar-collapsed' : ''} ${mobileOpen ? 'sidebar-mobile-open' : 'sidebar-mobile-hidden'}`}>
       {/* Brand */}
-      <div className="sidebar-brand">
-        {!collapsed && (
-          <>
-            <div className="flex-shrink-0 overflow-hidden rounded-full bg-primary-50 flex items-center justify-center w-9 h-9">
-              <img
-                src="/logo.png"
-                alt="Logo"
-                className="w-9 h-9 object-cover rounded-full"
-              />
-            </div>
-            <div className="brand-text min-w-0">
-              <h3 className="text-sm font-bold text-primary-700 truncate">Lumbung PKK</h3>
-              <span className="text-[0.65rem] text-gray-700 dark:text-gray-300 font-medium">Desa Belikurip</span>
-            </div>
-            <button className="sidebar-toggle" onClick={onToggle} aria-label="Tutup sidebar">
-              <AngleLeft className="w-4 h-4" />
-            </button>
-          </>
-        )}
-        {collapsed && (
-          <button
-            onClick={onToggle}
-            aria-label="Buka sidebar"
-            className="w-full flex flex-col items-center gap-1 py-1"
-            title="Buka Menu"
-          >
-            <img
-              src="/logo.png"
-              alt="Logo"
-              className="w-8 h-8 object-cover rounded-full"
-            />
-            <AngleRight className="w-3 h-3 text-gray-600 dark:text-gray-300" />
-          </button>
-        )}
+      <div
+        className="sidebar-brand"
+        onClick={collapsed ? onToggle : undefined}
+        role={collapsed ? 'button' : undefined}
+        tabIndex={collapsed ? 0 : undefined}
+        aria-label={collapsed ? 'Buka sidebar' : undefined}
+        aria-expanded={collapsed ? false : undefined}
+        aria-controls={collapsed ? 'dashboard-sidebar' : undefined}
+        onKeyDown={collapsed ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle?.(); } } : undefined}
+        style={{ cursor: collapsed ? 'pointer' : 'default' }}
+        title={collapsed ? "Buka sidebar" : undefined}
+      >
+        <div className="brand-logo flex-shrink-0">
+          <img
+            src="/logo.png"
+            alt="Logo"
+            className="w-9 h-9 object-cover rounded-full"
+            onError={(e) => {
+              e.currentTarget.src = '/map-baturetno.svg';
+            }}
+          />
+        </div>
+        <div className="brand-text min-w-0">
+          <h3 className="text-sm font-bold text-primary-700 dark:text-primary-400 truncate">Lumbung PKK</h3>
+          <span className="text-[0.65rem] text-gray-700 dark:text-gray-300 font-medium block truncate">Desa Belikurip</span>
+        </div>
+        <button
+          type="button"
+          className="sidebar-toggle"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (mobileOpen && onMobileClose) {
+              onMobileClose();
+            } else {
+              onToggle?.();
+            }
+          }}
+          aria-label={collapsed ? undefined : "Tutup sidebar"}
+          aria-hidden={collapsed ? true : undefined}
+          tabIndex={collapsed ? -1 : undefined}
+          aria-expanded={isMobile ? mobileOpen : !collapsed}
+          aria-controls="dashboard-sidebar"
+          title={collapsed ? "Buka sidebar" : "Tutup sidebar"}
+        >
+          <motion.span whileTap={reduceMotion ? undefined : { scale: 0.92 }} className="inline-flex">
+            <AngleLeft className={`w-4 h-4 transition-transform duration-300 ${collapsed ? 'rotate-180' : ''}`} />
+          </motion.span>
+        </button>
       </div>
 
       {/* Navigation */}
       <nav className="sidebar-nav">
-        <div>
-          {!collapsed && <span className="nav-section-title">Menu Utama</span>}
+        <div className="sidebar-nav-group">
+          <span className="nav-section-title">Menu Utama</span>
           {menuItems.map((item) => {
             const Icon = item.icon;
+            const active = isActive(item.href);
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`nav-item ${isActive(item.href) ? 'nav-item-active' : ''}`}
+                className={`nav-item relative ${active ? 'nav-item-active' : ''}`}
+                onClick={isMobile ? onMobileClose : undefined}
                 title={collapsed ? (item.label + (item.sub ? ' — ' + item.sub : '')) : undefined}
                 aria-label={item.label + (item.sub ? ' — ' + item.sub : '')}
               >
-                <span className="nav-icon"><Icon className="w-5 h-5" /></span>
-                {!collapsed && (
-                  <div className="flex flex-col min-w-0">
-                    <span className="truncate">{item.label}</span>
-                    {item.sub && <span className="nav-sub truncate">{item.sub}</span>}
-                  </div>
+                {active && (
+                  <motion.div
+                    initial={false}
+                    animate={{ opacity: 1 }}
+                    className="absolute inset-0 bg-gradient-to-b from-emerald-600/75 via-emerald-600/65 to-emerald-700/75 dark:from-emerald-500/40 dark:via-emerald-600/30 dark:to-emerald-700/40 rounded-[14px] border border-emerald-300/75 dark:border-emerald-400/50 shadow-[0_4px_16px_rgba(5,150,105,0.28),inset_0_1.5px_2px_0_rgba(255,255,255,0.65),inset_0_-1px_1px_0_rgba(4,120,87,0.40)] backdrop-blur-md pointer-events-none"
+                  />
                 )}
+                <span className="nav-icon relative z-10"><Icon className="w-5 h-5" /></span>
+                <div className="nav-text relative z-10">
+                  <span className="truncate">{item.label}</span>
+                  {item.sub && <span className="nav-sub truncate">{item.sub}</span>}
+                </div>
               </Link>
             );
           })}
         </div>
 
         {user?.role === 'admin' && (
-          <div className="mt-4">
-            {!collapsed && <span className="nav-section-title">Administrasi</span>}
+          <div className="sidebar-nav-group mt-4">
+            <span className="nav-section-title">Administrasi</span>
             {adminItems.map((item) => {
               const Icon = item.icon;
+              const active = isActive(item.href);
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`nav-item ${isActive(item.href) ? 'nav-item-active' : ''}`}
+                  className={`nav-item relative ${active ? 'nav-item-active' : ''}`}
+                  onClick={isMobile ? onMobileClose : undefined}
                   title={collapsed ? item.label : undefined}
                   aria-label={item.label}
                 >
-                  <span className="nav-icon"><Icon className="w-5 h-5" /></span>
-                  {!collapsed && <span>{item.label}</span>}
+                  {active && (
+                    <motion.div
+                      initial={false}
+                      animate={{ opacity: 1 }}
+                      className="absolute inset-0 bg-gradient-to-b from-emerald-600/75 via-emerald-600/65 to-emerald-700/75 dark:from-emerald-500/40 dark:via-emerald-600/30 dark:to-emerald-700/40 rounded-[14px] border border-emerald-300/75 dark:border-emerald-400/50 shadow-[0_4px_16px_rgba(5,150,105,0.28),inset_0_1.5px_2px_0_rgba(255,255,255,0.65),inset_0_-1px_1px_0_rgba(4,120,87,0.40)] backdrop-blur-md pointer-events-none"
+                    />
+                  )}
+                  <span className="nav-icon relative z-10"><Icon className="w-5 h-5" /></span>
+                  <div className="nav-text relative z-10">
+                    <span className="truncate">{item.label}</span>
+                  </div>
                 </Link>
               );
             })}
@@ -154,26 +223,47 @@ export default function Sidebar({
 
       {/* Footer */}
       <div className="sidebar-footer">
-        {!collapsed && user && (
-          <div className="sidebar-user-card mb-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-600 to-primary-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+        {user && (
+          <div
+            className="sidebar-user-card mb-2"
+            title={collapsed ? `${user.nama_lengkap || 'User'} (${user.role || ''})` : undefined}
+          >
+            <div className="sidebar-user-avatar">
               {user.nama_lengkap?.charAt(0) || 'U'}
             </div>
-            <div className="min-w-0">
+            <div className="sidebar-user-info">
               <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 block truncate">{user.nama_lengkap}</span>
-              <span className="text-xs text-gray-600 dark:text-gray-300 font-medium">{user.role}</span>
+              <span className="text-xs text-gray-600 dark:text-gray-300 font-medium block truncate">{user.role}</span>
             </div>
           </div>
         )}
-        <div className="flex flex-col gap-0.5">
-          <button className="nav-item" onClick={() => setShowPwModal(true)} aria-label="Ganti password">
+        <div className="sidebar-actions">
+          <motion.button
+            whileTap={reduceMotion ? undefined : { scale: 0.97 }}
+            type="button"
+            className="nav-item"
+            onClick={() => setShowPwModal(true)}
+            aria-label="Ganti password"
+            title={collapsed ? "Ganti Password" : undefined}
+          >
             <span className="nav-icon"><Lock className="w-5 h-5" /></span>
-            {!collapsed && <span>Ganti Password</span>}
-          </button>
-          <button className="nav-item text-red-500 hover:!text-red-600 hover:!bg-red-50 dark:hover:!bg-red-950/40" onClick={onLogout} aria-label="Keluar dari aplikasi">
+            <div className="nav-text">
+              <span className="truncate">Ganti Password</span>
+            </div>
+          </motion.button>
+          <motion.button
+            whileTap={reduceMotion ? undefined : { scale: 0.97 }}
+            type="button"
+            className="nav-item text-red-500 hover:!text-red-600 hover:!bg-red-50 dark:hover:!bg-red-950/40"
+            onClick={onLogout}
+            aria-label="Keluar dari aplikasi"
+            title={collapsed ? "Keluar" : undefined}
+          >
             <span className="nav-icon"><ArrowRightToBracket className="w-5 h-5" /></span>
-            {!collapsed && <span>Keluar</span>}
-          </button>
+            <div className="nav-text">
+              <span className="truncate">Keluar</span>
+            </div>
+          </motion.button>
         </div>
       </div>
 

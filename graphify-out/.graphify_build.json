@@ -1,0 +1,7 @@
+{
+  "gitignore": true,
+  "excludes": [
+    ".agents/teamwork/**",
+    "graphify-out/**"
+  ]
+}

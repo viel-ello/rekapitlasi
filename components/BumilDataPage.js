@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { FloppyDisk, Lock, Search, CheckCircle, ExclamationCircle } from 'flowbite-react-icons/outline';
+import { FloppyDisk, Lock, Search, CheckCircle, ExclamationCircle, ClipboardList } from 'flowbite-react-icons/outline';
+import SteppedForm from '@/components/ui/SteppedForm';
+import { getStepGroups } from '@/lib/dataPages';
 import { MONTHS } from '@/lib/dataPages';
 import { DataPageIcon } from '@/components/DataPageIcon';
 import { applyColumnOverrides } from '@/lib/columnOverrides';
@@ -148,6 +150,7 @@ export default function BumilDataPage({ config }) {
   const [initialLoading, setInitialLoading] = useState(true);
   const [onlyIssues, setOnlyIssues] = useState(false);
   const [confirmSaveAll, setConfirmSaveAll] = useState(null);
+  const [wizardDusun, setWizardDusun] = useState(null);
 
   const { years } = useYears();
 
@@ -373,7 +376,18 @@ export default function BumilDataPage({ config }) {
             <span className="text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md mr-2">{i + 1}</span>
             <span className="font-bold text-gray-800">{d.nama}</span>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            {dusunEditable && (
+              <button
+                type="button"
+                onClick={() => setWizardDusun(d)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full glass-pill text-xs font-semibold text-primary-700 hover:text-primary-800"
+                title="Buka formulir bertahap"
+              >
+                <ClipboardList className="w-3.5 h-3.5 text-primary-600" />
+                Wizard
+              </button>
+            )}
             {(errors > 0 || warnings > 0) && (
               <span className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${errors > 0 ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>
                 <ExclamationCircle className="w-3 h-3" /> {errors || warnings}
@@ -481,6 +495,20 @@ export default function BumilDataPage({ config }) {
         <div className="flex flex-wrap items-center gap-2">
           <EditModeSwitcher mode={mode} onChange={setMode} />
           <DensityToggle density={density} onChange={setDensity} />
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => {
+                const target = userDusunId != null ? dusun.find((d) => d.id === Number(userDusunId)) : (filteredDusun[0] || dusun[0]);
+                if (target) setWizardDusun(target);
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 glass-pill text-primary-800 dark:text-primary-200 hover:bg-white/80 dark:hover:bg-white/20 text-sm font-semibold rounded-xl transition-all shadow-sm"
+              title="Buka mode input langkah demi langkah (Typeform style)"
+            >
+              <ClipboardList className="w-4 h-4 text-primary-600" />
+              Formulir Bertahap
+            </button>
+          )}
           {canEdit && (
             <button onClick={saveAll} disabled={saving === 'all'}
               className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors disabled:opacity-50">
@@ -631,7 +659,22 @@ export default function BumilDataPage({ config }) {
                 return (
                   <tr key={d.id} className="group">
                     <td style={{ position: 'sticky', left: 0, zIndex: 1, textAlign: 'center' }} className="bg-white dark:bg-surface-dark text-gray-800 dark:text-gray-100 group-hover:bg-primary-50/50 dark:group-hover:bg-primary-950/30 transition-colors">{i + 1}</td>
-                    <td className="col-desa group-hover:bg-primary-50/50 dark:group-hover:bg-primary-950/30 transition-colors" style={{ left: 40 }}>{d.nama}</td>
+                    <td className="col-desa group-hover:bg-primary-50/50 dark:group-hover:bg-primary-950/30 transition-colors" style={{ left: 40 }}>
+                      <div className="flex items-center justify-between gap-1">
+                        <span>{d.nama}</span>
+                        {dusunEditable && (
+                          <button
+                            type="button"
+                            onClick={() => setWizardDusun(d)}
+                            className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity p-1 rounded-full glass-pill hover:bg-primary-100 dark:hover:bg-primary-900/40 text-primary-700 dark:text-primary-300"
+                            title={`Buka formulir bertahap ${d.nama}`}
+                            aria-label={`Buka formulir bertahap ${d.nama}`}
+                          >
+                            <ClipboardList className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
                     {visibleColumns.map((col) => {
                       const valObj = validation[col.key] || { valid: true };
                       const hasError = valObj.severity === 'error';
@@ -693,6 +736,44 @@ export default function BumilDataPage({ config }) {
           </table>
         </div>
       </div>
+      {/* Modal Formulir Bertahap (SteppedForm wizard) */}
+      {wizardDusun && (
+        <SteppedForm
+          isOpen={!!wizardDusun}
+          onClose={() => setWizardDusun(null)}
+          title={`Formulir ${config.title}`}
+          subtitle={`Dusun ${wizardDusun.nama}`}
+          dusunName={wizardDusun.nama}
+          tahun={tahun}
+          bulanName={MONTHS[bulan - 1]}
+          steps={getStepGroups(config, visibleColumns)}
+          initialData={data[wizardDusun.id] || {}}
+          validation={validateRow(data[wizardDusun.id] || {}, visibleColumns, prevData[wizardDusun.id] || null)}
+          isSaving={saving === wizardDusun.id}
+          onSave={async (newFormData) => {
+            const payload = { dusun_id: wizardDusun.id, tahun, bulan };
+            config.columns.forEach((col) => {
+              payload[col.key] = String(newFormData[col.key] ?? '');
+            });
+            const res = await fetch(config.apiEndpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+            if (!res.ok) {
+              const err = await res.json();
+              throw new Error(err.error || 'Gagal menyimpan data');
+            }
+            setData((prev) => ({
+              ...prev,
+              [wizardDusun.id]: { ...(prev[wizardDusun.id] || {}), ...newFormData, dusun_id: wizardDusun.id },
+            }));
+            setSaveStatus((prev) => ({ ...prev, [wizardDusun.id]: 'saved' }));
+            setToast({ type: 'success', message: 'Data berhasil disimpan via formulir bertahap' });
+            setWizardDusun(null);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { ArrowLeft, CheckCircle, ExclamationCircle, ChartLineUp } from 'flowbite-react-icons/outline';
 import PublicHeader from '@/components/PublicHeader';
-import { useYears } from '@/lib/useYears';
+import { usePublicYears } from '@/lib/usePublicYears';
 
 const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
@@ -45,47 +45,47 @@ function fmt(n) {
 export default function PublikDusunDetail() {
   const params = useParams();
   const search = useSearchParams();
-  const { years } = useYears();
+  const { years, error: yearsError, retry: retryYears } = usePublicYears();
 
   const [tahun, setTahun] = useState(Number(search.get('tahun')) || new Date().getFullYear());
   const [bulan, setBulan] = useState(Number(search.get('bulan')) || 12);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [attempt, setAttempt] = useState(0);
 
   const dusunId = params?.id;
 
   useEffect(() => {
-    if (years.length > 0 && !years.includes(tahun)) setTahun(years[0]);
-  }, [years]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
     setLoading(true);
     setError(null);
+    setData(null);
     (async () => {
       try {
         const queryParams = new URLSearchParams({ tahun: String(tahun), bulan: String(bulan) });
-        const res = await fetch(`/api/public/dusun/${dusunId}?${queryParams.toString()}`, { cache: 'no-store' });
+        const res = await fetch(`/api/public/dusun/${dusunId}?${queryParams.toString()}`, { cache: 'no-store', signal: controller.signal });
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
-          if (!cancelled) setError(errData.error || 'Gagal memuat data');
+          if (!controller.signal.aborted) setError(errData.error || 'Gagal memuat data');
         } else {
           const json = await res.json();
-          if (!cancelled) setData(json);
+          if (!controller.signal.aborted) setData(json);
         }
       } catch {
-        if (!cancelled) setError('Gagal menghubungi server');
+        if (!controller.signal.aborted) setError('Gagal menghubungi server');
       }
-      if (!cancelled) setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     })();
-    return () => { cancelled = true; };
-  }, [dusunId, tahun, bulan]);
+    return () => controller.abort();
+  }, [dusunId, tahun, bulan, attempt]);
 
   const trend = data?.trend || [];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="relative min-h-screen bg-[#f6f9f6]">
+      <div className="glass-ambient" aria-hidden="true" />
+      <div className="relative z-[1]">
       <PublicHeader />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
@@ -96,11 +96,14 @@ export default function PublikDusunDetail() {
           <ArrowLeft className="w-4 h-4" /> Kembali ke daftar dusun
         </Link>
 
+        {yearsError && <p role="status" className="text-sm text-amber-800 mb-3">{yearsError} <button type="button" className="underline" onClick={retryYears}>Coba lagi</button></p>}
+
         {error ? (
-          <div className="bg-white rounded-2xl border border-red-100 p-6 text-center">
+          <div role="alert" className="bg-white rounded-2xl border border-red-100 p-6 text-center">
             <ExclamationCircle className="w-10 h-10 text-red-500 mx-auto mb-2" />
             <h1 className="text-base font-bold text-gray-800">{error}</h1>
             <p className="text-sm text-gray-500 mt-1">Coba pilih tahun lain atau kembali ke daftar dusun.</p>
+            <button type="button" className="mt-3 underline text-primary-700" onClick={() => setAttempt((value) => value + 1)}>Coba lagi</button>
           </div>
         ) : (
           <>
@@ -129,7 +132,7 @@ export default function PublikDusunDetail() {
                     className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 focus:ring-2 focus:ring-primary-500 outline-none"
                     aria-label="Tahun"
                   >
-                    {(years.length > 0 ? years : [tahun]).map((y) => <option key={y} value={y}>{y}</option>)}
+                    {[...new Set([tahun, ...years])].sort((a, b) => b - a).map((y) => <option key={y} value={y}>{y}</option>)}
                   </select>
                   <select
                     value={bulan}
@@ -143,6 +146,9 @@ export default function PublikDusunDetail() {
               </div>
             </div>
 
+            {!loading && !data?.hasData && <p role="status" className="mb-4 text-sm text-gray-600">Belum ada catatan untuk periode ini.</p>}
+            <p className="text-xs text-gray-600 mb-4">Data Umum, Rekap Dawis, dan Bumil mengikuti bulan yang dipilih. Pokja I–IV merupakan data tahunan.</p>
+            {Object.values(data?.periods || {}).includes('annual_legacy') && <p role="status" className="text-xs text-amber-800 mb-4">Sebagian tabel masih memakai skema tahunan. Nilainya merupakan laporan tahunan.</p>}
             {/* Trend penduduk */}
             <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 mb-4 sm:mb-5 overflow-hidden">
               <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide mb-3 flex items-center gap-2">
@@ -182,7 +188,7 @@ export default function PublikDusunDetail() {
                       )}
                     </div>
                     {!row ? (
-                      <div className="text-xs text-gray-400">Belum ada data untuk periode ini.</div>
+                      <div className="text-xs text-gray-500">{loading ? 'Memuat data…' : 'Belum ada data untuk periode ini.'}</div>
                     ) : (
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                         {fields.map((k) => (
@@ -205,12 +211,13 @@ export default function PublikDusunDetail() {
           </>
         )}
       </main>
+      </div>
     </div>
   );
 }
 
 function TrendCard({ label, rows, field, color }) {
-  if (!rows || rows.length === 0) {
+  if (!rows || !rows.some((row) => row[field] !== null && row[field] !== undefined)) {
     return (
       <div className="rounded-xl border border-gray-100 p-4">
         <div className="text-xs font-semibold text-gray-600 mb-2">{label}</div>
@@ -219,7 +226,7 @@ function TrendCard({ label, rows, field, color }) {
     );
   }
   const max = Math.max(...rows.map((r) => Number(r[field] || 0)), 1);
-  const last = Number(rows[rows.length - 1]?.[field] || 0);
+  const last = rows[rows.length - 1]?.[field];
   const padX = 28;
   const padY = 22;
   const width = 280;
@@ -227,27 +234,29 @@ function TrendCard({ label, rows, field, color }) {
   const innerW = width - padX * 2;
   const innerH = height - padY * 2;
   const stepX = rows.length > 1 ? innerW / (rows.length - 1) : 0;
-  const points = rows.map((r, i) => {
+  const segments = [];
+  rows.forEach((r, i) => {
+    if (r[field] == null) return;
     const x = padX + i * stepX;
     const y = padY + innerH - (Number(r[field] || 0) / max) * innerH;
-    return `${x},${y}`;
-  }).join(' L ');
+    segments.push(`${i === 0 || rows[i - 1][field] == null ? 'M' : 'L'} ${x},${y}`);
+  });
 
   return (
     <div className="rounded-xl border border-gray-100 p-4">
       <div className="flex items-baseline justify-between mb-2">
         <div className="text-xs font-semibold text-gray-600">{label}</div>
-        <div className="text-base font-bold text-gray-800">{fmt(last)}</div>
+        <div className="text-base font-bold text-gray-800">{last == null ? '—' : fmt(last)}</div>
       </div>
       <svg viewBox={`0 0 ${width} ${height}`} className="block w-full h-24">
-        <path d={`M ${points}`} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d={segments.join(' ')} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
         {rows.map((r, i) => {
           const x = padX + i * stepX;
           const y = padY + innerH - (Number(r[field] || 0) / max) * innerH;
           const anchor = i === 0 ? 'start' : i === rows.length - 1 ? 'end' : 'middle';
           return (
             <g key={i}>
-              <circle cx={x} cy={y} r="3" fill="#fff" stroke={color} strokeWidth="2" />
+              {r[field] != null && <circle cx={x} cy={y} r="3" fill="#fff" stroke={color} strokeWidth="2" />}
               <text x={x} y={height - 6} textAnchor={anchor} fontSize="10" fill="#6b7280">{r.tahun}</text>
             </g>
           );

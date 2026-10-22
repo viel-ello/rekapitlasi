@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { CheckCircle, ExclamationCircle, Globe, ArrowRight } from 'flowbite-react-icons/outline';
 import PublicHeader from '@/components/PublicHeader';
 import AnimatedCounter from '@/components/AnimatedCounter';
-import { useYears } from '@/lib/useYears';
+import { usePublicYears } from '@/lib/usePublicYears';
 
 const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
@@ -25,25 +25,38 @@ export default function PublikPage() {
   const [bulan, setBulan] = useState(12);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { years } = useYears();
+  const [error, setError] = useState(null);
+  const [attempt, setAttempt] = useState(0);
+  const { years, error: yearsError, retry: retryYears } = usePublicYears();
 
   useEffect(() => {
-    if (years.length > 0 && !years.includes(tahun)) setTahun(years[0]);
-  }, [years]);
+    // Keep the visitor's selected period, including historical deep links.
+    const selected = new URLSearchParams(window.location.search);
+    const year = Number(selected.get('tahun'));
+    const month = Number(selected.get('bulan'));
+    if (Number.isInteger(year) && year >= 2000 && year <= 2100) setTahun(year);
+    if (Number.isInteger(month) && month >= 1 && month <= 12) setBulan(month);
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
     setLoading(true);
+    setError(null);
+    setSummary(null);
     (async () => {
       try {
         const params = new URLSearchParams({ tahun: String(tahun), bulan: String(bulan) });
-        const res = await fetch(`/api/public/summary?${params.toString()}`, { cache: 'no-store' });
-        if (res.ok && !cancelled) setSummary(await res.json());
-      } catch { /* silent */ }
-      if (!cancelled) setLoading(false);
+        const res = await fetch(`/api/public/summary?${params.toString()}`, { cache: 'no-store', signal: controller.signal });
+        if (!res.ok) throw new Error('Ringkasan publik belum dapat dimuat. Silakan coba lagi.');
+        const payload = await res.json();
+        if (!controller.signal.aborted) setSummary(payload);
+      } catch (failure) {
+        if (!controller.signal.aborted) setError(failure.message || 'Gagal menghubungi server.');
+      }
+      if (!controller.signal.aborted) setLoading(false);
     })();
-    return () => { cancelled = true; };
-  }, [tahun, bulan]);
+    return () => controller.abort();
+  }, [tahun, bulan, attempt]);
 
   const totals = summary?.totals || {};
   const completeness = summary?.completeness || { complete: 0, needsCheck: 0, incomplete: 0 };
@@ -56,14 +69,14 @@ export default function PublikPage() {
   ]), [summary, completeness]);
 
   const indicators = useMemo(() => ([
-    { label: 'Total KK', value: totals.total_kk, tone: 'primary' },
-    { label: 'Total Jiwa', value: totals.total_jiwa, tone: 'blue' },
-    { label: 'Dasa Wisma', value: totals.total_dasa_wisma, tone: 'green' },
-    { label: 'Posyandu', value: totals.total_posyandu, tone: 'amber' },
-    { label: 'Ibu Hamil', value: totals.total_bumil, tone: 'blue' },
-    { label: 'Rumah Sehat', value: totals.total_rumah_sehat, tone: 'green' },
-    { label: 'Kelahiran Bayi', value: totals.total_kelahiran, tone: 'primary' },
-    { label: 'JKN/BPJS', value: totals.total_jkn_bpjs, tone: 'blue' },
+    { label: 'Total KK', value: totals.total_kk, tables: ['data_umum'] },
+    { label: 'Total Jiwa', value: totals.total_jiwa, tables: ['data_umum'] },
+    { label: 'Dasa Wisma', value: totals.total_dasa_wisma, tables: ['data_umum'] },
+    { label: 'Posyandu', value: totals.total_posyandu, tables: ['data_pokja4'] },
+    { label: 'Ibu Hamil', value: totals.total_bumil, tables: ['data_bumil'] },
+    { label: 'Rumah Sehat', value: totals.total_rumah_sehat, tables: ['data_pokja3', 'data_rekap_dawis'] },
+    { label: 'Kelahiran Bayi', value: totals.total_kelahiran, tables: ['data_bumil'] },
+    { label: 'JKN/BPJS', value: totals.total_jkn_bpjs, tables: ['data_rekap_dawis'] },
   ]), [totals]);
 
   return (
@@ -93,6 +106,8 @@ export default function PublikPage() {
           )}
         </div>
 
+        {yearsError && <p role="status" className="text-sm text-amber-800 mb-3">{yearsError} <button type="button" className="underline" onClick={retryYears}>Coba lagi</button></p>}
+
         {/* Filter */}
         <div className="glass rounded-3xl p-3 sm:p-4 mb-6 flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
@@ -103,7 +118,7 @@ export default function PublikPage() {
               onChange={(e) => setTahun(Number(e.target.value))}
               className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 focus:ring-2 focus:ring-primary-500 outline-none"
             >
-              {(years.length > 0 ? years : [tahun]).map((y) => <option key={y} value={y}>{y}</option>)}
+              {[...new Set([tahun, ...years])].sort((a, b) => b - a).map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
           </div>
           <div className="flex items-center gap-2">
@@ -119,12 +134,16 @@ export default function PublikPage() {
           </div>
         </div>
 
+        {error && <div role="alert" className="mb-6 rounded-2xl border border-red-200 bg-white p-4 text-sm text-red-800">{error} <button type="button" className="ml-2 underline font-semibold" onClick={() => setAttempt((value) => value + 1)}>Coba lagi</button></div>}
+        {!loading && !error && summary && (summary.totalDusun === 0 || !summary.hasData) && <p role="status" className="mb-6 rounded-2xl bg-white p-4 text-sm text-gray-700">{summary.totalDusun === 0 ? 'Belum ada dusun aktif yang ditampilkan.' : 'Belum ada catatan untuk periode ini. Pilih tahun atau bulan lain untuk melihat data yang tersedia.'}</p>}
+        <p className="text-xs text-gray-600 mb-4">Data Umum, Rekap Dawis, dan Bumil mengikuti bulan yang dipilih. Pokja I–IV merupakan data tahunan.</p>
+        {Object.values(summary?.periods || {}).includes('annual_legacy') && <p role="status" className="text-xs text-amber-800 mb-4">Sebagian tabel masih memakai skema tahunan. Nilainya merupakan laporan tahunan, bukan khusus bulan yang dipilih.</p>}
         {/* KPI */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
           {kpi.map((k) => (
             <div key={k.label} className="glass rounded-3xl p-4">
               <div className="text-2xl font-bold text-gray-800 tabular-nums">
-                {loading ? '—' : <AnimatedCounter value={Number(k.value || 0)} />}
+                {loading || error ? '—' : <AnimatedCounter value={Number(k.value || 0)} />}
               </div>
               <div className="text-xs font-semibold text-gray-700 mt-0.5">{k.label}</div>
               <div className="text-[11px] text-gray-500">{k.sub}</div>
@@ -133,7 +152,8 @@ export default function PublikPage() {
         </div>
 
         {/* Narasi ringkas */}
-        {!loading && summary && (
+        {!loading && !error && summary?.totalDusun > 0 && summary.hasData && !summary.availability?.data_umum && <p role="status" className="mb-6 rounded-2xl bg-white p-4 text-sm text-gray-700">Catatan kegiatan tersedia, tetapi Data Umum untuk periode ini belum tersedia. Jumlah KK dan jiwa belum dapat diringkas.</p>}
+        {!loading && !error && summary?.totalDusun > 0 && summary.availability?.data_umum && (
           <div className="glass rounded-3xl p-4 sm:p-5 mb-6">
             <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide mb-2">Ringkasan Kondisi</h2>
             <p className="text-sm text-gray-600 leading-relaxed">
@@ -163,14 +183,19 @@ export default function PublikPage() {
         <div className="glass rounded-3xl p-4 sm:p-5 mb-6">
           <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide mb-3">Indikator Agregat</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {indicators.map((it) => (
+            {indicators.map((it) => {
+              const availableSources = it.tables.filter((table) => summary?.availability?.[table]).length;
+              const completeSources = availableSources === it.tables.length;
+              return (
               <div key={it.label} className="rounded-2xl border border-white/50 bg-white/40 p-3">
                 <div className="text-lg font-bold text-gray-800 tabular-nums">
-                  {loading ? '—' : <AnimatedCounter value={Number(it.value || 0)} />}
+                  {loading || error || !completeSources ? '—' : <AnimatedCounter value={Number(it.value || 0)} />}
                 </div>
                 <div className="text-xs text-gray-600 truncate">{it.label}</div>
+                {!loading && !error && !completeSources && <p className="text-xs text-gray-500">{availableSources > 0 ? 'Sebagian sumber belum tersedia' : 'Belum ada catatan'}</p>}
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -190,7 +215,7 @@ export default function PublikPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {loading ? (
+                {error ? (<tr><td colSpan="3" className="px-4 py-8 text-center text-gray-600">Data belum dapat dimuat.</td></tr>) : loading ? (
                   <tr><td colSpan="3" className="px-4 py-8 text-center text-gray-400">Memuat...</td></tr>
                 ) : ((summary?.dusun || summary?.desa) || []).length === 0 ? (
                   <tr><td colSpan="3" className="px-4 py-8 text-center text-gray-400">Belum ada data</td></tr>

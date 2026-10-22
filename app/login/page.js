@@ -51,17 +51,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative bg-gradient-to-br from-primary-100 via-white to-emerald-100 px-4 py-8">
-      {/* Ambient emerald blobs untuk nuansa liquid glass */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
-        <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-primary-300/40 blur-3xl" />
-        <div className="absolute -bottom-32 -right-16 w-[28rem] h-[28rem] rounded-full bg-emerald-200/50 blur-3xl" />
-        <img
-          src="/bg-baturetno.png"
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover opacity-20 hidden sm:block"
-        />
-      </div>
+    <div className="min-h-screen flex items-center justify-center relative bg-[#f6f9f6] px-4 py-8">
+      <div className="glass-ambient" aria-hidden="true" />
 
       {/* Back link */}
       <Link

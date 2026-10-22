@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import { Plus, Close, Check, Pen, TrashBin, Refresh, Eye, EyeSlash } from 'flowbite-react-icons/outline';
 import ConfirmModal from '@/components/ConfirmModal';
 import { DATA_PAGES as DATA_PAGES_CLIENT } from '@/lib/dataPages';
@@ -10,23 +11,34 @@ export default function ColumnsTab({ toast, setToast }) {
 
   return (
     <>
-      <div className="mb-4 flex gap-2 border-b border-gray-200">
-        <button
-          onClick={() => setSubtab('standard')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-            subtab === 'standard' ? 'border-primary-600 text-primary-700' : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Kolom Standar
-        </button>
-        <button
-          onClick={() => setSubtab('dynamic')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-            subtab === 'dynamic' ? 'border-primary-600 text-primary-700' : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Kolom Dinamis
-        </button>
+      <div className="mb-4 flex gap-2 border-b border-gray-200 relative">
+        {[
+          { id: 'standard', label: 'Kolom Standar' },
+          { id: 'dynamic', label: 'Kolom Dinamis' },
+        ].map((item) => {
+          const isCurrent = subtab === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setSubtab(item.id)}
+              className={`relative px-4 py-2 text-sm font-medium transition-colors ${
+                isCurrent
+                  ? 'text-primary-700 dark:text-primary-400 font-semibold'
+                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+              }`}
+            >
+              <span className="relative z-10">{item.label}</span>
+              {isCurrent && (
+                <motion.div
+                  layoutId="columnsSubtabIndicator"
+                  transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600"
+                />
+              )}
+            </button>
+          );
+        })}
       </div>
       {subtab === 'standard' && <StandardColumnsPanel setToast={setToast} />}
       {subtab === 'dynamic' && <DynamicColumnsPanel setToast={setToast} />}

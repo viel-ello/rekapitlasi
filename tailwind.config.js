@@ -137,7 +137,7 @@ module.exports = {
   			}
   		},
   		backgroundColor: {
-  			dashboard: '#f7f8f8'
+				dashboard: '#f6f9f6'
   		},
   		textColor: {
   			dashboard: '#1a1f1d'

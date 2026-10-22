@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import {
   User, MapPin, ClipboardList, Cog, List, Upload, Clock,
 } from 'flowbite-react-icons/outline';
@@ -43,17 +44,28 @@ export default function AdminPage() {
       <div className="flex gap-2 mb-6 flex-wrap">
         {TABS.map(t => {
           const Icon = t.icon;
+          const isActive = tab === t.id;
           return (
             <button
               key={t.id}
+              type="button"
               onClick={() => setTab(t.id)}
-              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                tab === t.id
-                  ? 'bg-primary-600 text-white shadow-sm shadow-primary-500/20'
-                  : 'bg-white/70 backdrop-blur text-gray-600 border border-gray-200 hover:bg-white'
+              className={`relative inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                isActive
+                  ? 'text-white'
+                  : 'bg-white/70 backdrop-blur text-gray-600 border border-gray-200 hover:bg-white dark:bg-black/20 dark:text-gray-300 dark:border-white/10 dark:hover:bg-black/40'
               }`}
             >
-              <Icon className="w-4 h-4" /> {t.label}
+              {isActive && (
+                <motion.div
+                  layoutId="adminActiveTabIndicator"
+                  transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                  className="absolute inset-0 bg-primary-600 rounded-full shadow-sm shadow-primary-500/20 -z-10"
+                />
+              )}
+              <span className="relative z-10 flex items-center gap-1.5">
+                <Icon className="w-4 h-4" /> {t.label}
+              </span>
             </button>
           );
         })}
